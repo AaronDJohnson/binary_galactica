@@ -1,0 +1,209 @@
+{
+  "description": "Matched waveform performance before and after host validation / vectorized link / scalar tensor changes. Serial CPU runs, warmed and synchronized, 100 repeats per workload. Timing variation is machine and workload dependent.",
+  "before_report": "before.json",
+  "after_report": "after.json",
+  "harness_sha256": "69afc141efa605da63f3dc6c5255c9f74250e3034c21f2dc0c3e552c5853ef9a",
+  "before_source_sha256": "7b3cac19afebf999af0b679aed9d4bda069f35763a0b92540d7d954a6200c169",
+  "after_source_sha256": "966e5c3818b06573f469f0fa70cfb28cc4dcd177d4e98d7a586a7cab996fc3e6",
+  "settings": {
+    "bandwidths": [
+      128,
+      512,
+      2048
+    ],
+    "repeats": 100,
+    "warmups": 5,
+    "batch_size": 32
+  },
+  "comparisons": [
+    {
+      "bandwidth": 128,
+      "workload": "native_eager_cached_numpy",
+      "before_median_ms": 0.1965625,
+      "after_median_ms": 0.0932085,
+      "speedup": 2.1088473690704173,
+      "latency_reduction_fraction": 0.5258073131955485,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 128,
+      "workload": "physical_eager_cached_gbparams",
+      "before_median_ms": 0.5198130000000001,
+      "after_median_ms": 0.10535449999999999,
+      "speedup": 4.933942071767225,
+      "latency_reduction_fraction": 0.7973223062909163,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 128,
+      "workload": "native_outer_jit_cached",
+      "before_median_ms": 0.06964600000000001,
+      "after_median_ms": 0.060729,
+      "speedup": 1.1468326499695372,
+      "latency_reduction_fraction": 0.12803319645062194,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 128,
+      "workload": "fixed_window_ae_outer_jit_cached",
+      "before_median_ms": 0.061771,
+      "after_median_ms": 0.0505205,
+      "speedup": 1.2226917785849307,
+      "latency_reduction_fraction": 0.18213239222288768,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 128,
+      "workload": "batch_native_outer_jit_cached",
+      "before_median_ms": 0.4354165,
+      "after_median_ms": 0.371729,
+      "speedup": 1.1713277683473713,
+      "latency_reduction_fraction": 0.14626799857148276,
+      "sources_per_call": 32
+    },
+    {
+      "bandwidth": 128,
+      "workload": "jacfwd_ae_outer_jit_cached",
+      "before_median_ms": 0.20600000000000002,
+      "after_median_ms": 0.1622295,
+      "speedup": 1.2698060463725773,
+      "latency_reduction_fraction": 0.21247815533980585,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 128,
+      "workload": "native_eager_uncached_numpy",
+      "before_median_ms": 0.206667,
+      "after_median_ms": 0.09235399999999999,
+      "speedup": 2.237769885440804,
+      "latency_reduction_fraction": 0.5531265272152788,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "native_eager_cached_numpy",
+      "before_median_ms": 0.3056875,
+      "after_median_ms": 0.160167,
+      "speedup": 1.9085548209056797,
+      "latency_reduction_fraction": 0.4760433449192394,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "physical_eager_cached_gbparams",
+      "before_median_ms": 0.6222080000000001,
+      "after_median_ms": 0.168896,
+      "speedup": 3.6839712012125814,
+      "latency_reduction_fraction": 0.7285537955153261,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "native_outer_jit_cached",
+      "before_median_ms": 0.1494375,
+      "after_median_ms": 0.1164165,
+      "speedup": 1.2836453595495483,
+      "latency_reduction_fraction": 0.22096863237139264,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "fixed_window_ae_outer_jit_cached",
+      "before_median_ms": 0.1400625,
+      "after_median_ms": 0.1041455,
+      "speedup": 1.3448732782501405,
+      "latency_reduction_fraction": 0.2564355198572066,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "batch_native_outer_jit_cached",
+      "before_median_ms": 1.466521,
+      "after_median_ms": 1.1734585,
+      "speedup": 1.2497425345676902,
+      "latency_reduction_fraction": 0.19983518817664392,
+      "sources_per_call": 32
+    },
+    {
+      "bandwidth": 512,
+      "workload": "jacfwd_ae_outer_jit_cached",
+      "before_median_ms": 0.510187,
+      "after_median_ms": 0.370146,
+      "speedup": 1.3783398983103965,
+      "latency_reduction_fraction": 0.27448954991013097,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 512,
+      "workload": "native_eager_uncached_numpy",
+      "before_median_ms": 0.3174375,
+      "after_median_ms": 0.1735415,
+      "speedup": 1.829173425376639,
+      "latency_reduction_fraction": 0.45330498129553065,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "native_eager_cached_numpy",
+      "before_median_ms": 0.4718335,
+      "after_median_ms": 0.317813,
+      "speedup": 1.4846261795458335,
+      "latency_reduction_fraction": 0.3264297681279519,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "physical_eager_cached_gbparams",
+      "before_median_ms": 0.835854,
+      "after_median_ms": 0.3432085,
+      "speedup": 2.435411710374306,
+      "latency_reduction_fraction": 0.5893918076601894,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "native_outer_jit_cached",
+      "before_median_ms": 0.3352705,
+      "after_median_ms": 0.270458,
+      "speedup": 1.2396397961975614,
+      "latency_reduction_fraction": 0.19331405536723345,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "fixed_window_ae_outer_jit_cached",
+      "before_median_ms": 0.31825000000000003,
+      "after_median_ms": 0.237271,
+      "speedup": 1.341293289108235,
+      "latency_reduction_fraction": 0.2544509033778477,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "batch_native_outer_jit_cached",
+      "before_median_ms": 5.1424795,
+      "after_median_ms": 3.491854,
+      "speedup": 1.472707478605921,
+      "latency_reduction_fraction": 0.3209785279649633,
+      "sources_per_call": 32
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "jacfwd_ae_outer_jit_cached",
+      "before_median_ms": 2.5335,
+      "after_median_ms": 1.2820205,
+      "speedup": 1.976177448020527,
+      "latency_reduction_fraction": 0.49397256759423724,
+      "sources_per_call": 1
+    },
+    {
+      "bandwidth": 2048,
+      "workload": "native_eager_uncached_numpy",
+      "before_median_ms": 0.455438,
+      "after_median_ms": 0.37160400000000005,
+      "speedup": 1.2256003702866491,
+      "latency_reduction_fraction": 0.18407335356294374,
+      "sources_per_call": 1
+    }
+  ]
+}

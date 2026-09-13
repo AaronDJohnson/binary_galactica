@@ -1,0 +1,3 @@
+# Preserve upstream reference sources byte-for-byte for their recorded hashes.
+tools/glass_reference/reference.c -whitespace
+tools/glass_reference/vendor/kissfft/** -whitespace

@@ -1,7 +1,8 @@
 """Physical constants and time units, in SI.
 
-Values follow the LISA Data Challenge conventions so that observation times
-quoted here agree bit-for-bit with those used by ``ldasoft`` and ``GBGPU``.
+Values follow the LISA Data Challenge conventions. The GLASS backend keeps
+its own pinned literals in :mod:`binary_galactica.glass.constants`; its
+sidereal-year literal differs slightly from the physical unit exposed here.
 """
 
 from __future__ import annotations

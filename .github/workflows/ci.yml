@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python }} / ${{ matrix.dependencies }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.10", dependencies: minimum, os: ubuntu-latest}
+          - {python: "3.11", dependencies: current, os: ubuntu-latest}
+          - {python: "3.12", dependencies: current, os: ubuntu-latest}
+          - {python: "3.13", dependencies: current, os: ubuntu-latest}
+          - {python: "3.14", dependencies: current, os: ubuntu-latest}
+          - {python: "3.12", dependencies: current, os: macos-latest}
+    env:
+      JAX_PLATFORMS: cpu
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements/minimum.txt
+      - name: Install minimum dependencies
+        if: matrix.dependencies == 'minimum'
+        run: python -m pip install -c requirements/minimum.txt -e '.[dev]'
+      - name: Install current dependencies
+        if: matrix.dependencies == 'current'
+        run: python -m pip install -e '.[dev]'
+      - name: Report resolved versions
+        run: python -m pip list
+      - name: Test suite and doctests
+        run: python -m pytest -q
+      - name: Test TDI zero-crossing prototype
+        run: >-
+          python -m pytest -q tools/tdi_zero_crossings/test_solver.py
+          tools/tdi_zero_crossings/test_accuracy.py
+          tools/tdi_zero_crossings/test_benchmark.py
+      - name: Run quickstart
+        run: python examples/quickstart.py
+
+  distribution:
+    name: Lint, build, and installed wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build and development tools
+        run: python -m pip install '.[dev]' build twine
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: Check public API typing
+        run: MYPYPATH=src mypy --follow-imports=silent examples/typing_contract.py
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - name: Test wheel outside checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install dist/*.whl pytest
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pytest "$GITHUB_WORKSPACE/tests" -q
+          "$RUNNER_TEMP/wheel-env/bin/python" "$GITHUB_WORKSPACE/examples/quickstart.py"

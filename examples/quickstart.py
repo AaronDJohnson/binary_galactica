@@ -1,59 +1,58 @@
-"""Generate a galactic-binary waveform and its exact parameter Jacobian.
-
-Run with::
-
-    python examples/quickstart.py
-"""
+"""Generate GLASS TDI channels, a fixed window, and a parameter Jacobian."""
 
 from __future__ import annotations
 
 import jax
 import jax.numpy as jnp
 
-from binary_galactica import (
-    DAY,
-    PARAMETER_NAMES,
-    YEAR,
-    GBParams,
-    frequency,
-    polarizations,
+import binary_galactica as bg
+
+duration, bandwidth = 7_884_000.0, 512
+native = bg.params_from_native(
+    f0=1e-3,
+    fdot=1e-18,
+    amp=7.16e-22,
+    phi0=0.5,
+    colat=1.78,
+    lon=0.0,
+    psi=0.7,
+    cos_iota=0.3,
+    T=duration,
 )
-
-params = GBParams(
-    amp=1e-22,
-    f0=1.2345e-3,
-    fdot=3.21e-16,
-    phi0=0.7,
-    iota=1.1,
-    psi=0.4,
-    lam=4.1,
-    beta=-0.3,
+positions = bg.orbit_cache(duration, 0.0, bandwidth)
+wave = bg.ucb_waveform(native, T=duration, BW=bandwidth, positions=positions)
+continuous = bg.to_continuous_ft(wave, duration)
+bins = wave["freq_bin_indices"]
+print(f"{bandwidth} bins from {int(bins[0])} to {int(bins[-1])}")
+print(
+    f"Frequency band: {float(bins[0] / duration):.7f}–"
+    f"{float(bins[-1] / duration):.7f} Hz"
 )
+print(f"Peak continuous |A|: {float(jnp.max(jnp.abs(continuous['A']))):.6e}")
 
-# --- a waveform -----------------------------------------------------------
-t = jnp.arange(0.0, 4.0 * YEAR, 15.0)
-hp, hc = jax.jit(polarizations)(params, t)
-
-print(f"{len(t):,} samples over {t[-1] / YEAR:.2f} yr at 15 s cadence")
-print(f"h+ peak-to-peak : {hp.max() - hp.min():.3e}")
-print(f"hx peak-to-peak : {hc.max() - hc.min():.3e}")
-print(f"frequency drift : {1e9 * (frequency(params, t[-1]) - params.f0):.4f} nHz")
-
-# --- exact derivatives ----------------------------------------------------
-# jacfwd differentiates the model analytically, so these columns carry no
-# finite-difference error -- which is what a Fisher matrix needs.
-short = jnp.arange(0.0, 30.0 * DAY, 15.0)
-jac_hp, _ = jax.jacfwd(polarizations)(params.to_array(), short)
-
-print(f"\nJacobian of h+ : {jac_hp.shape}  (samples, parameters)")
-for name, column in zip(PARAMETER_NAMES, jac_hp.T, strict=True):
-    print(f"  d h+ / d {name:<5} max |.| = {jnp.abs(column).max():.3e}")
-print("\nlam and beta are exactly zero: sky position lives in the response.")
-
-# --- a catalogue ----------------------------------------------------------
-# vmap maps a (K, 8) array of sources onto K waveforms.
-catalogue = jnp.stack(
-    [params._replace(f0=params.f0 + shift).to_array() for shift in (0.0, 1e-5, 2e-5)]
+window = bg.template_on_window(
+    native,
+    T=duration,
+    BW=bandwidth,
+    bin_lo=int(bins[0]),
+    n_bins=bandwidth,
+    positions=positions,
 )
-batch_hp, batch_hc = jax.vmap(polarizations, in_axes=(0, None))(catalogue, short)
-print(f"\nCatalogue of {catalogue.shape[0]} sources -> h+ shape {batch_hp.shape}")
+print(f"Fixed A/E analysis window: {window.shape}")
+
+
+def channels(params, observation_time):
+    """Keep duration traced in JIT and differentiation wrappers."""
+    result = bg.ucb_waveform(params, T=observation_time, BW=bandwidth)
+    return jnp.stack([result["A"], result["E"]])
+
+
+jacobian = jax.jacfwd(channels, argnums=0)(jnp.asarray(native), duration)
+print(f"Native-parameter Jacobian: {jacobian.shape} (channel, bin, parameter)")
+catalogue = jnp.stack([native, native])
+batch = jax.jit(jax.vmap(channels, in_axes=(0, None)))(catalogue, duration)
+print(f"Batched channels: {batch.shape}")
+physical = bg.from_glass_vector(native, duration)
+physical_wave = bg.tdi_waveform(physical, T=duration, BW=bandwidth)
+relative = jnp.linalg.norm(physical_wave["A"] - wave["A"]) / jnp.linalg.norm(wave["A"])
+print(f"Physical/native adapter relative difference: {float(relative):.3e}")

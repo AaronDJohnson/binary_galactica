@@ -23,20 +23,20 @@ FIDUCIAL = GBParams(
 
 @pytest.fixture
 def params() -> GBParams:
-    """The fiducial source."""
+    """Return the fiducial source."""
     return FIDUCIAL
 
 
 @pytest.fixture
 def t() -> np.ndarray:
-    """A short, irregular-length time array (seconds)."""
+    """Return a short, irregular-length time array in seconds."""
     return np.linspace(0.0, 1.0e5, 257)
 
 
 def reference_polarizations(
     theta: GBParams, times: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """A deliberately independent NumPy implementation, for cross-checking.
+    """Evaluate an independent NumPy implementation for cross-checking.
 
     Written a different way from the package -- a complex exponential for the
     phase and an explicit rotation matrix for the polarization angle -- so that

@@ -1,9 +1,8 @@
-"""The sign conventions match ``ldasoft`` and ``GBGPU`` exactly.
+"""Source-only polarization algebra in the original physical convention.
 
-These are the tests that make the package's output safe to hand to an existing
-LISA response code.  Every other property in the suite would be satisfied just
-as well by a waveform with ``psi -> -psi`` or ``Ax -> -Ax``; only this file
-rules those out.
+These locally transcribed coefficients test rotation and handedness. They do
+not establish current GLASS equivalence; independent C-generated spectra in
+test_glass_reference.py exercise the detector waveform and its normalization.
 """
 
 from __future__ import annotations
@@ -16,7 +15,7 @@ from binary_galactica import phase, polarizations
 def ldasoft_coefficients(
     amp: float, iota: float, psi: float
 ) -> tuple[float, float, float, float]:
-    """The ``DPr, DPi, DCr, DCi`` coefficients as written in ``ldasoft``.
+    """Historical full-amplitude ``DPr, DPi, DCr, DCi`` coefficients.
 
     Transcribed from ``galactic_binary()`` in ldasoft's ``galactic.c`` (and
     identical in ``GBGPU``'s ``run_wave``, where they appear as the complex
@@ -38,11 +37,10 @@ def ldasoft_coefficients(
 
 
 def test_polarizations_reproduce_ldasoft_coefficients(params, t):
-    """h+ and hx equal ldasoft's plus/cross response factors.
+    """h+ and hx equal the full-amplitude complex coefficient expansion.
 
-    ldasoft contracts ``(DPr, DPi)`` and ``(DCr, DCi)`` against a wave written
-    as ``e^{-i Phi}``.  Stripping the detector geometry -- unit plus and cross
-    tensors, zero light-travel delay -- the factor multiplying each tensor is
+    Taking the real part of the complex coefficients times ``e^{+i Phi}``
+    gives the factor multiplying each polarization tensor:
 
         h+ = DPr cos(Phi) - DPi sin(Phi)
         hx = DCr cos(Phi) - DCi sin(Phi)
@@ -97,8 +95,6 @@ def test_phase_convention_is_quadratic_with_pi_fdot(params):
     """
     time = 1.0e6
     expected = (
-        params.phi0
-        + 2.0 * np.pi * params.f0 * time
-        + np.pi * params.fdot * time**2
+        params.phi0 + 2.0 * np.pi * params.f0 * time + np.pi * params.fdot * time**2
     )
     assert np.isclose(float(phase(params, time)), expected, rtol=1e-15)

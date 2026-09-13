@@ -1,0 +1,168 @@
+{
+  "repository": "https://github.com/nsgs-analysis-center/glass",
+  "commit": "079c6a3a6fcf380a7c107f39640fff7fc720d0f1",
+  "upstream_files": [
+    {
+      "path": "utils/src/glass_lisa.c",
+      "git_blob_sha1": "0aef2d874db55640885ff510c1191265239c85cb",
+      "sha256": "7a5ead500da7a0e1d368bd1bbeaf78b856684ad9c963ec590c70ac34c188d178"
+    },
+    {
+      "path": "utils/src/glass_math.c",
+      "git_blob_sha1": "80bf595ff8168f935c7b8285ab2dfc27a3c069cf",
+      "sha256": "736405ae1c18be145038fa02477fda0fa6af96835a94d85143262456e2a75ab9"
+    },
+    {
+      "path": "ucb/src/glass_ucb_waveform.c",
+      "git_blob_sha1": "5fcf3cb28b4816042554c79ce2323f20d42c3947",
+      "sha256": "e735b15ad3b32a8748326881671f014ef2b99244d52959e30173f4020d7615da"
+    },
+    {
+      "path": "utils/src/glass_constants.h",
+      "git_blob_sha1": "181c10d4dd3d0c63d65bf4f50ff7c726a48d7a1f",
+      "sha256": "280cbadacf918033b0dfe47a1e94453088e506e2d0970b9c47791254d8cf8913",
+      "vendored_path": "glass_constants.h"
+    },
+    {
+      "path": "LICENSE",
+      "git_blob_sha1": "ece823a0f170e7813735149be9d57e73d43b2236",
+      "sha256": "fea26e329e7dd773fbee25b903a6fcdd6a38d689f7983b62592cbd470a004450",
+      "vendored_path": "LICENSE-GLASS"
+    },
+    {
+      "path": "external/kissfft/kiss_fft.c",
+      "git_blob_sha1": "58c24a062d5500ee42a3469456d64ceb423b330e",
+      "sha256": "3e8af99313c7e94f952ac12db46d3d5c5dd4a9bf93e0c32d43efa5fe39724051",
+      "vendored_path": "vendor/kissfft/kiss_fft.c"
+    },
+    {
+      "path": "external/kissfft/kiss_fft.h",
+      "git_blob_sha1": "aaa922dd95f737ac5c016071143f47610f7b44cf",
+      "sha256": "4eca3ed45626d68983b12d5fd07f9294bb85af675c830433c25df83e143e1953",
+      "vendored_path": "vendor/kissfft/kiss_fft.h"
+    },
+    {
+      "path": "external/kissfft/_kiss_fft_guts.h",
+      "git_blob_sha1": "4bd8d1c102ad343326ebd94d7b0ecc2dba5ed62f",
+      "sha256": "dd1731891d0fff0e297198847de39216c5c8b9677ea4fe53160d1f6c74218d40",
+      "vendored_path": "vendor/kissfft/_kiss_fft_guts.h"
+    },
+    {
+      "path": "external/kissfft/kiss_fft_log.h",
+      "git_blob_sha1": "5012474f2e6d1de3698868409a18332434e276f9",
+      "sha256": "f954cb6890ec999f7fbc80cdd1c8c0194bbaeb0f1c27e11bd23450f53871cf8c",
+      "vendored_path": "vendor/kissfft/kiss_fft_log.h"
+    },
+    {
+      "path": "external/kissfft/COPYING",
+      "git_blob_sha1": "6b4b622e7bd7053be8531deaf4242603bca4c85b",
+      "sha256": "a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6",
+      "vendored_path": "vendor/kissfft/COPYING"
+    },
+    {
+      "path": "external/kissfft/LICENSES/BSD-3-Clause",
+      "git_blob_sha1": "b8d56812171eb511e50d06698700f8e8b5fb6c41",
+      "sha256": "4d6bcab46f27d6d0c878e8305d4bdcfe040d52bf6656b9771f04c9fb9902c0ed",
+      "vendored_path": "vendor/kissfft/LICENSES/BSD-3-Clause"
+    },
+    {
+      "path": "external/kissfft/LICENSES/Unlicense",
+      "git_blob_sha1": "95e1b746154a72b872480fac2c0c0c3cec915189",
+      "sha256": "c543dab3c100d8741a83b02f397746b1e10fc0046f30b942f308191a68e99407",
+      "vendored_path": "vendor/kissfft/LICENSES/Unlicense"
+    }
+  ],
+  "extracted_functions": [
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "analytic_orbits",
+      "start_line": 77,
+      "end_line": 124,
+      "sha256": "9d8d872f49bc07559c4cf2dbe568475914ce4f29204112bedeb9b8b7ffa70bb9"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "initialize_analytic_orbit",
+      "start_line": 125,
+      "end_line": 136,
+      "sha256": "b8f40d4c3bdf3370311bfd44d273d7b61f2ce035bf43f1004d197483f7a8c204"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "recursive_phase_evolution",
+      "start_line": 403,
+      "end_line": 415,
+      "sha256": "7431f0bdf63f8af3234bb252fe7e1001d434db219d119c2337102b89e73fc748"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "double_angle",
+      "start_line": 417,
+      "end_line": 421,
+      "sha256": "aa43df7e8998ad890d29082aa54f2ed866b906b5a4d68fc26646d325e457043c"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "triple_angle",
+      "start_line": 423,
+      "end_line": 427,
+      "sha256": "db09a39358decf1f484f887bae05a4948a0138232247ac1f0f5467b50933b430"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "XYZ2AE",
+      "start_line": 429,
+      "end_line": 441,
+      "sha256": "7c34853103b992571921c545ebeb4c7a5ef6a76daebe7b87b6d96d98246c80f4"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "LISA_tdi",
+      "start_line": 458,
+      "end_line": 549,
+      "sha256": "523f7418022e311b676af84b7ebb898a9fab2b707eadd87688583b804811c5d8"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "LISA_tdi_FF",
+      "start_line": 551,
+      "end_line": 643,
+      "sha256": "384e95fd3962f52b33f48a40f5dcccfa08f6bb5e161f456343fea7ff65d6f5c0"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "LISA_tdi_Sangria",
+      "start_line": 645,
+      "end_line": 710,
+      "sha256": "aabd0ddecf5b64f586dcdd14c4ab1d9b0ae5dcf6b822644e445270ece2269c41"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "LISA_detector_tensor",
+      "start_line": 1521,
+      "end_line": 1564,
+      "sha256": "7d1359e8999b96daef227e3c442faabe52e3afc3ad841ad17df61f480bd152e4"
+    },
+    {
+      "file": "utils/src/glass_lisa.c",
+      "function": "LISA_polarization_tensor",
+      "start_line": 1566,
+      "end_line": 1596,
+      "sha256": "e53550331bd343cd8815ea2ce4786781ae69b3113db786fa2de7a934487b84f4"
+    },
+    {
+      "file": "utils/src/glass_math.c",
+      "function": "glass_forward_complex_fft",
+      "start_line": 703,
+      "end_line": 730,
+      "sha256": "226b441d61130cb29a7938abaef000426008b5d66221ab00fd24b9639951ac10"
+    },
+    {
+      "file": "ucb/src/glass_ucb_waveform.c",
+      "function": "ucb_waveform",
+      "start_line": 738,
+      "end_line": 1001,
+      "sha256": "34fb66a7026592e1a606ba8bc3295cae276b53f5d505a16d1461b5d89c1102a7"
+    }
+  ]
+}

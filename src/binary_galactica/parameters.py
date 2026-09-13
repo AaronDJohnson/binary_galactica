@@ -12,7 +12,7 @@ a :class:`~typing.NamedTuple`, hence a JAX pytree, so it may be passed through
 
 from __future__ import annotations
 
-from typing import NamedTuple, Union
+from typing import NamedTuple
 
 import jax.numpy as jnp
 from jax import Array
@@ -32,35 +32,33 @@ PARAMETER_NAMES: tuple[str, ...] = (
 #: Dimension of the parameter space.
 NUM_PARAMS: int = len(PARAMETER_NAMES)
 
-Scalar = Union[Array, float]
+Scalar = Array | float
 
 
 class GBParams(NamedTuple):
-    """Parameters of a galactic binary.
+    r"""Parameters of a galactic binary.
 
     Every parameter is defined at ``t = 0`` of the time array passed to the
     waveform functions; there is no hidden reference epoch.
 
     Attributes:
-        amp: Dimensionless strain amplitude :math:`\\mathcal{A}`.
+        amp: Dimensionless strain amplitude :math:`\mathcal{A}`.
         f0: Gravitational-wave frequency at ``t = 0``, in Hz.  This is twice
             the orbital frequency of the binary.
-        fdot: First frequency derivative :math:`\\dot{f}`, in Hz/s.
+        fdot: First frequency derivative :math:`\dot{f}`, in Hz/s.
         phi0: Gravitational-wave phase at ``t = 0``, in radians.
         iota: Inclination of the orbital angular momentum to the line of
             sight, in radians.
         psi: Polarization angle, in radians.  Periodic with period
-            :math:`\\pi`.
+            :math:`\pi`.
         lam: Ecliptic longitude, in radians.
         beta: Ecliptic latitude, in radians.
 
     Note:
         ``lam`` and ``beta`` do not affect the polarizations :math:`h_+` and
-        :math:`h_\\times`.  Sky position enters only through the detector
-        response -- the propagation direction and polarization basis -- which
-        is deliberately outside the scope of this package.  They are carried
-        here because they are part of the sampling space and are needed by the
-        response code downstream.
+        :math:`h_\times`.  Sky position enters only through the detector
+        response -- the propagation direction and polarization basis. Use
+        :func:`binary_galactica.tdi_waveform` to include that response.
 
     Example:
         >>> from binary_galactica import GBParams
@@ -68,6 +66,7 @@ class GBParams(NamedTuple):
         ...              iota=0.7, psi=1.2, lam=4.1, beta=-0.3)
         >>> p.to_array().shape
         (8,)
+
     """
 
     amp: Scalar
@@ -96,6 +95,7 @@ class GBParams(NamedTuple):
 
         Raises:
             ValueError: If the trailing axis of ``theta`` is not length 8.
+
         """
         if isinstance(theta, cls):
             return theta
@@ -115,9 +115,96 @@ class GBParams(NamedTuple):
 
         Returns:
             Array whose trailing axis indexes :data:`PARAMETER_NAMES`.
+
         """
         fields = jnp.broadcast_arrays(*(jnp.asarray(x) for x in self))
         return jnp.stack(fields, axis=-1)
 
 
-__all__ = ["NUM_PARAMS", "PARAMETER_NAMES", "GBParams"]
+def to_glass_vector(theta: Array | GBParams, duration: Array | float) -> Array:
+    """Convert physical parameters to the eight-parameter GLASS convention.
+
+    The last axis is ``(f0*T, sin(beta), lam, log(A_G), cos(iota), psi,
+    phi0_G, fdot*T**2)``. GLASS's half inclination factors require
+    ``A_G = 2*amp`` to match this package's source polarization amplitudes
+    at the reference epoch. Its phase function uses ``-phi0_G``, so
+    ``phi0_G = -phi0``. Both models define their parameters at time zero.
+
+    GLASS additionally evolves the amplitude with frequency; converting
+    parameters does not add that evolution to :func:`polarizations`.
+
+    Args:
+        theta: Physical ``GBParams`` or an array with trailing dimension 8.
+        duration: Observation duration in seconds, positive and broadcastable
+            with the parameter fields. Must remain a traced operand under JIT.
+
+    Returns:
+        A JAX array with trailing dimension 8. All operations support AD.
+        The physical amplitude must be positive for its logarithm to exist.
+
+    """
+    p = GBParams.from_array(theta)
+    duration = jnp.asarray(duration, dtype=jnp.float64)
+    fields = (
+        p.f0 * duration,
+        jnp.sin(p.beta),
+        p.lam,
+        jnp.log(2.0 * p.amp),
+        jnp.cos(p.iota),
+        p.psi,
+        -p.phi0,
+        p.fdot * duration**2,
+    )
+    return jnp.stack(jnp.broadcast_arrays(*fields), axis=-1)
+
+
+def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
+    """Convert an eight-parameter GLASS vector to physical parameters.
+
+    Inclination is returned in ``[0, pi]`` and latitude in ``[-pi/2, pi/2]``;
+    the cosine coordinates must lie in ``[-1, 1]``. Amplitude and initial
+    phase invert :func:`to_glass_vector`. Other angles are not wrapped.
+
+    Args:
+        vector: GLASS-native JAX/NumPy array with trailing dimension 8.
+            Seven- and nine-parameter vectors are deliberately rejected:
+            the latter can contain a second frequency derivative that
+            ``GBParams`` cannot represent.
+        duration: Positive observation duration in seconds, broadcastable
+            with the vector's leading dimensions.
+
+    Returns:
+        Physical parameters, with canonical inclination and latitude.
+
+    Raises:
+        ValueError: If the vector does not have trailing dimension 8.
+
+    """
+    vector = jnp.asarray(vector, dtype=jnp.float64)
+    if vector.ndim == 0 or vector.shape[-1] != NUM_PARAMS:
+        raise ValueError(
+            f"expected GLASS trailing axis of length 8, got {vector.shape}"
+        )
+    freq, costheta, longitude, logamp, cosiota, psi, phi, chirp = jnp.moveaxis(
+        vector, -1, 0
+    )
+    duration = jnp.asarray(duration, dtype=jnp.float64)
+    return GBParams(
+        amp=0.5 * jnp.exp(logamp),
+        f0=freq / duration,
+        fdot=chirp / duration**2,
+        phi0=-phi,
+        iota=jnp.arccos(cosiota),
+        psi=psi,
+        lam=longitude,
+        beta=jnp.arcsin(costheta),
+    )
+
+
+__all__ = [
+    "NUM_PARAMS",
+    "PARAMETER_NAMES",
+    "GBParams",
+    "to_glass_vector",
+    "from_glass_vector",
+]

@@ -1,0 +1,24 @@
+binary-galactica
+Copyright (c) 2026 Aaron
+
+The source-only model and original package code are provided under the MIT
+license in LICENSE.
+
+The binary_galactica.glass backend is adapted from the gbonfly implementation
+in wdm_test/wdm_paper_2/gbonfly, a JAX transcription of GLASS's fast-slow UCB
+waveform and supporting routines. The comparison target is:
+https://github.com/nsgs-analysis-center/glass
+commit 079c6a3a6fcf380a7c107f39640fff7fc720d0f1.
+
+GLASS portions are Copyright 2019 Tyson B. Littenberg and Neil J. Cornish,
+licensed under Apache License 2.0, reproduced in LICENSES/Apache-2.0.txt.
+The reference math routines are Copyright 2023 Tyson B. Littenberg and
+Robert Rosati, under the same license.
+This distribution modifies the JAX transcription's FFT normalization, adds
+parameter adapters and validation, preserves documented waveform numerical
+guards, and rejects invalid Fisher proposals as whole-vector self-proposals.
+
+The optional C reference regeneration tool contains extracted GLASS routines
+and vendored Kiss FFT source. Their source provenance and individual license
+notices are included under tools/glass_reference. Kiss FFT is not a runtime
+dependency of the Python package.

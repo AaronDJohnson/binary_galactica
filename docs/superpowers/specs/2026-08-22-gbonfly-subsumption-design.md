@@ -2,7 +2,13 @@
 
 **Date:** 2026-08-22
 **Package:** `binary-galactica`
-**Status:** designed
+**Status:** superseded by [the September 13 migration](2026-09-13-gbonfly-glass-migration.md).
+
+The normalization prescription below refers to older source code. Current
+GLASS uses half inclination factors together with `1/(2*BW)`. Following the
+older paired correction would preserve the donor's factor-of-two discrepancy.
+See the newer specification and committed C reference fixtures for the
+implemented conventions; the remainder is retained as historical design context.
 
 ## Purpose
 
@@ -152,8 +158,8 @@ kind of thing that gets copied forward without being rechecked.
 `gbonfly` builds its polarization amplitudes as
 
 ```python
-Aplus  = amp * (1.0 + cosi * cosi) * 0.5     # waveform.py:187
-Across = -amp * cosi                         # waveform.py:188
+Aplus = amp * (1.0 + cosi * cosi) * 0.5  # waveform.py:187
+Across = -amp * cosi  # waveform.py:188
 ```
 
 under a comment describing them as "GLASS's factors, not this repo's". They

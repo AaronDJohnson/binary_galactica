@@ -50,7 +50,7 @@ def _finite_difference_jacobian(theta, t, rel_step=1e-6):
 
 
 def test_jacobian_matches_finite_differences(params):
-    """jacfwd reproduces central differences on all eight parameters.
+    """Jacfwd reproduces central differences on all eight parameters.
 
     Uses a strongly chirping source over a short span so that every parameter
     -- fdot in particular -- is well conditioned for differencing.
@@ -73,7 +73,7 @@ def test_jacobian_matches_finite_differences(params):
 
 
 def test_sky_position_columns_of_the_jacobian_are_exactly_zero(params, t):
-    """lam and beta do not enter the polarizations, by construction."""
+    """Lam and beta do not enter the polarizations, by construction."""
     jac_hp, jac_hc = jax.jacfwd(polarizations)(params.to_array(), t)
     for name in ("lam", "beta"):
         column = PARAMETER_NAMES.index(name)
@@ -82,7 +82,7 @@ def test_sky_position_columns_of_the_jacobian_are_exactly_zero(params, t):
 
 
 def test_gradient_of_a_scalar_functional(params, t):
-    """grad works through the model, as a likelihood would need."""
+    """Grad works through the model, as a likelihood would need."""
 
     def squared_norm(theta):
         hp, hc = polarizations(theta, t)

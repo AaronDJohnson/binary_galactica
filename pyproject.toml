@@ -4,26 +4,25 @@ build-backend = "hatchling.build"
 
 [project]
 name = "binary-galactica"
-version = "0.1.0"
-description = "Differentiable gravitational waveform model for LISA galactic binaries"
+version = "0.2.0"
+description = "Differentiable GLASS fast-slow LISA galactic-binary TDI waveforms"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "MIT AND Apache-2.0 AND BSD-3-Clause"
+license-files = ["LICENSE", "LICENSES/*", "NOTICE", "tools/glass_reference/vendor/kissfft/COPYING", "tools/glass_reference/vendor/kissfft/LICENSES/*"]
 authors = [{ name = "Aaron" }]
 keywords = ["gravitational-waves", "LISA", "galactic-binaries", "jax"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-dependencies = ["jax>=0.4.30"]
+dependencies = ["jax>=0.4.30", "numpy>=1.24"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "numpy>=1.24", "ruff>=0.5"]
+dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
@@ -42,3 +41,6 @@ ignore = ["D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D103"]
+"src/binary_galactica/glass/*" = ["N802", "N803", "N806"]
+"tests/glass/*" = ["N802", "N803", "N806"]
+"src/binary_galactica/detector.py" = ["N803"]

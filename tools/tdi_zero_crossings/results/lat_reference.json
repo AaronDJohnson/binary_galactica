@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.14.2 | packaged by conda-forge | (main, Jan 26 2026, 20:19:28) [Clang 20.1.8 ]",
+    "executable": "/Users/aaron/miniconda3/envs/jaxfly/bin/python",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "jax": "0.7.2",
+    "jaxlib": "0.7.2",
+    "jax_enable_x64": true,
+    "platform": "macOS-14.3.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_devices": [
+      "TFRT_CPU_0"
+    ],
+    "wall_clock": "time.perf_counter_ns",
+    "cpu_clock": "time.process_time_ns"
+  },
+  "reference": {
+    "checkout": "/Users/aaron/Documents/lisa/lisatools-dev/LISAanalysistools",
+    "loaded_modules": [
+      "src/lisatools/jax/response/base.py",
+      "src/lisatools/jax/response/tdi_config.py",
+      "src/lisatools/jax/orbits.py",
+      "src/lisatools/jax/response/projection.py"
+    ],
+    "sha256": {
+      "src/lisatools/jax/response/base.py": "885f2817df9cba4a32dc8ec7ae4e47b6194c8f079cbde1d119f5a707bc68a18b",
+      "src/lisatools/jax/response/tdi_config.py": "c565e53ababdf6f7bf2988a3dcccc64c29ac996ee6d937d17d94e49fc61c3250",
+      "src/lisatools/jax/orbits.py": "072a907653ce9673a53531783ef2f80c4914e794a5e89b54460f403b93c7ebd7",
+      "src/lisatools/jax/response/projection.py": "0b5f1dfb8ea74657d48f893f1a2d4de1ccf5b642af4a4377e545fd32642fc287",
+      "src/lisatools/response/tdiconfig.py": "a1377c7be8b052c8927550212e57b6689d68c9823d4a039c9da12f81866de8fa"
+    }
+  },
+  "configuration": {
+    "interval_seconds": [
+      -100.0,
+      100.0
+    ],
+    "repeats": 5,
+    "amplitude_atol": 0.0,
+    "amplitude_rtol": 1e-08,
+    "time_atol": 1e-08,
+    "maxiter": 100,
+    "fixture": {
+      "arm_length": 2500000000.0,
+      "fdot": 1e-07,
+      "inclination": 1.1,
+      "polarization": 0.21,
+      "longitude": 0.63,
+      "latitude": 0.42,
+      "demodulate": true
+    },
+    "expected_kind": "near_miss",
+    "timed_callback_warmups": 0,
+    "untimed_callback_warmups": 1
+  },
+  "limitations": [
+    "The unchanged LAT JAX projection is evaluated with a frozen constellation and a constant-amplitude chirping source fixture.",
+    "This verifies a nonzero response minimum, not a true crossing or a realistic orbital waveform.",
+    "This does not establish compiled C++ parity or production speedup.",
+    "Loading, JIT compilation, candidate discovery, and reporting are excluded; each solve includes its full response evaluation costs.",
+    "Projected scalar roots require the full complex residual check; a failed residual check triggers bounded magnitude refinement, whose complete additional cost is included.",
+    "The reported requested method can differ from the final method. Bounded refinement includes a second, recentered minimization.",
+    "Callback cancellation and the flat nonzero minimum limit time accuracy; the time tolerance does not certify the minimum's location."
+  ],
+  "summary": {
+    "bounded": {
+      "runs": 5,
+      "near_misses": 5,
+      "methods_used": {
+        "bounded": 5
+      },
+      "fallbacks": 0,
+      "evaluations_median": 28,
+      "wall_seconds_median": 0.001173584,
+      "cpu_seconds_median": 0.001159
+    },
+    "brentq": {
+      "runs": 5,
+      "near_misses": 5,
+      "methods_used": {
+        "bounded": 5
+      },
+      "fallbacks": 5,
+      "evaluations_median": 32,
+      "wall_seconds_median": 0.0013307500000000001,
+      "cpu_seconds_median": 0.00132
+    },
+    "toms748": {
+      "runs": 5,
+      "near_misses": 5,
+      "methods_used": {
+        "bounded": 5
+      },
+      "fallbacks": 5,
+      "evaluations_median": 34,
+      "wall_seconds_median": 0.001667084,
+      "cpu_seconds_median": 0.001652
+    }
+  },
+  "results": {
+    "bounded": [
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 28,
+        "converged": true,
+        "method_requested": "bounded",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 28,
+        "wall_seconds": 0.001491958,
+        "cpu_seconds": 0.0014860000000000001,
+        "repeat": 0
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 28,
+        "converged": true,
+        "method_requested": "bounded",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 28,
+        "wall_seconds": 0.001219458,
+        "cpu_seconds": 0.001214,
+        "repeat": 1
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 28,
+        "converged": true,
+        "method_requested": "bounded",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 28,
+        "wall_seconds": 0.0011421670000000001,
+        "cpu_seconds": 0.001141,
+        "repeat": 2
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 28,
+        "converged": true,
+        "method_requested": "bounded",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 28,
+        "wall_seconds": 0.001173584,
+        "cpu_seconds": 0.001159,
+        "repeat": 3
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 28,
+        "converged": true,
+        "method_requested": "bounded",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 28,
+        "wall_seconds": 0.0011397500000000001,
+        "cpu_seconds": 0.0011380000000000001,
+        "repeat": 4
+      }
+    ],
+    "brentq": [
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 32,
+        "converged": true,
+        "method_requested": "brentq",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 32,
+        "wall_seconds": 0.0015010420000000002,
+        "cpu_seconds": 0.001497,
+        "repeat": 0
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 32,
+        "converged": true,
+        "method_requested": "brentq",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 32,
+        "wall_seconds": 0.001353166,
+        "cpu_seconds": 0.001351,
+        "repeat": 1
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 32,
+        "converged": true,
+        "method_requested": "brentq",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 32,
+        "wall_seconds": 0.00132225,
+        "cpu_seconds": 0.001317,
+        "repeat": 2
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 32,
+        "converged": true,
+        "method_requested": "brentq",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 32,
+        "wall_seconds": 0.0013307500000000001,
+        "cpu_seconds": 0.00132,
+        "repeat": 3
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 32,
+        "converged": true,
+        "method_requested": "brentq",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 32,
+        "wall_seconds": 0.001313375,
+        "cpu_seconds": 0.001311,
+        "repeat": 4
+      }
+    ],
+    "toms748": [
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 34,
+        "converged": true,
+        "method_requested": "toms748",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 34,
+        "wall_seconds": 0.001747417,
+        "cpu_seconds": 0.001737,
+        "repeat": 0
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 34,
+        "converged": true,
+        "method_requested": "toms748",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 34,
+        "wall_seconds": 0.001667084,
+        "cpu_seconds": 0.001652,
+        "repeat": 1
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 34,
+        "converged": true,
+        "method_requested": "toms748",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 34,
+        "wall_seconds": 0.0015692500000000001,
+        "cpu_seconds": 0.0015660000000000001,
+        "repeat": 2
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 34,
+        "converged": true,
+        "method_requested": "toms748",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 34,
+        "wall_seconds": 0.0016451670000000001,
+        "cpu_seconds": 0.001631,
+        "repeat": 3
+      },
+      {
+        "time": 8.105628997043612,
+        "value": [
+          5.190214461202425e-05,
+          8.899547170212252e-06
+        ],
+        "residual": 5.265961028304626e-05,
+        "scale": 0.0009695569863274102,
+        "kind": "near_miss",
+        "method": "bounded",
+        "evaluations": 34,
+        "converged": true,
+        "method_requested": "toms748",
+        "expected_kind": "near_miss",
+        "classification_correct": true,
+        "relative_residual": 0.05431306362147507,
+        "observed_evaluations": 34,
+        "wall_seconds": 0.001670667,
+        "cpu_seconds": 0.0016640000000000001,
+        "repeat": 4
+      }
+    ]
+  },
+  "prototype_source_sha256": {
+    "tools/tdi_zero_crossings/solver.py": "dfcac75ce97f42b46b59f20e42171bfe22674b131a3c6ee12de5ba849c2e3654",
+    "tools/tdi_zero_crossings/lat_reference.py": "6d467c07720c182b6ce9c463959a3c5ca3c5e41a4bd70dfa056a145f32298d4c",
+    "tools/tdi_zero_crossings/benchmark_lat.py": "9c65c4b5246f8591fa064ee76d4563ce3e3f5ace6e8bf08945920b67b0d960b5"
+  },
+  "reproduce": "python -m tools.tdi_zero_crossings.benchmark_lat --lat-checkout /path/to/LISAanalysistools --repeats 5 --output /tmp/tdi_zero_crossings_lat.json"
+}

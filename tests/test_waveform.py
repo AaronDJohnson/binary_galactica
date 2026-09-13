@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from tests.conftest import reference_polarizations
 
 from binary_galactica import GBParams, amplitudes, frequency, phase, polarizations
-from tests.conftest import reference_polarizations
 
 
 def test_matches_independent_reference(params, t):
@@ -76,7 +76,7 @@ def test_amplitude_enters_linearly(params, t):
 
 
 def test_polarization_angle_rotation_is_orthogonal(params, t):
-    """psi rotates the pair without changing its norm."""
+    """Psi rotates the pair without changing its norm."""
     hp, hc = polarizations(params._replace(psi=0.0), t)
     rotated_hp, rotated_hc = polarizations(params._replace(psi=0.9), t)
     assert np.allclose(rotated_hp**2 + rotated_hc**2, hp**2 + hc**2, rtol=1e-12)
@@ -91,7 +91,7 @@ def test_polarization_angle_has_period_pi(params, t):
 
 
 def test_quarter_turn_in_psi_flips_the_sign(params, t):
-    """psi -> psi + pi/2 negates both polarizations."""
+    """Psi -> psi + pi/2 negates both polarizations."""
     hp, hc = polarizations(params, t)
     turned_hp, turned_hc = polarizations(
         params._replace(psi=params.psi + np.pi / 2.0), t
@@ -121,9 +121,7 @@ def test_parameters_are_defined_at_t_equals_zero(params):
 
 def test_amplitudes_bracket_the_inclination_limits():
     """A+ and Ax take their known values face-on and edge-on."""
-    base = dict(
-        amp=1.0, f0=1e-3, fdot=0.0, phi0=0.0, psi=0.0, lam=0.0, beta=0.0
-    )
+    base = dict(amp=1.0, f0=1e-3, fdot=0.0, phi0=0.0, psi=0.0, lam=0.0, beta=0.0)
     a_plus, a_cross = amplitudes(GBParams(iota=0.0, **base))
     assert a_plus == pytest.approx(2.0)
     assert a_cross == pytest.approx(-2.0)
@@ -135,7 +133,7 @@ def test_amplitudes_bracket_the_inclination_limits():
 
 
 def test_sky_position_does_not_affect_the_polarizations(params, t):
-    """lam and beta belong to the response, not to the source model."""
+    """Lam and beta belong to the response, not to the source model."""
     hp, hc = polarizations(params, t)
     moved_hp, moved_hc = polarizations(params._replace(lam=1.0, beta=1.0), t)
     assert np.array_equal(hp, moved_hp)

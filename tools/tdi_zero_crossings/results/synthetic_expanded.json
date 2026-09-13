@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.14.2 | packaged by conda-forge | (main, Jan 26 2026, 20:19:28) [Clang 20.1.8 ]",
+    "executable": "/Users/aaron/miniconda3/envs/jaxfly/bin/python",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "platform": "macOS-14.3.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "processor": "arm",
+    "clock": "time.process_time_ns"
+  },
+  "configuration": {
+    "seed": 20260913,
+    "random_cases": 240,
+    "cases": 536,
+    "repeats": 3,
+    "amplitude_atol": 0.0,
+    "amplitude_rtol": 1e-08,
+    "time_atol": "interval_width * time_fraction_atol",
+    "time_fraction_atol": 1e-12,
+    "maxiter": 100
+  },
+  "summary": {
+    "legacy_curvature": {
+      "runs": 1608,
+      "cpu_seconds_total": 0.008882000000000001,
+      "cpu_seconds_median": 5e-06,
+      "evaluations_total": 8040,
+      "evaluations_mean": 5,
+      "evaluations_median": 5.0,
+      "evaluations_max": 5,
+      "classification_accuracy": null,
+      "crossing_accuracy": 0.6567164179104478,
+      "crossing_recall": 0.16666666666666666,
+      "false_crossings": 72,
+      "converged_fraction": null,
+      "time_error_max": null,
+      "time_error_fraction_median": null,
+      "time_error_fraction_max": null,
+      "time_accuracy_fraction": null,
+      "methods_used": {
+        "legacy_curvature": 1608
+      },
+      "confusion": [
+        {
+          "expected": "boundary",
+          "observed": "no_crossing",
+          "count": 24
+        },
+        {
+          "expected": "crossing",
+          "observed": "crossing",
+          "count": 96
+        },
+        {
+          "expected": "crossing",
+          "observed": "no_crossing",
+          "count": 480
+        },
+        {
+          "expected": "near_miss",
+          "observed": "crossing",
+          "count": 42
+        },
+        {
+          "expected": "near_miss",
+          "observed": "no_crossing",
+          "count": 462
+        },
+        {
+          "expected": "touch",
+          "observed": "crossing",
+          "count": 30
+        },
+        {
+          "expected": "touch",
+          "observed": "no_crossing",
+          "count": 474
+        }
+      ]
+    },
+    "bounded": {
+      "runs": 1608,
+      "cpu_seconds_total": 0.34003900000000004,
+      "cpu_seconds_median": 0.00020400000000000003,
+      "evaluations_total": 52302,
+      "evaluations_mean": 32.526119402985074,
+      "evaluations_median": 30.0,
+      "evaluations_max": 92,
+      "classification_accuracy": 1,
+      "crossing_accuracy": 1,
+      "crossing_recall": 1,
+      "false_crossings": 0,
+      "converged_fraction": 1,
+      "time_error_max": 2.4362734052374435e-12,
+      "time_error_fraction_median": 1.2442586772644756e-17,
+      "time_error_fraction_max": 3.195226788239098e-13,
+      "time_accuracy_fraction": 1,
+      "methods_used": {
+        "bounded": 1572,
+        "samples": 36
+      },
+      "confusion": [
+        {
+          "expected": "boundary",
+          "observed": "boundary",
+          "count": 24
+        },
+        {
+          "expected": "crossing",
+          "observed": "crossing",
+          "count": 576
+        },
+        {
+          "expected": "near_miss",
+          "observed": "near_miss",
+          "count": 504
+        },
+        {
+          "expected": "touch",
+          "observed": "touch",
+          "count": 504
+        }
+      ]
+    },
+    "brentq": {
+      "runs": 1608,
+      "cpu_seconds_total": 0.303004,
+      "cpu_seconds_median": 0.00022,
+      "evaluations_total": 52725,
+      "evaluations_mean": 32.78917910447761,
+      "evaluations_median": 34.0,
+      "evaluations_max": 92,
+      "classification_accuracy": 1,
+      "crossing_accuracy": 1,
+      "crossing_recall": 1,
+      "false_crossings": 0,
+      "converged_fraction": 1,
+      "time_error_max": 2.4362734052374435e-12,
+      "time_error_fraction_median": 9.964388849497192e-15,
+      "time_error_fraction_max": 3.195226788239098e-13,
+      "time_accuracy_fraction": 1,
+      "methods_used": {
+        "brentq": 534,
+        "samples": 36,
+        "bounded": 1038
+      },
+      "confusion": [
+        {
+          "expected": "boundary",
+          "observed": "boundary",
+          "count": 24
+        },
+        {
+          "expected": "crossing",
+          "observed": "crossing",
+          "count": 576
+        },
+        {
+          "expected": "near_miss",
+          "observed": "near_miss",
+          "count": 504
+        },
+        {
+          "expected": "touch",
+          "observed": "touch",
+          "count": 504
+        }
+      ]
+    },
+    "toms748": {
+      "runs": 1608,
+      "cpu_seconds_total": 0.620564,
+      "cpu_seconds_median": 0.00033600000000000004,
+      "evaluations_total": 54219,
+      "evaluations_mean": 33.718283582089555,
+      "evaluations_median": 36.0,
+      "evaluations_max": 94,
+      "classification_accuracy": 1,
+      "crossing_accuracy": 1,
+      "crossing_recall": 1,
+      "false_crossings": 0,
+      "converged_fraction": 1,
+      "time_error_max": 2.4362734052374435e-12,
+      "time_error_fraction_median": 1.6025296043775968e-17,
+      "time_error_fraction_max": 3.195226788239098e-13,
+      "time_accuracy_fraction": 1,
+      "methods_used": {
+        "toms748": 534,
+        "samples": 36,
+        "bounded": 1038
+      },
+      "confusion": [
+        {
+          "expected": "boundary",
+          "observed": "boundary",
+          "count": 24
+        },
+        {
+          "expected": "crossing",
+          "observed": "crossing",
+          "count": 576
+        },
+        {
+          "expected": "near_miss",
+          "observed": "near_miss",
+          "count": 504
+        },
+        {
+          "expected": "touch",
+          "observed": "touch",
+          "count": 504
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Synthetic scalar Python callbacks do not establish production speedup.",
+    "All refiners receive the same known candidate interval; discovery is excluded.",
+    "The legacy method receives five samples and detects flips only; it does not estimate zero times or distinguish touches from near misses.",
+    "Legacy callback counts include sampling, although the production heuristic reads already available amplitudes. Its CPU time is not a pipeline comparison.",
+    "An endpoint zero is labeled boundary and is not an interior crossing.",
+    "Errors include every true zero, even misclassified or unconverged estimates.",
+    "Time accuracy is the fraction of all true-zero estimates within the requested time tolerance, independently of classification.",
+    "CPU times include refinement and classification; warmups and reporting are excluded.",
+    "Fast rotation deliberately probes projection and local-minimum limitations."
+  ],
+  "source_sha256": {
+    "tools/tdi_zero_crossings/solver.py": "dfcac75ce97f42b46b59f20e42171bfe22674b131a3c6ee12de5ba849c2e3654",
+    "tools/tdi_zero_crossings/benchmark.py": "708b78f3bb7691be5ee4e3b7ffe61edbb6444458ed36d43d1ea13216bf2485d3"
+  },
+  "reproduce": "python -m tools.tdi_zero_crossings.benchmark --random-cases 240 --repeats 3 --output /tmp/tdi_zero_crossings_expanded.json"
+}

@@ -1,0 +1,7 @@
+# Declared runtime minimums, tested with Python 3.10 in CI.
+jax==0.4.30
+jaxlib==0.4.30
+numpy==1.24.0
+# Compatible transitive dependencies keep the minimum-runtime job reproducible.
+scipy==1.10.1
+ml-dtypes==0.2.0

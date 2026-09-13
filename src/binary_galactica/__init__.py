@@ -1,9 +1,8 @@
-"""Gravitational waveform model for LISA galactic binaries.
+"""GLASS fast-slow galactic-binary TDI waveforms in JAX.
 
-The eight-parameter circular, linearly-chirping model, written in JAX so that
-it is differentiable, ``jit``-compilable and ``vmap``-able over source
-catalogues.  See :mod:`binary_galactica.waveform` for the equations and sign
-conventions.
+``ucb_waveform`` uses GLASS-native parameter vectors; ``tdi_waveform`` accepts
+physical ``GBParams``. Both return frequency-domain LISA detector channels.
+The original ``polarizations`` function remains a source-only interface.
 """
 
 from __future__ import annotations
@@ -21,10 +20,54 @@ import jax as _jax
 _jax.config.update("jax_enable_x64", True)
 
 from binary_galactica.constants import DAY, YEAR  # noqa: E402
+from binary_galactica.detector import tdi_waveform  # noqa: E402
+from binary_galactica.glass import (  # noqa: E402
+    FORMATS,
+    FSTAR,
+    GLASS_TO_CONTINUOUS,
+    LARM,
+    SNR_MIN,
+    UCB_MODEL_NP,
+    Alignment,
+    ExtrinsicPriorDraw,
+    FisherCache,
+    FisherProposal,
+    PriorDraw,
+    ProposalMix,
+    UCBPrior,
+    WaveformResult,
+    ae_noise,
+    analytic_orbits,
+    analytic_snr,
+    arm_vectors,
+    detector_tensor,
+    draw_from_fisher,
+    fm_shift,
+    orbit_cache,
+    params_from_native,
+    polarization_tensor,
+    psi_phi_jump,
+    single_source_mix,
+    slow_time_grid,
+    snr_cut,
+    synthesize,
+    template_on_window,
+    to_continuous_ft,
+    ucb_alignment,
+    ucb_bandwidth,
+    ucb_bw,
+    ucb_fdot,
+    ucb_prior,
+    ucb_waveform,
+    xyz_to_ae,
+    xyz_to_aet,
+)
 from binary_galactica.parameters import (  # noqa: E402
     NUM_PARAMS,
     PARAMETER_NAMES,
     GBParams,
+    from_glass_vector,
+    to_glass_vector,
 )
 from binary_galactica.waveform import (  # noqa: E402
     amplitudes,
@@ -33,7 +76,7 @@ from binary_galactica.waveform import (  # noqa: E402
     polarizations,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DAY",
@@ -45,4 +88,46 @@ __all__ = [
     "frequency",
     "phase",
     "polarizations",
+    "FORMATS",
+    "FSTAR",
+    "GLASS_TO_CONTINUOUS",
+    "LARM",
+    "SNR_MIN",
+    "UCB_MODEL_NP",
+    "Alignment",
+    "ExtrinsicPriorDraw",
+    "FisherCache",
+    "FisherProposal",
+    "PriorDraw",
+    "ProposalMix",
+    "UCBPrior",
+    "WaveformResult",
+    "ae_noise",
+    "analytic_orbits",
+    "analytic_snr",
+    "arm_vectors",
+    "detector_tensor",
+    "draw_from_fisher",
+    "fm_shift",
+    "orbit_cache",
+    "params_from_native",
+    "polarization_tensor",
+    "psi_phi_jump",
+    "single_source_mix",
+    "slow_time_grid",
+    "snr_cut",
+    "synthesize",
+    "template_on_window",
+    "to_continuous_ft",
+    "ucb_alignment",
+    "ucb_bandwidth",
+    "ucb_bw",
+    "ucb_fdot",
+    "ucb_prior",
+    "ucb_waveform",
+    "xyz_to_ae",
+    "xyz_to_aet",
+    "tdi_waveform",
+    "to_glass_vector",
+    "from_glass_vector",
 ]
