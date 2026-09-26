@@ -1,51 +1,10 @@
-# Copyright 2019 Tyson B. Littenberg & Neil J. Cornish
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""The GLASS fast-slow (``ucb_waveform``) UCB generator, in JAX.
+"""Sparse-time TDI on the fly, followed by a heterodyned Fourier transform.
 
-A transcription of ``ucb_waveform`` in
-``glass/ucb/src/glass_ucb_waveform.c``, vectorised over the slow-time grid
-and over sources. The algorithm is the fast-slow / reduced-DFT generator of
-Cornish & Littenberg; this module follows GLASS's structure so the method
-can be cited rather than re-derived.
-
-Structure
----------
-GLASS ties the slow-time sample count to the output bandwidth: it evaluates
-the six single-link responses at ``BW`` times, takes one ``BW``-point
-complex FFT, and returns ``BW`` frequency bins. There is no separate
-``n_red`` / ``n_window`` / ``n_slow``, and consequently **no out-of-band
-mask** --- every returned bin is a bin the transform actually resolved.
-Refining the slow grid and widening the band are the same knob, which is
-what makes GLASS's SNR-driven bandwidth heuristic
-(:func:`binary_galactica.glass.bandwidth.ucb_bandwidth`) do double duty.
-
-Deliberate deviations from the C, all documented at the point of use:
-
-* the single-link ``sin(arg)/arg`` is evaluated with a guarded ``sinc`` so
-  that ``arg == 0`` (an arm exactly along the line of sight) returns 1
-  rather than ``NaN``, and so that reverse-mode gradients are finite there;
-* ``c1, s1`` are computed directly rather than by GLASS's per-bin trig
-  recursion, which is a scalar-loop optimisation with no effect on the
-  result (see :mod:`binary_galactica.glass.tdi`);
-* everything is float64 and pure, so ``jit``/``vmap``/``grad`` compose.
-
-The transcription targets GLASS commit
-``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. Its reduced FFT uses the
-literal ``1/(2*BW)`` normalization from that revision.
+The mainline path combines delayed source samples into XYZ, removes the
+reference-spacecraft phase, and interpolates the smooth complex response.
+The explicit ``fourier`` backend keeps
+the original GLASS single-link FFT implementation for reproducibility.
 """
-
-from __future__ import annotations
 
 from functools import partial
 
@@ -56,136 +15,28 @@ from jax import Array
 from jax.typing import ArrayLike
 
 from . import _validation
-from .constants import CLIGHT, FSTAR, PI2
-from .orbit import analytic_orbits, arm_vectors, slow_time_grid
-from .response import LINKS, detector_tensor, polarization_tensor
-from .tdi import synthesize
+from .constants import FSTAR, PI2, YEAR
+from .fourier import (  # noqa: F401 -- private compatibility
+    _carrier_bin,
+    _sinc,
+    orbit_cache,
+    params_from_native,
+)
+from .fourier import ucb_waveform as _fourier_waveform
+from .onfly import reference_phase_shift
+from .onfly import tdi_response as _raw_response
+from .orbit import slow_time_grid
+from .sparse import interpolate_uniform
+from .tdi import FORMATS, xyz_to_ae
 from .types import WaveformResult
 
-jax.config.update("jax_enable_x64", True)
+BACKENDS = ("onfly", "fourier")
+DEFAULT_RESPONSE_SAMPLES = None
+_AUTO_RESPONSE_SAMPLES = (32, 64, 128, 256, 512, 1024, 2048)
 
 
-def _sinc(z):
-    """``sin(z)/z``, finite and differentiable at ``z = 0``.
-
-    GLASS computes ``sin(arg1)/arg1`` directly, which is ``NaN`` when an arm
-    lies exactly along the propagation direction. That is a measure-zero
-    defect rather than a convention, so we guard it; the two agree
-    everywhere GLASS is finite.
-    """
-    # Direct AD of sin(z)/z subtracts O(1/z) terms for the gradient and
-    # O(1/z**2) terms for the Hessian. A machine-epsilon-sized cutoff only
-    # fixes z=0; it leaves catastrophic cancellation just outside the guard.
-    # Through z**10, the omitted value / gradient / Hessian terms at 0.1
-    # are below 2e-22 / 2e-20 / 3e-18, respectively.
-    small = jnp.abs(z) < 0.1
-    zs = jnp.where(small, 1.0, z)
-    # Guard the polynomial too: its inactive large-z terms must not overflow
-    # and inject 0*inf into derivatives of the trigonometric branch.
-    zp = jnp.where(small, z, 0.0)
-    z2 = zp * zp
-    series = 1.0 + z2 * (
-        -1.0 / 6.0
-        + z2
-        * (1.0 / 120.0 + z2 * (-1.0 / 5040.0 + z2 * (1.0 / 362880.0 - z2 / 39916800.0)))
-    )
-    return jnp.where(small, series, jnp.sin(zs) / zs)
-
-
-def params_from_native(f0, fdot, amp, phi0, colat, lon, psi, cos_iota, T, d2fdt2=None):
-    """Build the GLASS UCB parameter vector from native parameters.
-
-    GLASS samples dimensionless combinations: ``params[0] = f0*T``,
-    ``params[7] = fdot*T^2``, ``params[8] = d2fdt2*T^3``, and the amplitude
-    logarithmically. The sky angle is the **cosine** of the colatitude.
-
-    Returns a **numpy** array, deliberately. Packing eight scalars with
-    ``jnp`` costs eight dispatches --- measured at 0.26 ms, against 0.0007 ms
-    for the numpy equivalent, and against a 0.10 ms waveform kernel. In a
-    sampler that calls this once per likelihood evaluation it was two thirds
-    of the total template cost, and it made the JAX generator *slower* than
-    the NumPy one it replaced.
-
-    ``jit`` and ``vmap`` accept numpy input, so this costs nothing downstream.
-    If you need to build the vector from traced values, stack them yourself
-    rather than routing through this helper.
-    """
-    p = [f0 * T, np.cos(colat), lon, np.log(amp), cos_iota, psi, phi0, fdot * T * T]
-    if d2fdt2 is not None:
-        p.append(d2fdt2 * T**3)
-    return np.asarray(p, dtype=np.float64)
-
-
-def ucb_waveform(
-    params: ArrayLike,
-    *,
-    T: ArrayLike,
-    BW: int,
-    t0: ArrayLike = 0.0,
-    fmt: str = "sangria",
-    positions: ArrayLike | None = None,
-    q: ArrayLike | None = None,
-) -> WaveformResult:
-    """Generate the banded TDI spectrum of one galactic binary.
-
-    Parameters
-    ----------
-    params
-        GLASS UCB parameter vector, length 7, 8 or 9:
-        ``[f0*T, cos(theta), lambda, ln(amp), cos(iota), psi, phi0,
-        fdot*T^2, d2fdt2*T^3]``. Elements 7 and 8 are optional and, when
-        absent, the corresponding chirp terms are dropped exactly as
-        GLASS's ``NParams > 7`` / ``> 8`` branches do.
-    T
-        Observation time [s]. **Traced, not static** -- see the note at the
-        carrier-bin assignment: a constant divisor makes XLA rewrite
-        ``params[0]/T`` as a reciprocal multiply and the carrier bin then
-        stops matching GLASS.
-    BW
-        Number of slow-time samples **and** of output frequency bins.
-        Static; must be a positive even integer.
-    t0
-        Epoch of the first slow-time sample [s]. Traced.
-    fmt
-        TDI convention, see :data:`binary_galactica.glass.tdi.FORMATS`.
-    positions
-        Optional ``(3, BW, 3)`` precomputed spacecraft positions on this
-        exact grid. The grid depends only on ``(T, t0, BW)``, so one cache
-        serves every source at a given bandwidth.
-    q
-        Optional carrier bin, overriding GLASS's ``trunc(f0*T)``. Not needed
-        for fidelity -- the default already reproduces the C -- but useful
-        for pinning a band across a source population. Must be a finite
-        scalar with an integral value; integral floats are accepted.
-
-    Returns
-    -------
-    dict with
-
-    ``qmin``
-        absolute Fourier-bin index of the first output bin. Returned as a
-        float-valued scalar, not a Python ``int``, because under ``jit`` it
-        is traced; ``int(...)`` it at the boundary.
-    ``freq_bin_indices``
-        ``(BW,)``, the absolute bin index of every output sample. Mirrors
-        the field of the same name on the generator this replaces, so a
-        caller can be switched over without rewriting its bin bookkeeping.
-    ``X``, ``Y``, ``Z``, ``A``, ``E``
-        ``(BW,)`` complex, in GLASS's amplitude convention. See
-        :func:`binary_galactica.glass.convert.to_continuous_ft` for the
-        convention used by the rest of this repository.
-
-    Notes
-    -----
-    Eager calls raise ``ValueError`` for nonfinite parameters, nonpositive
-    ``T`` or ``f0``, cosines outside ``[-1, 1]``, nonfinite ``t0`` or cached
-    positions, and invalid ``q``. Shape checks also run during tracing.
-    Value checks never extract JAX tracers: under ``jit``/``vmap`` invalid
-    traced domains return NaN in every output, including bin coordinates.
-    Both cosine endpoints are valid; the sky-pole derivative is regularized.
-
-    """
-    T, t0, positions = _validation.observation(T, BW, t0, positions)
+def _native_parameters(params, T):
+    """Validate native source coordinates without extracting tracers."""
     params = _validation.finite_array(params, "params")
     if params.ndim != 1 or params.shape[0] not in (7, 8, 9):
         raise ValueError(
@@ -200,131 +51,256 @@ def ucb_waveform(
             raise ValueError("sky and inclination cosines must lie in [-1, 1]")
         if not isinstance(T, jax.core.Tracer):
             with np.errstate(over="ignore", under="ignore"):
-                f0 = concrete[0] / np.asarray(T)
-            if not np.isfinite(f0) or f0 <= 0:
+                frequency = concrete[0] / np.asarray(T)
+            if not np.isfinite(frequency) or frequency <= 0:
                 raise ValueError("f0 must be finite and positive")
+    return params
+
+
+def _source_valid(params, T):
+    """Domain mask shared by traced waveform and arbitrary-time evaluations."""
+    frequency = params[0] / T
+    return (
+        jnp.all(jnp.isfinite(params))
+        & jnp.isfinite(T)
+        & (T > 0)
+        & jnp.isfinite(frequency)
+        & (frequency > 0)
+        & (jnp.abs(params[1]) <= 1)
+        & (jnp.abs(params[4]) <= 1)
+    )
+
+
+def _options(backend, response_samples):
+    """Validate the static algorithm and response-grid controls."""
+    if backend not in BACKENDS:
+        raise ValueError(f"backend must be one of {BACKENDS}; got {backend!r}")
+    if response_samples is None:
+        return None
+    response_samples = _validation.integer(response_samples, "response_samples")
+    if response_samples < 4:
+        raise ValueError("response_samples must be an integer at least 4")
+    return response_samples
+
+
+def tdi_response(
+    params: ArrayLike,
+    times: ArrayLike,
+    *,
+    T: ArrayLike,
+    positions: ArrayLike | None = None,
+) -> Array:
+    """Return demodulated analytic Sangria XYZ at arbitrary times, shape ``(3,n)``.
+
+    ``params`` uses the same native 7/8/9 coordinates as :func:`ucb_waveform`.
+    ``times`` is a nonempty one-dimensional vector of seconds relative to the
+    source reference epoch. ``T`` unscales the native frequency derivatives;
+    it does not restrict the evaluation times. Optional positions have shape
+    ``(3,n,3)`` in metres and describe the geometry at exactly these times.
+
+    Multiply by ``exp(1j * Phi(times))`` to restore the analytic source phase,
+    where ``Phi(t) = 2*pi*(f0*t + fdot*t**2/2 + fddot*t**3/6) - phi0``.
+    The real part is the Sangria time signal in the package's normalization.
+    This is half GLASS's raw complex spline response. A positive-frequency
+    Fourier coefficient contributes another factor of one half.
+
+    The constellation is frozen at each reception time, using actual arm
+    lengths and delayed source samples. This follows GLASS's spline response;
+    it does not implement point-ahead or sequential moving-arm TDI-2 delays.
+    Eager invalid domains raise ``ValueError``; invalid traced inputs yield NaN.
+    """
+    T = _validation.scalar(T, "T", positive=True)
+    params = _native_parameters(params, T)
+    times = _validation.finite_array(times, "times")
+    if times.ndim != 1 or times.shape[0] == 0:
+        raise ValueError("times must be a nonempty one-dimensional array")
+    if positions is not None:
+        positions = _validation.finite_array(positions, "positions")
+        if positions.shape != (3, times.shape[0], 3):
+            raise ValueError("positions must have shape (3, len(times), 3)")
+    return _tdi_response(params, times, T, positions)
+
+
+@jax.jit
+def _tdi_response(params, times, T, positions):
+    """Evaluate validated arbitrary-time inputs inside one compiled call."""
+    valid = _source_valid(params, T) & jnp.all(jnp.isfinite(times))
+    if positions is not None:
+        valid = valid & jnp.all(jnp.isfinite(positions))
+    return jnp.where(valid, 0.5 * _raw_response(params, times, T, positions), jnp.nan)
+
+
+def ucb_waveform(
+    params: ArrayLike,
+    *,
+    T: ArrayLike,
+    BW: int,
+    t0: ArrayLike = 0.0,
+    fmt: str = "sangria",
+    positions: ArrayLike | None = None,
+    q: ArrayLike | None = None,
+    backend: str = "onfly",
+    response_samples: int | None = DEFAULT_RESPONSE_SAMPLES,
+) -> WaveformResult:
+    """Generate a banded native-parameter TDI spectrum, using TDI on the fly.
+
+    ``params`` is ``[f0*T, sin(beta), longitude, log(A_G), cos(iota), psi,
+    phi0_G, fdot*T**2, fddot*T**3]`` with the last two entries optional.
+    ``BW`` is the positive even FFT length and number of returned bins.
+    ``response_samples`` controls the sparse response grid independently.
+    The default ``None`` chooses a power of two from 32 through 2048, at least
+    128 samples per observation year until the cap: quarter-year observations
+    use 32, one year uses 128, and four years use 512. Supply a static integer
+    at least four to choose the count explicitly. Increase both grid controls
+    separately to check convergence for the source and observation duration;
+    the automatic policy is not an error bound, especially beyond 16 years.
+
+    The sparse envelope removes the source phase at spacecraft 0's retarded
+    time. Local polynomials through up to eight complex response samples
+    interpolate it without time derivatives or singular phase coordinates at
+    response zeros. The reference phase is restored on the FFT grid.
+
+    ``T`` (positive duration), ``t0`` (observation start) and ``q`` (optional
+    integral carrier override) may be traced. Source parameters are always
+    referenced to time zero. The default carrier preserves GLASS's separate
+    float64 operations ``trunc((params[0]/T)*T)``. Returned ``qmin`` and
+    ``freq_bin_indices`` describe the same ``BW`` bins as the Fourier backend.
+
+    All five channels ``X/Y/Z/A/E`` use raw GLASS Fourier units; multiply by
+    ``sqrt(T)`` for continuous-Fourier units. ``fmt`` selects ``sangria``,
+    ``frequency`` or ``phase``. Phase DC is defined as zero and its A/E
+    coefficients are conjugated to retain the GLASS convention.
+
+    Optional ``positions`` retains the legacy ``(3,BW,3)`` cache layout on
+    ``t0 + T*arange(BW)/BW``. On the on-fly path this geometry is interpolated
+    locally (cubic for BW >= 4, linear for BW = 2); cache sampling then limits
+    orbit accuracy independently of ``response_samples``. Omitting positions
+    evaluates the analytic orbit directly at every needed response time.
+
+    ``backend="fourier"`` explicitly selects the old single-link FFT path,
+    for which ``response_samples`` has no effect. The default uses actual arm
+    lengths and delayed source evolution, so it is not bitwise equivalent.
+
+    Eager invalid inputs raise ``ValueError``; traced invalid values return
+    NaN in every output. Shapes and static controls are always checked.
+    AD holds the discrete carrier and automatic grid selection fixed. Automatic
+    count changes introduce small interpolation jumps at duration thresholds;
+    use an explicit count when differentiating across those thresholds.
+    """
+    response_samples = _options(backend, response_samples)
+    if backend == "fourier":
+        return _fourier_waveform(
+            params, T=T, BW=BW, t0=t0, fmt=fmt, positions=positions, q=q
+        )
+    T, t0, positions = _validation.observation(T, BW, t0, positions)
+    params = _native_parameters(params, T)
+    if fmt not in FORMATS:
+        raise ValueError(f"format must be one of {FORMATS}; got {fmt!r}")
     if q is not None:
         q = _validation.scalar(q, "q")
         if not isinstance(q, jax.core.Tracer) and np.asarray(q) != np.trunc(q):
             raise ValueError("q must be an integral Fourier-bin index")
     return _ucb_waveform(
-        params, T=T, BW=int(BW), t0=t0, fmt=fmt, positions=positions, q=q
+        params,
+        T=T,
+        BW=int(BW),
+        t0=t0,
+        fmt=fmt,
+        positions=positions,
+        q=q,
+        response_samples=response_samples,
     )
 
 
-@partial(jax.jit, static_argnames=("BW", "fmt"))
+def _cached_positions(positions, times, T, t0):
+    """Evaluate a legacy uniform position cache by local polynomial interpolation."""
+    count = positions.shape[1]
+    width = min(4, count)
+    x = (times - t0) * count / T
+    start = jnp.clip(jnp.floor(x).astype(jnp.int32) - 1, 0, count - width)
+    local = x - start
+    result = jnp.zeros((3, times.shape[0], 3), dtype=jnp.float64)
+    for i in range(width):
+        weight = jnp.ones_like(local)
+        for j in range(width):
+            if i != j:
+                weight = weight * (local - j) / (i - j)
+        result = result + positions[:, start + i, :] * weight[None, :, None]
+    return result
+
+
+def _response_envelope(params, T, BW, t0, positions, response_samples):
+    """Interpolate on a static grid, selecting a duration bucket when requested."""
+
+    def sample(count, params, T, t0, positions):
+        knots = t0 + T * (1 - 1 / BW) * jnp.linspace(0.0, 1.0, count)
+        geometry = (
+            None if positions is None else _cached_positions(positions, knots, T, t0)
+        )
+        response = _raw_response(params, knots, T, geometry, reference_phase=True).T
+        # Static normalized coordinates avoid clock-subtraction rounding and
+        # stencil changes when duration, epoch or source coordinates are traced.
+        return interpolate_uniform(response, jnp.arange(BW) / (BW - 1)).T
+
+    if response_samples is not None:
+        return sample(response_samples, params, T, t0, positions)
+    # Every branch returns the same FFT-grid shape. Only the selected sparse
+    # response is evaluated for a scalar T; JAX can still trace T and its AD.
+    boundaries = YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1]) / 128
+    index = jnp.sum(boundaries < T, dtype=jnp.int32)
+    branches = tuple(partial(sample, count) for count in _AUTO_RESPONSE_SAMPLES)
+    return jax.lax.switch(index, branches, params, T, t0, positions)
+
+
+@partial(jax.jit, static_argnames=("BW", "fmt", "response_samples"))
 def _ucb_waveform(
-    params, *, T, BW: int, t0=0.0, fmt: str = "sangria", positions=None, q=None
+    params,
+    *,
+    T,
+    BW,
+    t0=0.0,
+    fmt="sangria",
+    positions=None,
+    q=None,
+    response_samples=DEFAULT_RESPONSE_SAMPLES,
 ) -> WaveformResult:
-    """Evaluate validated inputs while retaining dynamic observation time."""
-    n_params = params.shape[0]
-
-    f0 = params[0] / T
-    costh = params[1]
-    phi = params[2]
-    amp = jnp.exp(params[3])
-    cosi = params[4]
-    psi = params[5]
-    phi0 = params[6]
-    # GLASS: dfdt = params[7]/(T*T) only when NParams>7, else 0.
-    fdot = params[7] / (T * T) if n_params > 7 else jnp.array(0.0)
-    d2fdt2 = params[8] / (T**3) if n_params > 8 else jnp.array(0.0)
-
-    # Carrier bin. GLASS: q = (long)(f0*T) -- a C cast, which TRUNCATES.
-    # It does not round. The residual heterodyne (2 pi (f0 T - q)) therefore
-    # spans a full turn over the record rather than half of one.
-    #
-    # Truncate the ROUND-TRIPPED product, exactly as GLASS does: it has
-    # already formed f0 = params[0]/T, and (params[0]/T)*T is NOT params[0]
-    # in float64 -- at T = 7884000 s, 5620 of the 39000 integer values of
-    # params[0] come back just below the integer, and truncating params[0]
-    # directly would put the whole band one bin high for every one of them.
-    #
-    # This only reproduces the C because ``T`` is a traced operand rather
-    # than a compile-time constant. Given a constant divisor XLA rewrites
-    # ``p / T`` as ``p * (1/T)``, which is a different float64 result --
-    # measured: 377 of 3000 integer params[0] values disagree with IEEE
-    # division, and the jit output matches ``p*(1/T)`` bit for bit. Keeping
-    # T dynamic is therefore load-bearing, not a style choice; do not move
-    # it back into ``static_argnames``.
-    q = jnp.trunc(f0 * T) if q is None else jnp.asarray(q, jnp.float64)
-    valid = (
-        jnp.all(jnp.isfinite(params))
-        & jnp.isfinite(T)
-        & (T > 0)
-        & jnp.isfinite(f0)
-        & (f0 > 0)
-        & jnp.isfinite(t0)
-        & (jnp.abs(costh) <= 1)
-        & (jnp.abs(cosi) <= 1)
-        & jnp.isfinite(q)
-        & (q == jnp.trunc(q))
+    """Interpolate combined XYZ, restore the carrier residual, then transform."""
+    q = (
+        _carrier_bin(jax.lax.stop_gradient(params[0]), jax.lax.stop_gradient(T))
+        if q is None
+        else jnp.asarray(q, dtype=jnp.float64)
     )
-
-    # --- geometry -------------------------------------------------------
-    t = slow_time_grid(T, t0, BW)
-    if positions is None:
-        positions = analytic_orbits(t)
-    else:
+    valid = _source_valid(params, T) & jnp.isfinite(t0) & jnp.isfinite(q)
+    valid = valid & (q == jnp.trunc(q))
+    if positions is not None:
         valid = valid & jnp.all(jnp.isfinite(positions))
-    arms = arm_vectors(positions)
-    e_plus, e_cross, k = polarization_tensor(costh, phi)
-    d_plus, d_cross, kdotr = detector_tensor(arms, k, e_plus, e_cross)
-
-    # --- polarization amplitudes ----------------------------------------
-    # Current GLASS keeps the explicit halves in both inclination factors:
-    # Aplus = amp*(1+cos^2(i))/2 and Across = -amp*cos(i).
-    Aplus = amp * (1.0 + cosi * cosi) * 0.5
-    Across = -amp * cosi
-    cosps = jnp.cos(2.0 * psi)
-    sinps = jnp.sin(2.0 * psi)
-    DP = Aplus * cosps - 1j * Across * sinps
-    DC = -Aplus * sinps - 1j * Across * cosps
-
-    # --- per-spacecraft retarded quantities -----------------------------
-    kdotx = jnp.einsum("sta,a->st", positions, k) / CLIGHT  # (3, BW)
-    xi = t[None, :] - kdotx
-    f_inst = f0 + fdot * xi + 0.5 * d2fdt2 * xi * xi
-    fonfs = f_inst / FSTAR
-
-    # GLASS writes PI2*(((double)q)/T) -- divide first. Python would
-    # associate PI2*q/T as (PI2*q)/T, which rounds differently.
-    df = PI2 * (q / T)
-    arg2 = (
-        PI2 * f0 * xi
-        - phi0
-        - df * t[None, :]
-        + jnp.pi * fdot * xi * xi
-        + (jnp.pi / 3.0) * d2fdt2 * xi * xi * xi
+    times = slow_time_grid(T, t0, BW)
+    envelope = _response_envelope(params, T, BW, t0, positions, response_samples)
+    # Restore phi(t-k.x0/c) minus the carrier without forming or subtracting
+    # large source phases. Public tdi_response retains phi(t) demodulation.
+    u = times / T
+    cycles = (params[0] - q) * u
+    if params.shape[0] > 7:
+        cycles = cycles + 0.5 * params[7] * u**2
+    if params.shape[0] > 8:
+        cycles = cycles + params[8] * u**3 / 6.0
+    phase = (
+        PI2 * cycles - params[6] + reference_phase_shift(params, times, T, positions)
     )
-    # First-order amplitude evolution; GLASS guards it behind NParams>7.
-    aevol = 1.0 + (2.0 / 3.0) * (fdot / f0) * xi if n_params > 7 else jnp.ones_like(xi)
-
-    # --- six single links ------------------------------------------------
-    # A single (6, BW) expression lets XLA fuse the link calculations into
-    # one vectorized body while preserving GLASS's directed-link order.
-    sc = jnp.array([sc for sc, _, _ in LINKS])
-    pair = jnp.array([pair for _, pair, _ in LINKS])
-    sign = jnp.array([sign for _, _, sign in LINKS])[:, None]
-    arg1 = 0.5 * fonfs[sc] * (1.0 + sign * kdotr[pair])
-    tran1 = aevol[sc] * (d_plus[pair] * DP + d_cross[pair] * DC)
-    env = 0.25 * _sinc(arg1) * tran1 * jnp.exp(-1j * (arg1 - arg2[sc]))
-
-    # --- reduced DFT ------------------------------------------------------
-    # GLASS FFTs the BW-sample complex envelope (kiss_fft, unnormalised),
-    # then swaps the two halves of the output. The half-swap is an fftshift:
-    # it puts the carrier bin at index BW/2.
-    #
-    # Current GLASS scales the unnormalised complex FFT by invBW2=1/(2*BW).
-    # The half-polarization factors above are retained independently.
-    d = jnp.fft.fftshift(jnp.fft.fft(env, axis=-1), axes=-1) / (2 * BW)
-
-    # --- TDI --------------------------------------------------------------
-    m = jnp.arange(BW, dtype=jnp.float64)
+    envelope = envelope * jnp.exp(1j * phase)
+    xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
+    xyz = xyz * (jnp.sqrt(T) / (4 * BW))
     qmin = q - BW // 2
-    bins = qmin + m
-    X, Y, Z, A, E = synthesize(d, bins / T, T, fmt)
-
+    bins = qmin + jnp.arange(BW, dtype=jnp.float64)
+    if fmt == "frequency":
+        xyz = -1j * xyz
+    elif fmt == "phase":
+        x = bins / (T * FSTAR)
+        xyz = jnp.where(x == 0, 0j, xyz / (2j * jnp.where(x == 0, 1.0, x)))
+    X, Y, Z = xyz
+    A, E = xyz_to_ae(X, Y, Z)
+    if fmt == "phase":
+        A, E = jnp.conj(A), jnp.conj(E)
     result = {
         "qmin": qmin,
         "freq_bin_indices": bins,
@@ -337,12 +313,11 @@ def _ucb_waveform(
     return {name: jnp.where(valid, value, jnp.nan) for name, value in result.items()}
 
 
-def orbit_cache(T: ArrayLike, t0: ArrayLike, BW: int) -> Array:
-    """Spacecraft positions on the ``(T, t0, BW)`` slow grid.
-
-    Hoist this out of a sampler loop: it depends on no source parameter.
-    """
-    return analytic_orbits(slow_time_grid(T, t0, BW))
-
-
-__all__ = ["orbit_cache", "params_from_native", "ucb_waveform"]
+__all__ = [
+    "BACKENDS",
+    "DEFAULT_RESPONSE_SAMPLES",
+    "orbit_cache",
+    "params_from_native",
+    "tdi_response",
+    "ucb_waveform",
+]

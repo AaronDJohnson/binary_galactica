@@ -1,19 +1,42 @@
 # binary-galactica
 
-GLASS fast-slow galactic-binary **LISA TDI waveforms in JAX**. This package
-adopts `gbonfly` from `wdm_test`, correcting its raw normalization against
-[GLASS commit 079c6a3](https://github.com/nsgs-analysis-center/glass/tree/079c6a3a6fcf380a7c107f39640fff7fc720d0f1).
+**LISA TDI waveforms for galactic binaries, in JAX.** The default `onfly`
+backend evaluates demodulated TDI `X/Y/Z` directly at sparse reception times,
+interpolates the response, restores the analytic source phase, and transforms
+the three channels. It follows GLASS's `LISA_spline_response` /
+`LISA_TDI_spline` conventions and returns a narrow band in `X`, `Y`, `Z`, `A`,
+and `E`. JAX provides compilation, batching, and derivatives at fixed discrete
+settings.
 
-The pipeline evaluates analytic LISA orbits, sky and arm projections,
-light-travel response, frequency and amplitude evolution, a reduced complex
-FFT, and TDI synthesis. It returns a narrow frequency band in channels
-`X`, `Y`, `Z`, `A`, and `E`. JAX provides compilation, batching, and derivatives
-at fixed bandwidth and carrier-bin choices.
+The response uses analytic LISA positions by default, with instantaneous arm
+lengths and geometry frozen at each reception time. This is the first-generation
+frozen-geometry response used by that GLASS path; it does not implement TDI-2
+or moving-spacecraft sequential delays. The prior link-FFT implementation is
+available as the explicit legacy `backend="fourier"` option for reference
+comparisons.
+
+The on-fly spline response and legacy fast-slow link response use reverse
+directed-link placement differently. Their finite-frequency spectra therefore
+are not expected to agree, even for static equal arms; they agree in the
+low-frequency limit. Independent pinned-spline C fixtures validate the new
+response, while legacy reference tests remain under explicit
+`backend="fourier"`. See the [on-fly reference provenance and regeneration
+guide](tools/onfly_reference/README.md).
 
 ## Install
 
+Install from a source checkout:
+
 ```sh
-pip install -e ".[dev]"
+git clone https://github.com/AaronDJohnson/binary_galactica.git
+cd binary_galactica
+python -m pip install .
+```
+
+For development, use an editable installation with the test and lint tools:
+
+```sh
+python -m pip install -e ".[dev]"
 ```
 
 Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required. Importing the package
@@ -37,24 +60,38 @@ p = bg.params_from_native(
     cos_iota=0.3,
     T=T,
 )
-positions = bg.orbit_cache(T, 0.0, BW)
-wave = bg.ucb_waveform(p, T=T, BW=BW, positions=positions)
+wave = bg.ucb_waveform(p, T=T, BW=BW)  # backend="onfly", automatic response grid
 frequencies = wave["freq_bin_indices"] / T
 A, E = wave["A"], wave["E"]  # complex arrays of length BW
 continuous = bg.to_continuous_ft(wave, T)
 ```
 
-`BW` is both the slow-time sample count and the returned frequency-bin count.
-It must be a positive even integer. A larger value refines the response and
-widens the band. `ucb_alignment(p, T, N)` and `ucb_bw(...)` reproduce the GLASS
-bandwidth heuristic, but **choose bandwidth by convergence for your analysis**.
-The heuristic is not an accuracy guarantee; `512` is an example, not a universal
-setting.
+`BW` is the positive, even number of returned frequency bins. It controls the
+FFT band, while `response_samples` independently controls the sparse response.
+The default `None` selects a power of two from 32 through 2048, targeting at
+least 128 samples per observation year: 32 for a quarter year, 128 for a year,
+and 512 for four years. Set an integer of at least four to fix the grid.
+The automatic policy is a starting point, not an error bound; observations
+beyond 16 years particularly need an explicit convergence check.
+Choose both grids by convergence for the
+analysis: increasing `BW` widens the band and does not refine the on-fly
+response; increasing `response_samples` refines that interpolation and does
+not change the number of returned bins. `ucb_alignment(p, T, N)` and
+`ucb_bw(...)` retain the GLASS bandwidth heuristic, but it is not an accuracy
+guarantee.
 
-Cached positions depend only on `(T, t0, BW)` and can be shared across sources.
-Omit `positions` to evaluate the orbit in the waveform call. Supplied positions
-must have shape `(3, BW, 3)` on that exact time grid. All source parameters refer
-to time zero; `t0` moves the observing interval, not the parameter reference epoch.
+The sparse response removes the phase at spacecraft 0's retarded source time,
+including the common orbital Doppler phase. Local polynomials through up to
+eight complex samples interpolate the remaining smooth response. This avoids
+time-derivative evaluations and singular amplitude/phase coordinates at zeros.
+The reference phase is restored at the FFT times. The Hermite interpolation
+utility remains available internally for numerical comparisons.
+
+For correctness, omit `positions` and use the analytic orbit. Legacy position
+caches with shape `(3, BW, 3)` remain accepted and are interpolated cubically
+to response times, but a coarse cache limits orbit accuracy. All source
+parameters refer to time zero; `t0` moves the observing interval, not the
+parameter reference epoch.
 
 ### Native parameters
 
@@ -77,8 +114,27 @@ vectors inside a differentiated function.
 Supported TDI formats are `"sangria"` (default), `"frequency"`, and `"phase"`.
 They reproduce GLASS's conventions, including conjugation of `A/E` in the phase
 format. Nominal arm length and transfer frequency are fixed to the pinned
-constants. Numerical-orbit interpolation and GLASS's direct wavelet generator
-are not included.
+constants. `backend="fourier"` retains the old finite-band link-FFT response;
+it is useful for exact legacy-reference comparisons.
+
+### Arbitrary-time response
+
+`tdi_response` exposes the same arbitrary-time native response in its documented
+source-phase-demodulated convention:
+
+```python
+import jax.numpy as jnp
+
+times = T * jnp.array([0.0, 0.25, 0.5, 0.75])
+xyz = bg.tdi_response(p, times, T=T)  # complex array, shape (3, 4)
+```
+
+It is in Sangria analytic-response units: it is the raw internal GLASS spline
+response divided by two, before FFT normalization. The waveform restores the
+full analytic source phase before transforming, and its raw spectrum retains
+the usual `sqrt(T)` conversion described below. `times` is one-dimensional.
+An optional position array has shape `(3, n_times, 3)`; use analytic positions
+unless an existing cache must be reused.
 
 ### Normalization
 
@@ -93,11 +149,13 @@ With a compatible one-sided PSD, continuous coefficients use the inner product
 For a bare NumPy/JAX `rfft` convention, also divide continuous coefficients by
 the time-domain sample interval.
 
-For the **same native vector**, raw output is half the donor `gbonfly` output:
-this package keeps GLASS's half inclination factors and uses `1/(2*BW)` for
-the FFT. `to_continuous_ft` remains `sqrt(T)`. No conversion factor or SNR target
-compensates for that correction. Reusing saved donor templates therefore
-requires an explicit convention decision.
+The on-fly Fourier prefactor is `sqrt(T) / (4*BW)` for the internal raw GLASS
+spline response. The public `tdi_response` is half that raw response; its
+Fourier prefactor is therefore `sqrt(T) / (2*BW)`. This second factor of two
+selects the positive-frequency contribution of the real time signal.
+`to_continuous_ft` remains `sqrt(T)`. No conversion factor or SNR target
+compensates for a convention change; reusing saved templates requires an
+explicit convention decision.
 
 ## Physical parameters and source polarizations
 
@@ -115,7 +173,7 @@ params = bg.GBParams(
     lam=0.0,
     beta=-0.2,
 )
-physical_wave = bg.tdi_waveform(params, T=T, BW=BW)
+physical_wave = bg.tdi_waveform(params, T=T, BW=BW, response_samples=512)
 native = bg.to_glass_vector(params, T)
 restored = bg.from_glass_vector(native, T)
 ```
@@ -169,12 +227,21 @@ batch = jax.jit(jax.vmap(channels, in_axes=(0, None)))(catalogue, T)
 ```
 
 The fixed-window helper zero-fills missing bins and drops bins outside the
-requested window. Choose the window wide enough for the analysis.
+requested window. Choose the window wide enough for the analysis. `bin_lo`
+must be an integer and `n_bins` a non-negative integer; fractional values,
+booleans, and nonfinite values raise `ValueError`. A zero-length window returns
+an empty `(2, 0)` array.
 
-Keep `T` a **traced argument**, including in outer JIT wrappers. Closing over
-a constant can change division into reciprocal multiplication and move a
-carrier bin at a floating-point boundary. `BW`, `fmt`, `bin_lo`, and `n_bins`
-are static. `ucb_waveform(..., q=...)` can explicitly pin the carrier.
+`T` may be a traced argument or a constant captured by an outer JIT wrapper.
+The carrier calculation preserves GLASS's float64 rounding in either case.
+Pass `T` as an argument when varying or differentiating the duration without
+recompiling. `BW`, `response_samples`, `backend`, `fmt`, `bin_lo`, and `n_bins`
+are static.
+`ucb_waveform(..., q=...)` can explicitly pin the carrier.
+Automatic response counts change discretely with duration. AD follows the
+selected grid; use an explicit `response_samples` when differentiating across
+a duration threshold. For batches with different durations, grouping by duration
+or using an explicit count avoids evaluating multiple automatic grid branches.
 
 Ordinary `ucb_waveform` and `tdi_waveform` calls validate inputs and raise
 `ValueError` for invalid durations, frequencies, angles, carrier overrides,
@@ -201,10 +268,11 @@ execution and waits for all returned arrays.
 
 ## Supporting modules
 
-The donor modules live under `binary_galactica.glass`: constants, orbit,
-response, waveform, TDI, bandwidth, alignment, Fourier conversion, fixed-window
-placement, priors, and proposals. Priors/proposals use NumPy on the host and
-native coordinates. They are building blocks rather than an inference engine:
+The modules under `binary_galactica.glass` provide constants, orbit, response,
+on-fly interpolation, waveform generation, TDI conversion, bandwidth,
+alignment, Fourier conversion, fixed-window placement, priors, and proposals.
+Priors/proposals use NumPy on the host and native coordinates. They are building
+blocks rather than an inference engine:
 likelihoods, fitted noise, trans-dimensional searches, and WDM integration
 remain outside this package.
 
@@ -252,11 +320,16 @@ ruff check .
 python examples/quickstart.py
 ```
 
-Mandatory C reference tests cover varied sky positions, inclinations,
+Legacy Fourier C reference tests cover varied sky positions, inclinations,
 amplitudes, phases, 7/8/9 parameters, all three formats, signed chirps,
 quarter-year through four-year observations, and carrier boundaries.
 Each of the five channels must agree to relative L2 error `1e-9`. Normal tests
 need no C compiler, network, or sibling repository, and missing references fail.
+
+Separate pinned-spline fixtures cover the arbitrary-time on-fly XYZ response;
+their [offline provenance and regeneration instructions](tools/onfly_reference/README.md)
+keep that validation independent of the Python implementation. Legacy
+finite-band reference checks select `backend="fourier"` explicitly.
 
 [Provenance and offline regeneration](tools/glass_reference/README.md) document
 the pinned, unchanged upstream routines and vendored FFT source. Additional
@@ -283,12 +356,15 @@ compatibility checks, resolved findings, and remaining release verification.
 
 The [TDI zero-crossing prototype](tools/tdi_zero_crossings/README.md) compares
 bounded Brent minimization with projected root finders for a callable complex
-response. It includes separate tests and reproducible benchmarks; it is an
-experiment for TDI-on-the-fly integration and does not alter this GLASS backend.
+response. Its findings informed the response interpolation; it remains a
+separate reproducible experiment.
 
 ## Attribution
 
-The fast-slow construction follows Cornish & Littenberg,
+The mainline method follows Cornish & Littenberg,
+[TDI on the fly (2025)](https://arxiv.org/abs/2506.08093), with this package's
+JAX implementation and local complex-polynomial interpolation. The legacy Fourier
+calculation follows Cornish & Littenberg,
 [Phys. Rev. D 76, 083006 (2007)](https://doi.org/10.1103/PhysRevD.76.083006).
 GLASS is by Tyson B. Littenberg, Neil J. Cornish, and contributors.
 See [NOTICE](NOTICE) and the included MIT, Apache-2.0, and vendored KissFFT

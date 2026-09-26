@@ -49,6 +49,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from . import _validation
 from .bandwidth import ucb_bandwidth
 from .constants import FSTAR, LARM
 
@@ -106,15 +107,15 @@ def ucb_alignment(
     T
         Observation time [s].
     N
-        Length of the full frequency grid --- GLASS's ``data->NFFT``. Sets
-        the ``Nmax`` clamp inside the heuristic.
+        Positive integer length of the full frequency grid --- GLASS's
+        ``data->NFFT``. Sets the ``Nmax`` clamp inside the heuristic.
     L
         Arm length used by the bandwidth noise estimate [m].
     fstar
         Transfer frequency used by the bandwidth noise estimate [Hz].
     segment_qmin
-        The segment's own first bin, GLASS's ``data->qmin``. Only affects
-        ``imin``/``imax``.
+        Integer index of the segment's first bin, GLASS's ``data->qmin``.
+        Only affects ``imin``/``imax``.
     safety
         Passed through to
         :func:`binary_galactica.glass.bandwidth.ucb_bandwidth`. ``1.0``
@@ -135,11 +136,16 @@ def ucb_alignment(
 
     """
     params = np.asarray(params, dtype=np.float64)
+    if params.ndim != 1:
+        raise ValueError(
+            f"params must be a one-dimensional vector; got shape {params.shape}"
+        )
     if params.shape[-1] < 8:
         raise ValueError(
             f"ucb_alignment needs at least 8 parameters (fdot at index 7); "
             f"got {params.shape[-1]}"
         )
+    segment_qmin = _validation.integer(segment_qmin, "segment_qmin")
 
     f0 = params[0] / T
     costheta = params[1]
@@ -150,9 +156,8 @@ def ucb_alignment(
         f0, fdot, costheta, amp, T, N, L=L, fstar=fstar, safety=safety
     )
     # GLASS: (int)(source->f0*data->T), i.e. the round-tripped product, not
-    # the raw params[0]. numpy's float64 division is IEEE, so this matches
-    # the C directly here -- unlike inside jit, where a constant divisor
-    # would become a reciprocal multiply.
+    # the raw params[0]. NumPy's float64 division matches the C directly;
+    # the waveform kernel protects the same operations from JIT rewrites.
     q = int(np.trunc(f0 * T))
     qmin = q - BW // 2
     return Alignment(

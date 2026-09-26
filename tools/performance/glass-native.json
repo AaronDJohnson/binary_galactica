@@ -1,0 +1,671 @@
+{
+  "generated_at": "2026-09-19T12:14:20.654027+00:00",
+  "glass_commit": "079c6a3a6fcf380a7c107f39640fff7fc720d0f1",
+  "platform": "macOS-14.3.1-arm64-arm-64bit",
+  "machine": "arm64",
+  "compiler": "Apple clang version 15.0.0 (clang-1500.1.0.2.5)\nTarget: arm64-apple-darwin23.3.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "build_command": "#!/bin/sh\n# Compile only the pinned native UCB/WDM waveform closure; no CMake or BLAS stack.\nset -eu\n\nPIN=079c6a3a6fcf380a7c107f39640fff7fc720d0f1\nROOT=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\nSOURCE=\"$ROOT/source-$PIN\"\nOUTPUT=\"$ROOT/native_ucb_timing\"\nCC=${CC:-cc}\n\ntest -f \"$SOURCE/ucb/src/glass_ucb_waveform.c\" || {\n    echo \"Missing pinned source; run prepare.sh first.\" >&2\n    exit 2\n}\n\nexec \"$CC\" -O3 -march=native -std=gnu99 -include stdbool.h -ffp-contract=off -ffunction-sections -fdata-sections \\\n    -I\"$ROOT/stubs\" \\\n    -I\"$SOURCE/external\" -I\"$SOURCE/utils/src\" -I\"$SOURCE/ucb/src\" -I\"$SOURCE/noise/src\" \\\n    \"$ROOT/native_ucb_timing.c\" \\\n    \"$SOURCE/ucb/src/glass_ucb_waveform.c\" \\\n    \"$SOURCE/utils/src/glass_lisa.c\" \\\n    \"$SOURCE/utils/src/glass_wavelet.c\" \\\n    \"$SOURCE/utils/src/glass_math.c\" \\\n    \"$SOURCE/utils/src/glass_utils.c\" \\\n    \"$SOURCE/external/kissfft/kiss_fft.c\" \\\n    \"$SOURCE/external/kissfft/kiss_fftr.c\" \\\n    -Wl,-dead_strip -lm -o \"$OUTPUT\"\n",
+  "harness_sha256": {
+    "native_ucb_timing.c": "18a25205432862fa810dcf104e7f3468c3fb4bd7bca6da7390b29aae8c4fee1c",
+    "build_minimal.sh": "b8e8ec09310a0043be759c176023224007fffeebf179b856cc5fd85c191c33a6",
+    "stubs/astrometry/astrometry.h": "7506eb7b0706f06c7a5e2fb56cb73928f0519cfcbf41131b64f7219d5854e6cf",
+    "stubs/hdf5.h": "831d676fbc65b23dfdd15ab1168cef19c75cd483b3dd8e9dc17dd745bfce07eb",
+    "stubs/lapacke.h": "59fa451301ec9737813773b2cc6daea962191ea21b8ee200c75364e25a372c9c",
+    "stubs/mpi.h": "639a4a62746300cf89c4d072adc235d38a3bb5bb6ea2e934009aab777b5ea8d3",
+    "stubs/omp.h": "88c661ed75df2d2bf8dcbc43c4fcdea29c747879d6fd36a8102ad15d44921d46"
+  },
+  "upstream_sha256": {
+    "ucb/src/glass_ucb_waveform.c": "e735b15ad3b32a8748326881671f014ef2b99244d52959e30173f4020d7615da",
+    "utils/src/glass_lisa.c": "7a5ead500da7a0e1d368bd1bbeaf78b856684ad9c963ec590c70ac34c188d178",
+    "utils/src/glass_wavelet.c": "283bd1885bebedab08ff3e3b29f174f25480612ade041eec4900c1073b4b6073",
+    "utils/src/glass_math.c": "736405ae1c18be145038fa02477fda0fa6af96835a94d85143262456e2a75ab9",
+    "utils/src/glass_utils.c": "38ec0400771941b8f7c0d53fdf3996a02b87f8833b5400f1e59c0943ca7d5f6b",
+    "external/kissfft/kiss_fft.c": "3e8af99313c7e94f952ac12db46d3d5c5dd4a9bf93e0c32d43efa5fe39724051",
+    "external/kissfft/kiss_fftr.c": "128b651120725e8d55f6b9edf5d44b06dc022b260894eac078c6ff8aa7159561"
+  },
+  "linked_libraries": "/private/tmp/glass-ucb-timing/native_ucb_timing:\n\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1336.61.1)\n",
+  "protocol": "Three independent processes per case, each warming and averaging 200 serial native calls; report median of three block means. Orbit/basis/output setup excluded; all internal per-call allocations included. Separate raw response timer excludes barycenter spline and phase-reference setup. One binary year is 31457280 seconds. One sky/orientation, amplitude1e-22, native fdotT2=.2, epoch12345.",
+  "runs": [
+    {
+      "frequency_hz": 0.001,
+      "binary_years": 0.25,
+      "duration_seconds": 7864320.0,
+      "BW_fourier": 512,
+      "response_samples": 49,
+      "wavelet_time_pixels": 1024,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.001,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.7320000808686017e-05,
+          "wavelet_xyz_seconds": 0.000529230001848191,
+          "fourier_xyzae_seconds": 9.846000000834465e-05,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 2.3392109483984e-19,
+          "fourier_checksum": 2.3027513086584653e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.7379998937249183e-05,
+          "wavelet_xyz_seconds": 0.0005215100012719631,
+          "fourier_xyzae_seconds": 9.830999886617064e-05,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 2.3392109483984e-19,
+          "fourier_checksum": 2.3027513086584653e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.728999825194478e-05,
+          "wavelet_xyz_seconds": 0.0005158450012095273,
+          "fourier_xyzae_seconds": 9.845499880611897e-05,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 2.3392109483984e-19,
+          "fourier_checksum": 2.3027513086584653e-19
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.027320000808686018,
+        "min_block_mean": 0.02728999825194478,
+        "max_block_mean": 0.027379998937249184
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 0.5215100012719631,
+        "min_block_mean": 0.5158450012095273,
+        "max_block_mean": 0.529230001848191
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.09845499880611897,
+        "min_block_mean": 0.09830999886617064,
+        "max_block_mean": 0.09846000000834465
+      }
+    },
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 0.25,
+      "duration_seconds": 7864320.0,
+      "BW_fourier": 512,
+      "response_samples": 49,
+      "wavelet_time_pixels": 1024,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.843499882146716e-05,
+          "wavelet_xyz_seconds": 0.0005376449995674193,
+          "fourier_xyzae_seconds": 9.873999981209636e-05,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.843499882146716e-05,
+          "wavelet_xyz_seconds": 0.0005377050000242889,
+          "fourier_xyzae_seconds": 0.00010073999874293804,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 3.156499937176705e-05,
+          "wavelet_xyz_seconds": 0.0005358100007288158,
+          "fourier_xyzae_seconds": 9.871500078588724e-05,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.02843499882146716,
+        "min_block_mean": 0.02843499882146716,
+        "max_block_mean": 0.031564999371767044
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 0.5376449995674193,
+        "min_block_mean": 0.5358100007288158,
+        "max_block_mean": 0.5377050000242889
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.09873999981209636,
+        "min_block_mean": 0.09871500078588724,
+        "max_block_mean": 0.10073999874293804
+      }
+    },
+    {
+      "frequency_hz": 0.03,
+      "binary_years": 0.25,
+      "duration_seconds": 7864320.0,
+      "BW_fourier": 512,
+      "response_samples": 49,
+      "wavelet_time_pixels": 1024,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.03,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 3.008000086992979e-05,
+          "wavelet_xyz_seconds": 0.0005378499999642372,
+          "fourier_xyzae_seconds": 0.00010219000047072769,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 8.885685559831254e-17,
+          "fourier_checksum": -1.9466438413941288e-17
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 3.0025001615285872e-05,
+          "wavelet_xyz_seconds": 0.0005371199990622699,
+          "fourier_xyzae_seconds": 0.000102335000410676,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 8.885685559831254e-17,
+          "fourier_checksum": -1.9466438413941288e-17
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 3.0430001206696034e-05,
+          "wavelet_xyz_seconds": 0.0005407650000415743,
+          "fourier_xyzae_seconds": 0.00010180999990552664,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": 8.885685559831254e-17,
+          "fourier_checksum": -1.9466438413941288e-17
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.03008000086992979,
+        "min_block_mean": 0.030025001615285873,
+        "max_block_mean": 0.030430001206696033
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 0.5378499999642372,
+        "min_block_mean": 0.5371199990622699,
+        "max_block_mean": 0.5407650000415742
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.10219000047072768,
+        "min_block_mean": 0.10180999990552664,
+        "max_block_mean": 0.102335000410676
+      }
+    },
+    {
+      "frequency_hz": 0.001,
+      "binary_years": 1.0,
+      "duration_seconds": 31457280.0,
+      "BW_fourier": 512,
+      "response_samples": 199,
+      "wavelet_time_pixels": 4096,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.001,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00013041999889537692,
+          "wavelet_xyz_seconds": 0.002725889999419451,
+          "fourier_xyzae_seconds": 0.00010000000009313225,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": 8.373879350346013e-19,
+          "fourier_checksum": 5.950689495904858e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00013654999900609255,
+          "wavelet_xyz_seconds": 0.0027395250019617377,
+          "fourier_xyzae_seconds": 0.00010954499943181872,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": 8.373879350346013e-19,
+          "fourier_checksum": 5.950689495904858e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00012834500055760144,
+          "wavelet_xyz_seconds": 0.0027281149988994,
+          "fourier_xyzae_seconds": 9.886000072583556e-05,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": 8.373879350346013e-19,
+          "fourier_checksum": 5.950689495904858e-19
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.13041999889537692,
+        "min_block_mean": 0.12834500055760145,
+        "max_block_mean": 0.13654999900609255
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 2.7281149988994002,
+        "min_block_mean": 2.7258899994194508,
+        "max_block_mean": 2.739525001961738
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.10000000009313226,
+        "min_block_mean": 0.09886000072583556,
+        "max_block_mean": 0.10954499943181872
+      }
+    },
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 1.0,
+      "duration_seconds": 31457280.0,
+      "BW_fourier": 512,
+      "response_samples": 199,
+      "wavelet_time_pixels": 4096,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00013677499955520034,
+          "wavelet_xyz_seconds": 0.002801805001217872,
+          "fourier_xyzae_seconds": 0.00010069999843835831,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00013802999863401054,
+          "wavelet_xyz_seconds": 0.0028253050008788705,
+          "fourier_xyzae_seconds": 0.00010267999954521656,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00013913000002503396,
+          "wavelet_xyz_seconds": 0.0028082349989563228,
+          "fourier_xyzae_seconds": 0.00010068500181660056,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.13802999863401055,
+        "min_block_mean": 0.13677499955520034,
+        "max_block_mean": 0.13913000002503395
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 2.8082349989563227,
+        "min_block_mean": 2.801805001217872,
+        "max_block_mean": 2.8253050008788705
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.1006999984383583,
+        "min_block_mean": 0.10068500181660056,
+        "max_block_mean": 0.10267999954521656
+      }
+    },
+    {
+      "frequency_hz": 0.03,
+      "binary_years": 1.0,
+      "duration_seconds": 31457280.0,
+      "BW_fourier": 512,
+      "response_samples": 199,
+      "wavelet_time_pixels": 4096,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.03,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00014230999862775207,
+          "wavelet_xyz_seconds": 0.0028317950014024973,
+          "fourier_xyzae_seconds": 0.00010510999942198396,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -2.3990893277182855e-14,
+          "fourier_checksum": -1.2154423900909323e-16
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00014123500091955065,
+          "wavelet_xyz_seconds": 0.0028418600000441074,
+          "fourier_xyzae_seconds": 0.00010709000052884221,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -2.3990893277182855e-14,
+          "fourier_checksum": -1.2154423900909323e-16
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0001401399984024465,
+          "wavelet_xyz_seconds": 0.0028124399995431305,
+          "fourier_xyzae_seconds": 0.0001052100001834333,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -2.3990893277182855e-14,
+          "fourier_checksum": -1.2154423900909323e-16
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.14123500091955066,
+        "min_block_mean": 0.1401399984024465,
+        "max_block_mean": 0.14230999862775207
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 2.8317950014024973,
+        "min_block_mean": 2.8124399995431304,
+        "max_block_mean": 2.8418600000441074
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.1052100001834333,
+        "min_block_mean": 0.10510999942198396,
+        "max_block_mean": 0.10709000052884221
+      }
+    },
+    {
+      "frequency_hz": 0.001,
+      "binary_years": 4.0,
+      "duration_seconds": 125829120.0,
+      "BW_fourier": 512,
+      "response_samples": 797,
+      "wavelet_time_pixels": 16384,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.001,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0005836550006642938,
+          "wavelet_xyz_seconds": 0.014291405000258238,
+          "fourier_xyzae_seconds": 0.00010211999993771315,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": 3.3840773860359503e-18,
+          "fourier_checksum": 9.861989195901881e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0005817799991928041,
+          "wavelet_xyz_seconds": 0.014202364999800921,
+          "fourier_xyzae_seconds": 0.00010308000026270747,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": 3.3840773860359503e-18,
+          "fourier_checksum": 9.861989195901881e-19
+        },
+        {
+          "frequency_hz": 0.001,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0005807100003585219,
+          "wavelet_xyz_seconds": 0.014280365000013262,
+          "fourier_xyzae_seconds": 0.00010152500122785568,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": 3.3840773860359503e-18,
+          "fourier_checksum": 9.861989195901881e-19
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.5817799991928041,
+        "min_block_mean": 0.5807100003585219,
+        "max_block_mean": 0.5836550006642938
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 14.280365000013262,
+        "min_block_mean": 14.20236499980092,
+        "max_block_mean": 14.291405000258237
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.10211999993771315,
+        "min_block_mean": 0.10152500122785568,
+        "max_block_mean": 0.10308000026270747
+      }
+    },
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 4.0,
+      "duration_seconds": 125829120.0,
+      "BW_fourier": 512,
+      "response_samples": 797,
+      "wavelet_time_pixels": 16384,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006314549990929663,
+          "wavelet_xyz_seconds": 0.014858404998667538,
+          "fourier_xyzae_seconds": 0.00010572500061243772,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006487549981102347,
+          "wavelet_xyz_seconds": 0.014880025000311435,
+          "fourier_xyzae_seconds": 0.00010660500032827258,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006443649996072054,
+          "wavelet_xyz_seconds": 0.014875229999888688,
+          "fourier_xyzae_seconds": 0.00010717500001192093,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.6443649996072054,
+        "min_block_mean": 0.6314549990929663,
+        "max_block_mean": 0.6487549981102347
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 14.875229999888688,
+        "min_block_mean": 14.858404998667538,
+        "max_block_mean": 14.880025000311434
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.10660500032827258,
+        "min_block_mean": 0.10572500061243773,
+        "max_block_mean": 0.10717500001192093
+      }
+    },
+    {
+      "frequency_hz": 0.03,
+      "binary_years": 4.0,
+      "duration_seconds": 125829120.0,
+      "BW_fourier": 512,
+      "response_samples": 797,
+      "wavelet_time_pixels": 16384,
+      "wavelet_layers": 2,
+      "blocks": [
+        {
+          "frequency_hz": 0.03,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006630750000476837,
+          "wavelet_xyz_seconds": 0.01501767999958247,
+          "fourier_xyzae_seconds": 0.00011364000150933862,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -2.1112416126587192e-14,
+          "fourier_checksum": 2.0979493290771002e-17
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006613399996422231,
+          "wavelet_xyz_seconds": 0.015079955002292991,
+          "fourier_xyzae_seconds": 0.00011261999839916826,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -2.1112416126587192e-14,
+          "fourier_checksum": 2.0979493290771002e-17
+        },
+        {
+          "frequency_hz": 0.03,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006726750009693205,
+          "wavelet_xyz_seconds": 0.015091619999147952,
+          "fourier_xyzae_seconds": 0.00011489999946206808,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -2.1112416126587192e-14,
+          "fourier_checksum": 2.0979493290771002e-17
+        }
+      ],
+      "response_ms": {
+        "median_block_mean": 0.6630750000476837,
+        "min_block_mean": 0.6613399996422231,
+        "max_block_mean": 0.6726750009693205
+      },
+      "wavelet_xyz_ms": {
+        "median_block_mean": 15.07995500229299,
+        "min_block_mean": 15.01767999958247,
+        "max_block_mean": 15.091619999147952
+      },
+      "fourier_xyzae_ms": {
+        "median_block_mean": 0.11364000150933862,
+        "min_block_mean": 0.11261999839916825,
+        "max_block_mean": 0.11489999946206808
+      }
+    }
+  ],
+  "executable_sha256": "65a19eaff1e2cd5851fb28064bf96d605c5bd905e7bdd0b5a56e59b5d9e46c5a",
+  "measurement_runner_sha256": "c5645673011835d9ee8f6df054c00539a053f608d239d55bbd04baafb5330a2f"
+}

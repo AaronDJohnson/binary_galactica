@@ -43,8 +43,7 @@ from .types import WaveformResult
 def GLASS_TO_CONTINUOUS(T: ArrayLike) -> Array:
     """Return the multiplier from raw GLASS units to continuous FT units.
 
-    ``T`` may be traced; :func:`binary_galactica.glass.ucb_waveform`
-    intentionally keeps it dynamic.
+    ``T`` may be traced, including when differentiating observation duration.
     """
     return jnp.sqrt(T)
 

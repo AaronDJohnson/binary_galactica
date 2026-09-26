@@ -77,3 +77,41 @@ def test_safety_widens_the_band_only_through_the_snr_term(injection, glass_param
 def test_rejects_too_short_a_parameter_vector(injection):
     with pytest.raises(ValueError, match="at least 8"):
         ucb_alignment(np.zeros(7), injection["T"], 1024)
+
+
+@pytest.mark.parametrize("params", [1.0, np.zeros((1, 8)), np.zeros((8, 8))])
+def test_alignment_rejects_nonvector_parameters(params, injection):
+    with pytest.raises(ValueError, match="one-dimensional"):
+        ucb_alignment(params, injection["T"], 1024)
+
+
+@pytest.mark.parametrize(
+    "segment_qmin", [True, np.bool_(True), 1.5, 2.0, np.nan, np.inf]
+)
+def test_alignment_requires_an_integer_segment_origin(
+    segment_qmin, injection, glass_params
+):
+    with pytest.raises(ValueError, match="segment_qmin must be an integer"):
+        ucb_alignment(glass_params, injection["T"], 1024, segment_qmin=segment_qmin)
+
+
+@pytest.mark.parametrize("integer_type", [int, np.int32, np.int64, np.uint64])
+def test_alignment_accepts_integer_grid_and_segment_values(
+    integer_type, injection, glass_params
+):
+    aligned = ucb_alignment(
+        glass_params,
+        injection["T"],
+        integer_type(16),
+        segment_qmin=integer_type(8000),
+    )
+    assert aligned.BW == 32  # Preserve GLASS's floor on short grids.
+    assert aligned.imin == -132
+    assert aligned.imax == -100
+    assert isinstance(aligned.imin, (int, np.integer))
+    assert isinstance(aligned.imax, (int, np.integer))
+
+
+def test_alignment_rejects_a_fractional_grid_length(injection, glass_params):
+    with pytest.raises(ValueError, match="N must be a positive integer"):
+        ucb_alignment(glass_params, injection["T"], 1.5)

@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from . import _validation
 from .constants import AU, CLIGHT, FSTAR, LARM, PI2, SACC, SLOC, SPS, YEAR
 
 
@@ -114,7 +115,7 @@ def ucb_bandwidth(
     T
         Observation time [s].
     N
-        Length of the full frequency grid; sets the ``Nmax`` clamp.
+        Positive integer length of the full frequency grid; sets the ``Nmax`` clamp.
     L
         Arm length used by the analytic noise curve [m].
     fstar
@@ -132,6 +133,7 @@ def ucb_bandwidth(
     :func:`ucb_bw` if you want that number directly.
 
     """
+    N = _validation.integer(N, "N", minimum=1)
     Nmin = 16
     Nmax = int(2 ** int(np.log2(N / 2)))
     sqT = np.sqrt(T)

@@ -3,8 +3,36 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import binary_galactica.glass as glass
+
+
+@pytest.mark.parametrize("bin_lo", [7868.1, np.nan, np.inf, True])
+def test_window_origin_rejects_noninteger_indices(glass_params, bin_lo):
+    with pytest.raises(ValueError, match="bin_lo must be an integer"):
+        glass.template_on_window(
+            glass_params, T=7_884_000.0, BW=32, bin_lo=bin_lo, n_bins=32
+        )
+
+
+@pytest.mark.parametrize("n_bins", [2.5, np.nan, np.inf, True, -1])
+def test_window_length_rejects_invalid_counts(glass_params, n_bins):
+    with pytest.raises(ValueError, match="n_bins must be a non-negative integer"):
+        glass.template_on_window(
+            glass_params, T=7_884_000.0, BW=32, bin_lo=7868, n_bins=n_bins
+        )
+
+
+def test_window_accepts_numpy_integer_indices_and_empty_windows(glass_params):
+    result = glass.template_on_window(
+        glass_params,
+        T=7_884_000.0,
+        BW=32,
+        bin_lo=np.int64(-10),
+        n_bins=np.int64(0),
+    )
+    assert result.shape == (2, 0)
 
 
 def test_template_on_window_matches_direct_overlap(glass_params, injection):

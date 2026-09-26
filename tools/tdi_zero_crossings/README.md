@@ -8,11 +8,13 @@ both sides to distinguish a crossing from a tangent zero. Projected Brentq and
 TOMS748 provide comparison methods. The code reports evidence about candidates;
 it does not change amplitude signs or construct phase jumps.
 
-The prototype stays under `tools/` because the public waveform API does not
-currently expose the arbitrary-time, demodulated complex TDI callback needed
-for this experiment. Integration would also require a caller to define its
-candidate-resolution, sign-continuation, and interpolation policy. The
-synthetic comparison does not validate those production choices.
+The production package exposes a native arbitrary-time, demodulated complex
+TDI callback. Its mainline removes the reference-spacecraft phase and uses
+local complex-polynomial interpolation, which avoids singular polar
+coordinates at zeros. The derivative-based Hermite/Gauss--Newton utility is
+retained for numerical comparisons. This SciPy prototype remains a separate
+experimental comparator for isolated scalar candidates; its synthetic results
+do not validate the mainline interpolation policy.
 
 From the repository root, use Python 3.10 or newer with NumPy, SciPy, and pytest:
 

@@ -69,6 +69,7 @@ def test_native_waveform_matches_glass_c(case, reference):
         BW=case["BW"],
         t0=case["t0"],
         fmt=case["fmt"],
+        backend="fourier",
     )
     assert int(actual["qmin"]) == case["qmin"]
     assert int(actual["qmin"]) + case["BW"] // 2 == case["q"]

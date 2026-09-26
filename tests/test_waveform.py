@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from tests.conftest import reference_polarizations
 
 from binary_galactica import GBParams, amplitudes, frequency, phase, polarizations
+from tests.conftest import reference_polarizations
 
 
 def test_matches_independent_reference(params, t):

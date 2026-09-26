@@ -1,0 +1,424 @@
+{
+  "configuration": {
+    "BW": 2048,
+    "epoch_seconds": 12345.0,
+    "quick": false,
+    "repeats": 30,
+    "response_samples": [
+      128,
+      512,
+      1024
+    ]
+  },
+  "generated_at_utc": "2026-09-18T18:40:55.390571+00:00",
+  "physical_validity": "not assessed; use pinned spline C fixtures for response validity",
+  "provenance": {
+    "devices": [
+      "TFRT_CPU_0"
+    ],
+    "git_head": "9e6a9ce23897671954cdd452cedebe2d5cf12246",
+    "git_status": "M ../../README.md\n M ../../docs/performance.md\n M ../../docs/quality-review.md\n M ../../examples/quickstart.py\n M ../../examples/typing_contract.py\n M ../../pyproject.toml\n M __init__.py\n M detector.py\n M glass/__init__.py\n M glass/_validation.py\n M glass/alignment.py\n M glass/bandwidth.py\n M glass/compat.py\n M glass/convert.py\n M glass/proposals.py\n M glass/waveform.py\n M parameters.py\n M ../../tests/glass/test_alignment.py\n M ../../tests/glass/test_bandwidth.py\n M ../../tests/glass/test_compat.py\n M ../../tests/glass/test_proposals.py\n M ../../tests/test_detector.py\n M ../../tests/test_glass_reference.py\n M ../../tests/test_waveform.py\n M ../../tools/tdi_zero_crossings/README.md\n?? ../../docs/superpowers/plans/2026-09-18-tdi-onfly.md\n?? ../../docs/superpowers/specs/2026-09-18-tdi-onfly-design.md\n?? glass/fourier.py\n?? glass/interpolation.py\n?? glass/onfly.py\n?? ../../tests/data/onfly/\n?? ../../tests/glass/test_carrier.py\n?? ../../tests/glass/test_interpolation.py\n?? ../../tests/glass/test_onfly_response.py\n?? ../../tests/test_onfly.py\n?? ../../tools/benchmark_onfly.py\n?? ../../tools/onfly_reference/",
+    "jax": "0.7.2",
+    "jax_backend": "cpu",
+    "jaxlib": "0.7.2",
+    "logical_cpu_count": 16,
+    "machine": "arm64",
+    "numpy": "2.3.5",
+    "package_directory": "/Users/aaron/Documents/lisa/binary_galactica/src/binary_galactica",
+    "package_version": "0.3.0",
+    "platform": "macOS-14.3.1-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.11.8 | packaged by conda-forge | (main, Feb 16 2024, 20:49:36) [Clang 16.0.6 ]",
+    "python_executable": "/Users/aaron/miniconda3/bin/python",
+    "source_tree_sha256": "7339d97b52c55fe467de8703ba7148c66b33bd3e249669b1a700c520a1eef88d"
+  },
+  "purpose": "dense-grid interpolation convergence and warmed waveform latency",
+  "sources": [
+    {
+      "accuracy": [
+        {
+          "max_relative_l2": 7.467694484892451e-07,
+          "relative_l2_by_channel": {
+            "A": 2.906964424451321e-07,
+            "E": 5.916679530407156e-07,
+            "X": 2.8884129342533224e-10,
+            "Y": 7.467694484892451e-07,
+            "Z": 6.923753721441849e-07
+          },
+          "response_samples": 128
+        },
+        {
+          "max_relative_l2": 2.883260947753375e-09,
+          "relative_l2_by_channel": {
+            "A": 1.199281892509181e-09,
+            "E": 2.331189197532371e-09,
+            "X": 1.1017085286667956e-12,
+            "Y": 2.883260947753375e-09,
+            "Z": 2.856412029926226e-09
+          },
+          "response_samples": 512
+        },
+        {
+          "max_relative_l2": 1.9721631641594683e-10,
+          "relative_l2_by_channel": {
+            "A": 8.280248491215602e-11,
+            "E": 1.5660497303042063e-10,
+            "X": 6.816156359410082e-14,
+            "Y": 1.9110735560181989e-10,
+            "Z": 1.9721631641594683e-10
+          },
+          "response_samples": 1024
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "fourier_baseline": {
+        "backend": "fourier",
+        "max_relative_l2": 0.0033902613427242373,
+        "meaning": "legacy response difference; not an interpolation-accuracy metric",
+        "relative_l2_by_channel": {
+          "A": 0.0033902613427242373,
+          "E": 0.001935960291528959,
+          "X": 0.0032683909686502073,
+          "Y": 0.0019360656430836213,
+          "Z": 0.003343120111163339
+        }
+      },
+      "frequency_hz": 0.001,
+      "name": "low_frequency_edgeon",
+      "native_parameters": [
+        7889.650000000001,
+        -0.62,
+        0.37,
+        -50.65687204586901,
+        0.02,
+        0.21,
+        0.17,
+        0.2
+      ],
+      "source_max_relative_l2": 7.467694484892451e-07
+    },
+    {
+      "accuracy": [
+        {
+          "max_relative_l2": 8.86290851181398e-06,
+          "relative_l2_by_channel": {
+            "A": 5.135141736608178e-06,
+            "E": 2.8248642189829553e-06,
+            "X": 8.86290851181398e-06,
+            "Y": 3.465480402435145e-07,
+            "Z": 9.21676910055384e-07
+          },
+          "response_samples": 128
+        },
+        {
+          "max_relative_l2": 3.568057596047932e-08,
+          "relative_l2_by_channel": {
+            "A": 2.0666014399475954e-08,
+            "E": 1.1363577148426315e-08,
+            "X": 3.568057596047932e-08,
+            "Y": 1.3234880967501614e-09,
+            "Z": 3.54840202835452e-09
+          },
+          "response_samples": 512
+        },
+        {
+          "max_relative_l2": 1.980024551179436e-09,
+          "relative_l2_by_channel": {
+            "A": 1.1487903169569298e-09,
+            "E": 6.334348682948706e-10,
+            "X": 1.980024551179436e-09,
+            "Y": 7.759228689235814e-11,
+            "Z": 2.4338676345771563e-10
+          },
+          "response_samples": 1024
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "fourier_baseline": {
+        "backend": "fourier",
+        "max_relative_l2": 0.0007019870615466955,
+        "meaning": "legacy response difference; not an interpolation-accuracy metric",
+        "relative_l2_by_channel": {
+          "A": 0.00022933528900301065,
+          "E": 0.0002833995663323682,
+          "X": 0.0007019870615466955,
+          "Y": 0.0005780525121991315,
+          "Z": 0.0006799903293081054
+        }
+      },
+      "frequency_hz": 0.005,
+      "name": "mid_frequency",
+      "native_parameters": [
+        157788.25,
+        0.27,
+        1.48,
+        -50.65687204586901,
+        -0.58,
+        0.64,
+        0.48,
+        -0.08
+      ],
+      "source_max_relative_l2": 8.86290851181398e-06
+    },
+    {
+      "accuracy": [
+        {
+          "max_relative_l2": 0.004328955064889235,
+          "relative_l2_by_channel": {
+            "A": 0.003333629663429039,
+            "E": 0.003340245921704785,
+            "X": 0.004328955064889235,
+            "Y": 0.00397734120949723,
+            "Z": 0.0035132185723409514
+          },
+          "response_samples": 128
+        },
+        {
+          "max_relative_l2": 4.895556416552639e-06,
+          "relative_l2_by_channel": {
+            "A": 1.2141561793899883e-06,
+            "E": 3.314721100970362e-06,
+            "X": 1.1100541974960074e-06,
+            "Y": 4.895556416552639e-06,
+            "Z": 1.416982072198745e-06
+          },
+          "response_samples": 512
+        },
+        {
+          "max_relative_l2": 3.1368389579166556e-07,
+          "relative_l2_by_channel": {
+            "A": 7.601491982919864e-08,
+            "E": 2.1224250590499748e-07,
+            "X": 6.94694681023419e-08,
+            "Y": 3.1368389579166556e-07,
+            "Z": 8.882896396987049e-08
+          },
+          "response_samples": 1024
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "fourier_baseline": {
+        "backend": "fourier",
+        "max_relative_l2": 0.0007609344175061103,
+        "meaning": "legacy response difference; not an interpolation-accuracy metric",
+        "relative_l2_by_channel": {
+          "A": 0.00035272973763415035,
+          "E": 0.00020478477638831544,
+          "X": 0.0006508881293170708,
+          "Y": 0.0005573978538754821,
+          "Z": 0.0007609344175061103
+        }
+      },
+      "frequency_hz": 0.005,
+      "name": "mid_frequency_fddot",
+      "native_parameters": [
+        631152.25,
+        0.81,
+        2.5900000000000003,
+        -50.65687204586901,
+        0.34,
+        1.07,
+        0.79,
+        0.2,
+        2.0
+      ],
+      "source_max_relative_l2": 0.004328955064889235
+    },
+    {
+      "accuracy": [
+        {
+          "max_relative_l2": 0.13441250349391223,
+          "relative_l2_by_channel": {
+            "A": 0.13441250349391223,
+            "E": 0.10640641898625967,
+            "X": 0.1264266625297115,
+            "Y": 0.11584956095063695,
+            "Z": 0.12876183171954964
+          },
+          "response_samples": 128
+        },
+        {
+          "max_relative_l2": 5.336832351862236e-09,
+          "relative_l2_by_channel": {
+            "A": 3.440937852155162e-09,
+            "E": 4.269699448168011e-09,
+            "X": 3.4817683234240786e-09,
+            "Y": 5.336832351862236e-09,
+            "Z": 3.907842179238702e-09
+          },
+          "response_samples": 512
+        },
+        {
+          "max_relative_l2": 3.3457312067212344e-10,
+          "relative_l2_by_channel": {
+            "A": 2.074131625032115e-10,
+            "E": 2.6687286558760483e-10,
+            "X": 2.1514507541191706e-10,
+            "Y": 3.3457312067212344e-10,
+            "Z": 2.319315445598003e-10
+          },
+          "response_samples": 1024
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "fourier_baseline": {
+        "backend": "fourier",
+        "max_relative_l2": 0.18534225824567385,
+        "meaning": "legacy response difference; not an interpolation-accuracy metric",
+        "relative_l2_by_channel": {
+          "A": 0.08325911273574692,
+          "E": 0.05595174948609789,
+          "X": 0.17553889000078945,
+          "Y": 0.16501073014996137,
+          "Z": 0.18534225824567385
+        }
+      },
+      "frequency_hz": 0.03,
+      "name": "high_frequency",
+      "native_parameters": [
+        946728.25,
+        -0.17,
+        3.7,
+        -50.65687204586901,
+        0.91,
+        1.5,
+        1.0999999999999999,
+        0.05
+      ],
+      "source_max_relative_l2": 0.13441250349391223
+    }
+  ],
+  "timing": [
+    {
+      "first_call_ms": 2.646333,
+      "name": "onfly_native_public_call",
+      "summary": {
+        "max_ms": 2.498834,
+        "mean_ms": 2.2995416333333334,
+        "median_ms": 2.2816875,
+        "min_ms": 2.061625
+      },
+      "warm_repeat_ms": [
+        2.138125,
+        2.451667,
+        2.28075,
+        2.324167,
+        2.226208,
+        2.162292,
+        2.498834,
+        2.1765,
+        2.3435,
+        2.282625,
+        2.358833,
+        2.360875,
+        2.267334,
+        2.249792,
+        2.061625,
+        2.32625,
+        2.364167,
+        2.2705,
+        2.398375,
+        2.325333,
+        2.39125,
+        2.403417,
+        2.276958,
+        2.171916,
+        2.251083,
+        2.240375,
+        2.263041,
+        2.211708,
+        2.453666,
+        2.455083
+      ]
+    },
+    {
+      "first_call_ms": 665.34525,
+      "name": "onfly_outer_jit",
+      "summary": {
+        "max_ms": 3.301583,
+        "mean_ms": 2.5626513333333336,
+        "median_ms": 2.493208,
+        "min_ms": 2.012792
+      },
+      "warm_repeat_ms": [
+        2.016459,
+        2.107125,
+        2.2845,
+        2.112083,
+        2.342,
+        2.205041,
+        2.229584,
+        2.2215,
+        3.080584,
+        2.974708,
+        2.989708,
+        2.878541,
+        2.932875,
+        3.301583,
+        3.11725,
+        2.809792,
+        2.586292,
+        3.282041,
+        2.382125,
+        2.652875,
+        2.512333,
+        2.474083,
+        2.949542,
+        2.62825,
+        2.722042,
+        2.421041,
+        2.413041,
+        2.012792,
+        2.07425,
+        2.1655
+      ]
+    },
+    {
+      "first_call_ms": 0.609167,
+      "name": "fourier_native_public_call",
+      "summary": {
+        "max_ms": 0.542083,
+        "mean_ms": 0.4018709000000001,
+        "median_ms": 0.389667,
+        "min_ms": 0.341584
+      },
+      "warm_repeat_ms": [
+        0.542083,
+        0.439834,
+        0.431542,
+        0.48375,
+        0.492291,
+        0.460417,
+        0.398542,
+        0.434458,
+        0.37725,
+        0.363875,
+        0.369667,
+        0.361625,
+        0.45475,
+        0.351292,
+        0.358208,
+        0.401708,
+        0.341584,
+        0.34425,
+        0.423875,
+        0.357209,
+        0.407709,
+        0.374541,
+        0.363875,
+        0.403625,
+        0.367958,
+        0.34675,
+        0.364917,
+        0.4105,
+        0.44725,
+        0.380792
+      ]
+    }
+  ],
+  "timing_source": "low_frequency_edgeon"
+}

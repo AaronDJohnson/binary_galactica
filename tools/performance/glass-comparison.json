@@ -1,0 +1,613 @@
+{
+  "provenance": {
+    "package_directory": "/Users/aaron/Documents/lisa/binary_galactica/src/binary_galactica",
+    "package_version": "0.3.0",
+    "source_tree_sha256": "b0f22dee0bb65c283570a5c2d0c690247d00ab6a290e375e0346cbac1bb11c89",
+    "git_head": "9e6a9ce23897671954cdd452cedebe2d5cf12246",
+    "git_status": "M ../../NOTICE\n M ../../README.md\n M ../../docs/performance.md\n M ../../docs/quality-review.md\n M ../../docs/superpowers/specs/2026-09-13-gbonfly-glass-migration.md\n M ../../examples/quickstart.py\n M ../../examples/typing_contract.py\n M ../../pyproject.toml\n M __init__.py\n M detector.py\n M glass/__init__.py\n M glass/_validation.py\n M glass/alignment.py\n M glass/bandwidth.py\n M glass/compat.py\n M glass/convert.py\n M glass/proposals.py\n M glass/waveform.py\n M parameters.py\n M ../../tests/glass/test_alignment.py\n M ../../tests/glass/test_bandwidth.py\n M ../../tests/glass/test_compat.py\n M ../../tests/glass/test_proposals.py\n M ../../tests/test_detector.py\n M ../../tests/test_glass_reference.py\n M ../../tests/test_waveform.py\n M ../../tools/benchmark_waveform.py\n M ../../tools/tdi_zero_crossings/README.md\n?? ../../docs/onfly-glass-comparison.md\n?? ../../docs/superpowers/plans/2026-09-18-tdi-onfly-performance.md\n?? ../../docs/superpowers/plans/2026-09-18-tdi-onfly.md\n?? ../../docs/superpowers/specs/2026-09-18-tdi-onfly-design.md\n?? glass/fourier.py\n?? glass/interpolation.py\n?? glass/onfly.py\n?? glass/sparse.py\n?? ../../tests/data/onfly/\n?? ../../tests/glass/test_carrier.py\n?? ../../tests/glass/test_interpolation.py\n?? ../../tests/glass/test_onfly_response.py\n?? ../../tests/glass/test_sparse.py\n?? ../../tests/test_onfly.py\n?? ../../tests/test_onfly_derivatives.py\n?? ../../tools/benchmark_onfly.py\n?? ../../tools/compare_glass_speed.py\n?? ../../tools/diagnose_onfly.py\n?? ../../tools/native_glass_timing/\n?? ../../tools/onfly_reference/\n?? ../../tools/performance/fourier-workloads.json\n?? ../../tools/performance/glass-native.json\n?? ../../tools/performance/onfly-diagnosis.json\n?? ../../tools/performance/onfly-hermite.json\n?? ../../tools/performance/onfly-initial.json\n?? ../../tools/performance/onfly-validation.json\n?? ../../tools/performance/onfly-workloads.json\n?? ../../tools/performance/onfly.json\n?? ../../tools/validate_onfly.py",
+    "python": "3.11.8 | packaged by conda-forge | (main, Feb 16 2024, 20:49:36) [Clang 16.0.6 ]",
+    "python_executable": "/Users/aaron/miniconda3/bin/python",
+    "platform": "macOS-14.3.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "logical_cpu_count": 16,
+    "jax": "0.7.2",
+    "jaxlib": "0.7.2",
+    "numpy": "2.3.5",
+    "jax_backend": "cpu",
+    "devices": [
+      "TFRT_CPU_0"
+    ]
+  },
+  "native_executable": "/private/tmp/glass-matched-native/native_ucb_timing",
+  "native_executable_sha256": "ef0a1bcdc309236dbc33b05b5cfe7741efc0a0464d5d155c8f9892fb9030d87c",
+  "script_sha256": "7acb78fade1de406997d63caf34db2fadc62235b31903fc193f238e61244532c",
+  "thread_environment": {
+    "XLA_FLAGS": null,
+    "OMP_NUM_THREADS": null,
+    "OPENBLAS_NUM_THREADS": null
+  },
+  "protocol": "Same sources, duration, epoch and BW512. Three blocks by default; each JAX call synchronized, native C averages same repeat count. JAX compilation and native orbit/basis setup excluded. Public JAX uses NumPy inputs; outer jit uses resident arrays, dynamic T/epoch.",
+  "limitations": "Only legacy Fourier has matching output contracts. GLASS response includes orbit spline lookup and signed-polar extraction; JAX returns complex XYZ with analytic or supplied geometry. Native source splines and reference phases are prepared outside the response timer. Full onfly costs compare JAX Fourier output with native WDM output.",
+  "repeats": 200,
+  "blocks": 3,
+  "runs": [
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 0.25,
+      "T": 7864320,
+      "t0": 12345,
+      "params": [
+        39321.85,
+        0.27,
+        1.11,
+        -50.65687204586901,
+        -0.37,
+        0.63,
+        0.41,
+        0.2
+      ],
+      "BW": 512,
+      "native_response_samples": 49,
+      "jax_default_response_samples": 32,
+      "numerical_checks": {
+        "response_supplied_geometry": 3.526978631708025e-09,
+        "response_analytic": 1.8628918083946228e-06,
+        "fourier_by_channel": {
+          "X": 8.916136573287216e-12,
+          "Y": 8.87822755840661e-12,
+          "Z": 9.51848304668231e-12,
+          "A": 9.39604949391697e-12,
+          "E": 8.804832976323568e-12
+        }
+      },
+      "jax": {
+        "response_analytic": {
+          "block_means_ms": [
+            0.034765835,
+            0.035883955,
+            0.03555979
+          ],
+          "median_block_mean_ms": 0.03555979,
+          "min_block_mean_ms": 0.034765835,
+          "max_block_mean_ms": 0.035883955
+        },
+        "response_supplied_geometry": {
+          "block_means_ms": [
+            0.03984104,
+            0.039266045,
+            0.03681792
+          ],
+          "median_block_mean_ms": 0.039266045,
+          "min_block_mean_ms": 0.03681792,
+          "max_block_mean_ms": 0.03984104
+        },
+        "fourier_outer_jit": {
+          "block_means_ms": [
+            0.14175770499999998,
+            0.142049165,
+            0.142963125
+          ],
+          "median_block_mean_ms": 0.142049165,
+          "min_block_mean_ms": 0.14175770499999998,
+          "max_block_mean_ms": 0.142963125
+        },
+        "fourier_public": {
+          "block_means_ms": [
+            0.169670835,
+            0.171172295,
+            0.169215
+          ],
+          "median_block_mean_ms": 0.169670835,
+          "min_block_mean_ms": 0.169215,
+          "max_block_mean_ms": 0.171172295
+        },
+        "onfly_default_outer_jit": {
+          "block_means_ms": [
+            0.135185415,
+            0.137133335,
+            0.13597875
+          ],
+          "median_block_mean_ms": 0.13597875,
+          "min_block_mean_ms": 0.135185415,
+          "max_block_mean_ms": 0.137133335
+        },
+        "onfly_default_public": {
+          "block_means_ms": [
+            0.15806020999999998,
+            0.15628208,
+            0.15705854500000002
+          ],
+          "median_block_mean_ms": 0.15705854500000002,
+          "min_block_mean_ms": 0.15628208,
+          "max_block_mean_ms": 0.15806020999999998
+        },
+        "onfly_equal_samples_outer_jit": {
+          "block_means_ms": [
+            0.16481604500000002,
+            0.16677520499999998,
+            0.170281665
+          ],
+          "median_block_mean_ms": 0.16677520499999998,
+          "min_block_mean_ms": 0.16481604500000002,
+          "max_block_mean_ms": 0.170281665
+        },
+        "onfly_equal_samples_public": {
+          "block_means_ms": [
+            0.18631229000000002,
+            0.184514375,
+            0.18443020499999999
+          ],
+          "median_block_mean_ms": 0.184514375,
+          "min_block_mean_ms": 0.18443020499999999,
+          "max_block_mean_ms": 0.18631229000000002
+        }
+      },
+      "glass": {
+        "response": {
+          "block_means_ms": [
+            0.029815000016242266,
+            0.029840001370757818,
+            0.028310001362115145
+          ],
+          "median_block_mean_ms": 0.029815000016242266,
+          "min_block_mean_ms": 0.028310001362115145,
+          "max_block_mean_ms": 0.029840001370757818
+        },
+        "fourier_xyzae": {
+          "block_means_ms": [
+            0.10464000049978495,
+            0.10368499904870987,
+            0.10423999978229403
+          ],
+          "median_block_mean_ms": 0.10423999978229403,
+          "min_block_mean_ms": 0.10368499904870987,
+          "max_block_mean_ms": 0.10464000049978495
+        },
+        "wavelet_xyz": {
+          "block_means_ms": [
+            0.5738999997265637,
+            0.5704000010155141,
+            0.5713600013405085
+          ],
+          "median_block_mean_ms": 0.5713600013405085,
+          "min_block_mean_ms": 0.5704000010155141,
+          "max_block_mean_ms": 0.5738999997265637
+        }
+      },
+      "native_blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.9815000016242265e-05,
+          "wavelet_xyz_seconds": 0.0005738999997265637,
+          "fourier_xyzae_seconds": 0.00010464000049978495,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.984000137075782e-05,
+          "wavelet_xyz_seconds": 0.0005704000010155142,
+          "fourier_xyzae_seconds": 0.00010368499904870987,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 0.25,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 49,
+          "wavelet_time_pixels": 1024,
+          "wavelet_layers": 2,
+          "response_seconds": 2.8310001362115144e-05,
+          "wavelet_xyz_seconds": 0.0005713600013405085,
+          "fourier_xyzae_seconds": 0.00010423999978229404,
+          "wavelet_active_pixels": 2048,
+          "wavelet_checksum": -4.9890261079069186e-17,
+          "fourier_checksum": -6.668457790864495e-20
+        }
+      ]
+    },
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 1.0,
+      "T": 31457280,
+      "t0": 12345,
+      "params": [
+        157286.65,
+        0.27,
+        1.11,
+        -50.65687204586901,
+        -0.37,
+        0.63,
+        0.41,
+        0.2
+      ],
+      "BW": 512,
+      "native_response_samples": 199,
+      "jax_default_response_samples": 128,
+      "numerical_checks": {
+        "response_supplied_geometry": 5.141616059240771e-10,
+        "response_analytic": 1.318055427868409e-07,
+        "fourier_by_channel": {
+          "X": 4.797767298979151e-11,
+          "Y": 4.595647243955755e-11,
+          "Z": 4.7725156047938666e-11,
+          "A": 4.846329840856901e-11,
+          "E": 4.5748596702166656e-11
+        }
+      },
+      "jax": {
+        "response_analytic": {
+          "block_means_ms": [
+            0.090432295,
+            0.089349375,
+            0.09185104
+          ],
+          "median_block_mean_ms": 0.090432295,
+          "min_block_mean_ms": 0.089349375,
+          "max_block_mean_ms": 0.09185104
+        },
+        "response_supplied_geometry": {
+          "block_means_ms": [
+            0.09530833500000001,
+            0.0929625,
+            0.08938708000000001
+          ],
+          "median_block_mean_ms": 0.0929625,
+          "min_block_mean_ms": 0.08938708000000001,
+          "max_block_mean_ms": 0.09530833500000001
+        },
+        "fourier_outer_jit": {
+          "block_means_ms": [
+            0.14520229,
+            0.14541395999999998,
+            0.144892085
+          ],
+          "median_block_mean_ms": 0.14520229,
+          "min_block_mean_ms": 0.144892085,
+          "max_block_mean_ms": 0.14541395999999998
+        },
+        "fourier_public": {
+          "block_means_ms": [
+            0.17262791500000002,
+            0.17663625,
+            0.173050415
+          ],
+          "median_block_mean_ms": 0.173050415,
+          "min_block_mean_ms": 0.17262791500000002,
+          "max_block_mean_ms": 0.17663625
+        },
+        "onfly_default_outer_jit": {
+          "block_means_ms": [
+            0.217835,
+            0.22107979,
+            0.2345775
+          ],
+          "median_block_mean_ms": 0.22107979,
+          "min_block_mean_ms": 0.217835,
+          "max_block_mean_ms": 0.2345775
+        },
+        "onfly_default_public": {
+          "block_means_ms": [
+            0.24644125,
+            0.24475458,
+            0.24435479000000002
+          ],
+          "median_block_mean_ms": 0.24475458,
+          "min_block_mean_ms": 0.24435479000000002,
+          "max_block_mean_ms": 0.24644125
+        },
+        "onfly_equal_samples_outer_jit": {
+          "block_means_ms": [
+            0.29528229,
+            0.292925,
+            0.29171354
+          ],
+          "median_block_mean_ms": 0.292925,
+          "min_block_mean_ms": 0.29171354,
+          "max_block_mean_ms": 0.29528229
+        },
+        "onfly_equal_samples_public": {
+          "block_means_ms": [
+            0.32186291499999997,
+            0.31111208500000004,
+            0.317865
+          ],
+          "median_block_mean_ms": 0.317865,
+          "min_block_mean_ms": 0.31111208500000004,
+          "max_block_mean_ms": 0.32186291499999997
+        }
+      },
+      "glass": {
+        "response": {
+          "block_means_ms": [
+            0.1444850000552833,
+            0.14648000011220574,
+            0.14282000018283725
+          ],
+          "median_block_mean_ms": 0.1444850000552833,
+          "min_block_mean_ms": 0.14282000018283725,
+          "max_block_mean_ms": 0.14648000011220574
+        },
+        "fourier_xyzae": {
+          "block_means_ms": [
+            0.10624000104144216,
+            0.10603999951854348,
+            0.10597500018775463
+          ],
+          "median_block_mean_ms": 0.10603999951854348,
+          "min_block_mean_ms": 0.10597500018775463,
+          "max_block_mean_ms": 0.10624000104144216
+        },
+        "wavelet_xyz": {
+          "block_means_ms": [
+            2.939549998845905,
+            2.9608650016598403,
+            2.951829999219626
+          ],
+          "median_block_mean_ms": 2.951829999219626,
+          "min_block_mean_ms": 2.939549998845905,
+          "max_block_mean_ms": 2.9608650016598403
+        }
+      },
+      "native_blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0001444850000552833,
+          "wavelet_xyz_seconds": 0.002939549998845905,
+          "fourier_xyzae_seconds": 0.00010624000104144216,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00014648000011220576,
+          "wavelet_xyz_seconds": 0.0029608650016598403,
+          "fourier_xyzae_seconds": 0.00010603999951854349,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 1,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 199,
+          "wavelet_time_pixels": 4096,
+          "wavelet_layers": 2,
+          "response_seconds": 0.00014282000018283724,
+          "wavelet_xyz_seconds": 0.0029518299992196263,
+          "fourier_xyzae_seconds": 0.00010597500018775463,
+          "wavelet_active_pixels": 8192,
+          "wavelet_checksum": -8.690058168072142e-17,
+          "fourier_checksum": 2.6366564579728075e-18
+        }
+      ]
+    },
+    {
+      "frequency_hz": 0.005,
+      "binary_years": 4.0,
+      "T": 125829120,
+      "t0": 12345,
+      "params": [
+        629145.85,
+        0.27,
+        1.11,
+        -50.65687204586901,
+        -0.37,
+        0.63,
+        0.41,
+        0.2
+      ],
+      "BW": 512,
+      "native_response_samples": 797,
+      "jax_default_response_samples": 512,
+      "numerical_checks": {
+        "response_supplied_geometry": 1.8692834238401987e-09,
+        "response_analytic": 1.7947218875504532e-08,
+        "fourier_by_channel": {
+          "X": 1.914416488657601e-10,
+          "Y": 1.8925852418104593e-10,
+          "Z": 1.7556740861896343e-10,
+          "A": 1.8140092336046087e-10,
+          "E": 1.892325477484855e-10
+        }
+      },
+      "jax": {
+        "response_analytic": {
+          "block_means_ms": [
+            0.23121208499999998,
+            0.23173270999999998,
+            0.227199165
+          ],
+          "median_block_mean_ms": 0.23121208499999998,
+          "min_block_mean_ms": 0.227199165,
+          "max_block_mean_ms": 0.23173270999999998
+        },
+        "response_supplied_geometry": {
+          "block_means_ms": [
+            0.23061771,
+            0.23089979000000002,
+            0.21379833499999998
+          ],
+          "median_block_mean_ms": 0.23061771,
+          "min_block_mean_ms": 0.21379833499999998,
+          "max_block_mean_ms": 0.23089979000000002
+        },
+        "fourier_outer_jit": {
+          "block_means_ms": [
+            0.14861625,
+            0.14615957999999998,
+            0.14751542
+          ],
+          "median_block_mean_ms": 0.14751542,
+          "min_block_mean_ms": 0.14615957999999998,
+          "max_block_mean_ms": 0.14861625
+        },
+        "fourier_public": {
+          "block_means_ms": [
+            0.176197295,
+            0.18626833499999998,
+            0.17557666500000002
+          ],
+          "median_block_mean_ms": 0.176197295,
+          "min_block_mean_ms": 0.17557666500000002,
+          "max_block_mean_ms": 0.18626833499999998
+        },
+        "onfly_default_outer_jit": {
+          "block_means_ms": [
+            0.53631854,
+            0.5431458299999999,
+            0.54363625
+          ],
+          "median_block_mean_ms": 0.5431458299999999,
+          "min_block_mean_ms": 0.53631854,
+          "max_block_mean_ms": 0.54363625
+        },
+        "onfly_default_public": {
+          "block_means_ms": [
+            0.5696985400000001,
+            0.63185042,
+            0.563648125
+          ],
+          "median_block_mean_ms": 0.5696985400000001,
+          "min_block_mean_ms": 0.563648125,
+          "max_block_mean_ms": 0.63185042
+        },
+        "onfly_equal_samples_outer_jit": {
+          "block_means_ms": [
+            0.7003920849999999,
+            0.707044375,
+            0.70024458
+          ],
+          "median_block_mean_ms": 0.7003920849999999,
+          "min_block_mean_ms": 0.70024458,
+          "max_block_mean_ms": 0.707044375
+        },
+        "onfly_equal_samples_public": {
+          "block_means_ms": [
+            0.73078625,
+            0.72870646,
+            0.7280925
+          ],
+          "median_block_mean_ms": 0.72870646,
+          "min_block_mean_ms": 0.7280925,
+          "max_block_mean_ms": 0.73078625
+        }
+      },
+      "glass": {
+        "response": {
+          "block_means_ms": [
+            0.6564150005578995,
+            0.6508799991570413,
+            0.6681449990719557
+          ],
+          "median_block_mean_ms": 0.6564150005578995,
+          "min_block_mean_ms": 0.6508799991570413,
+          "max_block_mean_ms": 0.6681449990719557
+        },
+        "fourier_xyzae": {
+          "block_means_ms": [
+            0.11036500101909041,
+            0.10973999975249171,
+            0.10998499812558293
+          ],
+          "median_block_mean_ms": 0.10998499812558293,
+          "min_block_mean_ms": 0.10973999975249171,
+          "max_block_mean_ms": 0.11036500101909041
+        },
+        "wavelet_xyz": {
+          "block_means_ms": [
+            15.226934999227524,
+            15.226669998373836,
+            15.431180000305176
+          ],
+          "median_block_mean_ms": 15.226934999227524,
+          "min_block_mean_ms": 15.226669998373836,
+          "max_block_mean_ms": 15.431180000305176
+        }
+      },
+      "native_blocks": [
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006564150005578995,
+          "wavelet_xyz_seconds": 0.015226934999227525,
+          "fourier_xyzae_seconds": 0.00011036500101909042,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006508799991570413,
+          "wavelet_xyz_seconds": 0.015226669998373837,
+          "fourier_xyzae_seconds": 0.00010973999975249172,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        },
+        {
+          "frequency_hz": 0.005,
+          "years": 4,
+          "BW": 512,
+          "repeats": 200,
+          "response_samples": 797,
+          "wavelet_time_pixels": 16384,
+          "wavelet_layers": 2,
+          "response_seconds": 0.0006681449990719557,
+          "wavelet_xyz_seconds": 0.015431180000305175,
+          "fourier_xyzae_seconds": 0.00010998499812558293,
+          "wavelet_active_pixels": 32768,
+          "wavelet_checksum": -1.6174608846926033e-16,
+          "fourier_checksum": 7.007239274679743e-18
+        }
+      ]
+    }
+  ],
+  "glass_commit": "079c6a3a6fcf380a7c107f39640fff7fc720d0f1",
+  "native_compiler": "Apple clang version 15.0.0 (clang-1500.1.0.2.5)\nTarget: arm64-apple-darwin23.3.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin\n",
+  "native_build_script": "#!/bin/sh\n# Build the pinned native UCB/WDM timing harness without GLASS CMake.\nset -eu\n\nPIN=079c6a3a6fcf380a7c107f39640fff7fc720d0f1\nROOT=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\nCHECKOUT=${1:?usage: $0 /path/to/ldasoft /external/temp/build-directory}\nBUILD_DIR=${2:?usage: $0 /path/to/ldasoft /external/temp/build-directory}\nSOURCE=\"$BUILD_DIR/source-$PIN\"\nOUTPUT=\"$BUILD_DIR/native_ucb_timing\"\nCC=${CC:-cc}\n\ngit -C \"$CHECKOUT\" cat-file -e \"$PIN^{commit}\"\nmkdir -p \"$BUILD_DIR\"\nrm -rf \"$SOURCE\"\nmkdir \"$SOURCE\"\ngit -C \"$CHECKOUT\" archive \"$PIN\" | tar -x -C \"$SOURCE\"\n\nexec \"$CC\" -O3 -march=native -std=gnu99 -include stdbool.h -ffp-contract=off \\\n    -ffunction-sections -fdata-sections \\\n    -I\"$ROOT/stubs\" \\\n    -I\"$SOURCE/external\" -I\"$SOURCE/utils/src\" -I\"$SOURCE/ucb/src\" -I\"$SOURCE/noise/src\" \\\n    \"$ROOT/native_ucb_timing.c\" \\\n    \"$SOURCE/ucb/src/glass_ucb_waveform.c\" \\\n    \"$SOURCE/utils/src/glass_lisa.c\" \\\n    \"$SOURCE/utils/src/glass_wavelet.c\" \\\n    \"$SOURCE/utils/src/glass_math.c\" \\\n    \"$SOURCE/utils/src/glass_utils.c\" \\\n    \"$SOURCE/external/kissfft/kiss_fft.c\" \\\n    \"$SOURCE/external/kissfft/kiss_fftr.c\" \\\n    -Wl,-dead_strip -lm -o \"$OUTPUT\"\n",
+  "native_harness_sha256": "54ecb6ae65a560e7305d9f2b337562615f4117812a1f5080ef4342671322a18b"
+}

@@ -115,3 +115,10 @@ def test_clamp_order_puts_the_floor_last():
     kw = dict(f=1e-3, fdot=0.0, costheta=0.0, amp=1e-30, T=7884000.0)
     assert ucb_bandwidth(N=16, **kw) == 16
     assert ucb_bandwidth(N=32, **kw) == 16
+
+
+@pytest.mark.parametrize("bandwidth", [ucb_bandwidth, ucb_bw])
+@pytest.mark.parametrize("N", [0, -1, True, np.bool_(True), 1.5, 2.0, np.nan, np.inf])
+def test_bandwidth_requires_a_positive_integer_grid_length(bandwidth, N):
+    with pytest.raises(ValueError, match="N must be a positive integer"):
+        bandwidth(f=1e-3, fdot=0.0, costheta=0.0, amp=1e-30, T=7884000.0, N=N)

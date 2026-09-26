@@ -35,7 +35,12 @@ def test_physical_response_matches_independent_glass_case(case):
         beta=np.arcsin(v[1]),
     )
     result = bg.tdi_waveform(
-        p, T=duration, BW=case["BW"], t0=case["t0"], fmt=case["fmt"]
+        p,
+        T=duration,
+        BW=case["BW"],
+        t0=case["t0"],
+        fmt=case["fmt"],
+        backend="fourier",
     )
     with np.load(DATA / "reference.npz", allow_pickle=False) as ref:
         np.testing.assert_array_equal(

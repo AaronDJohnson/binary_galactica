@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "binary-galactica"
-version = "0.2.0"
-description = "Differentiable GLASS fast-slow LISA galactic-binary TDI waveforms"
+version = "0.3.0"
+description = "Differentiable LISA galactic-binary TDI waveforms in JAX"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT AND Apache-2.0 AND BSD-3-Clause"
@@ -20,6 +20,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = ["jax>=0.4.30", "numpy>=1.24"]
+
+[project.urls]
+Source = "https://github.com/AaronDJohnson/binary_galactica"
+Documentation = "https://github.com/AaronDJohnson/binary_galactica#readme"
+Issues = "https://github.com/AaronDJohnson/binary_galactica/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]

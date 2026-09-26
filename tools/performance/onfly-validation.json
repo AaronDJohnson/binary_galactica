@@ -1,0 +1,5329 @@
+{
+  "cases": [
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2604119024786202e-09,
+          "relative_l2_by_channel": {
+            "A": 7.944458995322689e-10,
+            "E": 1.081245617161884e-09,
+            "X": 7.054782342729862e-10,
+            "Y": 1.0812465516237424e-09,
+            "Z": 1.2604119024786202e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.4855819898148704e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3656408418602897e-14,
+            "E": 2.3007148381113257e-14,
+            "X": 1.2610203495324258e-14,
+            "Y": 2.3982335862770017e-14,
+            "Z": 2.4855819898148704e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.386495295194188e-14,
+          "relative_l2_by_channel": {
+            "A": 1.373073981743624e-14,
+            "E": 2.186010755702366e-14,
+            "X": 1.2878471397252284e-14,
+            "Y": 2.2665363650890008e-14,
+            "Z": 2.386495295194188e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0,
+      "index": 0,
+      "native_parameters": [
+        789.19,
+        -1.0,
+        2.3811243999284746,
+        -50.65687204586901,
+        0.0,
+        3.1368759711457903,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 9.187801635719737e-10,
+          "relative_l2_by_channel": {
+            "A": 9.064014034392052e-10,
+            "E": 9.187726055341867e-10,
+            "X": 9.183617723081254e-10,
+            "Y": 9.187801635719737e-10,
+            "Z": 9.007075595016588e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.462793968789604e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3804139097793545e-14,
+            "E": 1.4396959561882477e-14,
+            "X": 1.370372690385522e-14,
+            "Y": 1.462793968789604e-14,
+            "Z": 1.4243737637021713e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.4241066449252482e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3388020557709744e-14,
+            "E": 1.4065610120416091e-14,
+            "X": 1.3411462229958173e-14,
+            "Y": 1.4241066449252482e-14,
+            "Z": 1.3822816023701992e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 1.0,
+      "index": 1,
+      "native_parameters": [
+        7889.650000000001,
+        -1.0,
+        6.100265628519386,
+        -50.65687204586901,
+        1.0,
+        1.952555718360429,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2928466642690137e-09,
+          "relative_l2_by_channel": {
+            "A": 1.2558791016439513e-09,
+            "E": 1.1518596176615633e-09,
+            "X": 1.2928466642690137e-09,
+            "Y": 1.1504039975066213e-09,
+            "Z": 1.1702055292627724e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.5485541992940263e-14,
+          "relative_l2_by_channel": {
+            "A": 1.4362039455690538e-14,
+            "E": 1.4033695137929895e-14,
+            "X": 1.5485541992940263e-14,
+            "Y": 1.4222337446082162e-14,
+            "Z": 1.3206492916308712e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.5318381469412814e-14,
+          "relative_l2_by_channel": {
+            "A": 1.438357923262776e-14,
+            "E": 1.3586189470790014e-14,
+            "X": 1.5318381469412814e-14,
+            "Y": 1.3775208555092388e-14,
+            "Z": 1.3161709633799713e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -1.0,
+      "index": 2,
+      "native_parameters": [
+        39447.25,
+        -1.0,
+        4.999950022790933,
+        -50.65687204586901,
+        -1.0,
+        0.14776971827273336,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.364470120746224e-08,
+          "relative_l2_by_channel": {
+            "A": 4.465585803396736e-09,
+            "E": 1.9091096407465982e-09,
+            "X": 3.554829926792585e-09,
+            "Y": 1.4017285445069374e-09,
+            "Z": 1.364470120746224e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 8.435802230524098e-14,
+          "relative_l2_by_channel": {
+            "A": 1.9524049079708003e-14,
+            "E": 1.2716762976766171e-14,
+            "X": 1.1496200381648228e-14,
+            "Y": 1.3164762219970202e-14,
+            "Z": 8.435802230524098e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 7.9758128367682e-14,
+          "relative_l2_by_channel": {
+            "A": 1.9333911898501604e-14,
+            "E": 1.2261449577603755e-14,
+            "X": 1.1972127656709262e-14,
+            "Y": 1.2586307631902903e-14,
+            "Z": 7.9758128367682e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0001,
+      "index": 3,
+      "native_parameters": [
+        236682.25,
+        -1.0,
+        1.8990732185580441,
+        -50.65687204586901,
+        0.0001,
+        0.7067517466002986,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.060188051475109e-07,
+          "relative_l2_by_channel": {
+            "A": 6.567277472124994e-08,
+            "E": 2.060188051475109e-07,
+            "X": 1.1186684856455867e-07,
+            "Y": 1.65455896002255e-07,
+            "Z": 4.9777650993692115e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.018949722039683e-14,
+          "relative_l2_by_channel": {
+            "A": 3.1397874627046785e-14,
+            "E": 3.2803057075334116e-14,
+            "X": 4.018949722039683e-14,
+            "Y": 2.1566347697262505e-14,
+            "Z": 2.476479305694268e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.8764680372430624e-14,
+          "relative_l2_by_channel": {
+            "A": 3.1874958784524434e-14,
+            "E": 3.138569443544773e-14,
+            "X": 3.8764680372430624e-14,
+            "Y": 2.0947847618083403e-14,
+            "Z": 2.606833403248884e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.3,
+      "index": 4,
+      "native_parameters": [
+        788940.25,
+        -1.0,
+        2.151876644481219,
+        -50.65687204586901,
+        0.3,
+        0.17816716070297542,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.048528954006604e-10,
+          "relative_l2_by_channel": {
+            "A": 3.975985491438804e-10,
+            "E": 4.04852306428438e-10,
+            "X": 3.987545551174853e-10,
+            "Y": 4.048528954006604e-10,
+            "Z": 3.9997258531701764e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.209498727741959e-12,
+          "relative_l2_by_channel": {
+            "A": 1.1948184613049686e-12,
+            "E": 1.2092275117515745e-12,
+            "X": 1.1975070435640602e-12,
+            "Y": 1.209498727741959e-12,
+            "Z": 1.1989283794751736e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.2950018666182034e-14,
+          "relative_l2_by_channel": {
+            "A": 2.116681088252749e-14,
+            "E": 2.18737107283188e-14,
+            "X": 2.275091136100625e-14,
+            "Y": 2.2950018666182034e-14,
+            "Z": 2.229181484855293e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -0.8,
+      "index": 5,
+      "native_parameters": [
+        3156.01,
+        -1.0,
+        5.4850178819859865,
+        -50.65687204586901,
+        -0.8,
+        1.3898037786634847,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.646216734780805e-10,
+          "relative_l2_by_channel": {
+            "A": 3.4846431811637126e-10,
+            "E": 4.51279467012332e-10,
+            "X": 8.646216734780805e-10,
+            "Y": 4.512791346774933e-10,
+            "Z": 2.901070350217353e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.2031605630752657e-12,
+          "relative_l2_by_channel": {
+            "A": 8.757242840593817e-13,
+            "E": 1.481239625361648e-12,
+            "X": 2.2031605630752657e-12,
+            "Y": 1.4811203624034116e-12,
+            "Z": 8.64402452295048e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.255613060660708e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3130514327966462e-14,
+            "E": 1.4095996972351854e-14,
+            "X": 3.255613060660708e-14,
+            "Y": 1.415640411891689e-14,
+            "Z": 1.0051859212754379e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0,
+      "index": 6,
+      "native_parameters": [
+        31557.850000000002,
+        -1.0,
+        4.240978321897579,
+        -50.65687204586901,
+        0.0,
+        0.6164734087304233,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 5.470304613854053e-10,
+          "relative_l2_by_channel": {
+            "A": 5.367493943243245e-10,
+            "E": 5.28927188178159e-10,
+            "X": 5.470304613854053e-10,
+            "Y": 5.286576924660675e-10,
+            "Z": 5.225685522803954e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.5852356097402257e-12,
+          "relative_l2_by_channel": {
+            "A": 1.556745064569171e-12,
+            "E": 1.5361367104325221e-12,
+            "X": 1.5852356097402257e-12,
+            "Y": 1.5354085581290417e-12,
+            "Z": 1.518027787913827e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.530679711441056e-14,
+          "relative_l2_by_channel": {
+            "A": 1.478273074306754e-14,
+            "E": 1.4490917289040455e-14,
+            "X": 1.433940598309611e-14,
+            "Y": 1.451949846357711e-14,
+            "Z": 1.530679711441056e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 1.0,
+      "index": 7,
+      "native_parameters": [
+        157788.25,
+        -1.0,
+        2.929097887383039,
+        -50.65687204586901,
+        1.0,
+        1.004895165246316,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.2692346471238854e-09,
+          "relative_l2_by_channel": {
+            "A": 2.01869392918733e-09,
+            "E": 9.807906742740745e-10,
+            "X": 2.2692346471238854e-09,
+            "Y": 5.811836678401125e-10,
+            "Z": 1.7233358249741325e-09
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.626526015084019e-12,
+          "relative_l2_by_channel": {
+            "A": 5.803727519550028e-12,
+            "E": 3.0274985184405584e-12,
+            "X": 6.626526015084019e-12,
+            "Y": 2.0278551575576268e-12,
+            "Z": 4.902457711430607e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.6549194244384364e-14,
+          "relative_l2_by_channel": {
+            "A": 2.325116391803138e-14,
+            "E": 2.1037564065620496e-14,
+            "X": 2.6549194244384364e-14,
+            "Y": 1.9858093156904358e-14,
+            "Z": 2.182483256153053e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -1.0,
+      "index": 8,
+      "native_parameters": [
+        946728.25,
+        -1.0,
+        0.9330318426420113,
+        -50.65687204586901,
+        -1.0,
+        0.3770095516493258,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.832831384612361e-08,
+          "relative_l2_by_channel": {
+            "A": 3.092275783817269e-08,
+            "E": 3.397228273890668e-08,
+            "X": 2.223186179839666e-08,
+            "Y": 2.778229225775496e-08,
+            "Z": 3.832831384612361e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.299531949603674e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1887573756014758e-10,
+            "E": 1.0434487167978035e-10,
+            "X": 8.569418502975545e-11,
+            "Y": 8.365204223904043e-11,
+            "Z": 1.299531949603674e-10
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.743171126642021e-13,
+          "relative_l2_by_channel": {
+            "A": 4.3769451725447493e-13,
+            "E": 3.7825887558686077e-13,
+            "X": 3.1804203557763417e-13,
+            "Y": 3.007502359732724e-13,
+            "Z": 4.743171126642021e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0001,
+      "index": 9,
+      "native_parameters": [
+        3155760.25,
+        -1.0,
+        5.4747303997378465,
+        -50.65687204586901,
+        0.0001,
+        1.7083039760726104,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.020235490043711e-10,
+          "relative_l2_by_channel": {
+            "A": 2.32956411718464e-10,
+            "E": 2.7141117772742904e-10,
+            "X": 3.020235490043711e-10,
+            "Y": 2.7141107331088264e-10,
+            "Z": 2.0708172988036153e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 9.430962544362519e-08,
+          "relative_l2_by_channel": {
+            "A": 6.057677030141207e-08,
+            "E": 9.430962543123912e-08,
+            "X": 9.239479842539102e-08,
+            "Y": 9.430962544362519e-08,
+            "Z": 5.35542441105332e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.020235532604984e-10,
+          "relative_l2_by_channel": {
+            "A": 2.3295642113799576e-10,
+            "E": 2.714111743727216e-10,
+            "X": 3.020235532604984e-10,
+            "Y": 2.714110711149128e-10,
+            "Z": 2.0708172459923353e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.3,
+      "index": 10,
+      "native_parameters": [
+        12623.29,
+        -1.0,
+        2.2131369693466825,
+        -50.65687204586901,
+        0.3,
+        2.7286229364351198,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.567381983307571e-10,
+          "relative_l2_by_channel": {
+            "A": 2.567381983307571e-10,
+            "E": 2.5068882243230066e-10,
+            "X": 2.5643756630715527e-10,
+            "Y": 2.506867951967842e-10,
+            "Z": 2.5396080435601605e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.91811021028885e-08,
+          "relative_l2_by_channel": {
+            "A": 7.91811021028885e-08,
+            "E": 7.613821578871103e-08,
+            "X": 7.895388177002094e-08,
+            "Y": 7.613740833967338e-08,
+            "Z": 7.786638452765417e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.567381983976306e-10,
+          "relative_l2_by_channel": {
+            "A": 2.567381983976306e-10,
+            "E": 2.5068882847388966e-10,
+            "X": 2.5643757703781925e-10,
+            "Y": 2.5068679593431294e-10,
+            "Z": 2.5396080616941035e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -0.8,
+      "index": 11,
+      "native_parameters": [
+        126230.65000000001,
+        -1.0,
+        1.1351439651213062,
+        -50.65687204586901,
+        -0.8,
+        0.2885904881200261,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.41237610131095e-10,
+          "relative_l2_by_channel": {
+            "A": 8.41237610131095e-10,
+            "E": 1.7990715655269204e-10,
+            "X": 2.7461498541598817e-10,
+            "Y": 1.7985599441886422e-10,
+            "Z": 6.082016865665723e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.916154562757052e-07,
+          "relative_l2_by_channel": {
+            "A": 1.916154562757052e-07,
+            "E": 6.728606960643435e-08,
+            "X": 8.619112337810007e-08,
+            "Y": 6.726856387411796e-08,
+            "Z": 1.294211170035918e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 8.412376172256444e-10,
+          "relative_l2_by_channel": {
+            "A": 8.412376172256444e-10,
+            "E": 1.7990715839023383e-10,
+            "X": 2.7461498410329416e-10,
+            "Y": 1.7985599489834393e-10,
+            "Z": 6.082016973999786e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0,
+      "index": 12,
+      "native_parameters": [
+        631152.25,
+        -1.0,
+        2.3126681194947514,
+        -50.65687204586901,
+        0.0,
+        0.46008175322659495,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.6023967933868769e-09,
+          "relative_l2_by_channel": {
+            "A": 1.0775295736744265e-09,
+            "E": 1.0374980005044128e-09,
+            "X": 1.6023967933868769e-09,
+            "Y": 9.203598359754606e-10,
+            "Z": 6.503654323312836e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.064962483232938e-07,
+          "relative_l2_by_channel": {
+            "A": 3.4390072102684424e-07,
+            "E": 3.2508289040462954e-07,
+            "X": 5.064962483232938e-07,
+            "Y": 2.8732272022533716e-07,
+            "Z": 2.0649151314841103e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.6023967864282086e-09,
+          "relative_l2_by_channel": {
+            "A": 1.0775295684335762e-09,
+            "E": 1.0374979938287626e-09,
+            "X": 1.6023967864282086e-09,
+            "Y": 9.203598363910267e-10,
+            "Z": 6.503654205275073e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 1.0,
+      "index": 13,
+      "native_parameters": [
+        3786912.25,
+        -1.0,
+        4.295656822009099,
+        -50.65687204586901,
+        1.0,
+        0.27665163557424144,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.3212796183171886e-08,
+          "relative_l2_by_channel": {
+            "A": 4.3212796183171886e-08,
+            "E": 3.113927776801369e-08,
+            "X": 3.642392097670457e-08,
+            "Y": 2.4654092757361546e-08,
+            "Z": 3.1818188337968106e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.2141034097464584e-05,
+          "relative_l2_by_channel": {
+            "A": 1.2141034097464584e-05,
+            "E": 7.918872975788392e-06,
+            "X": 9.941212778016312e-06,
+            "Y": 6.292525505161952e-06,
+            "Z": 9.014817891093662e-06
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.321279617745655e-08,
+          "relative_l2_by_channel": {
+            "A": 4.321279617745655e-08,
+            "E": 3.113927776796415e-08,
+            "X": 3.642392097685706e-08,
+            "Y": 2.4654092758654767e-08,
+            "Z": 3.181818832858829e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -1.0,
+      "index": 14,
+      "native_parameters": [
+        12623040.25,
+        -1.0,
+        2.6073441004553595,
+        -50.65687204586901,
+        -1.0,
+        1.44550608327026,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.5273861548042144e-09,
+          "relative_l2_by_channel": {
+            "A": 7.008912492781675e-10,
+            "E": 1.1205427829134876e-09,
+            "X": 1.5273861548042144e-09,
+            "Y": 1.1205429391923365e-09,
+            "Z": 6.228961697508178e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.573826191466328e-14,
+          "relative_l2_by_channel": {
+            "A": 1.765085022031808e-14,
+            "E": 2.3310633274095856e-14,
+            "X": 3.573826191466328e-14,
+            "Y": 2.5855482428976744e-14,
+            "Z": 1.6998017577532134e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.523750527991716e-14,
+          "relative_l2_by_channel": {
+            "A": 1.7523394704696908e-14,
+            "E": 2.4194776356855708e-14,
+            "X": 3.523750527991716e-14,
+            "Y": 2.6324353504888108e-14,
+            "Z": 1.7548018914114156e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0001,
+      "index": 15,
+      "native_parameters": [
+        789.19,
+        1.0,
+        5.199660278228829,
+        -50.65687204586901,
+        0.0001,
+        1.8725844031375332,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2139316621548976e-09,
+          "relative_l2_by_channel": {
+            "A": 9.232324988131352e-10,
+            "E": 8.908777731984861e-10,
+            "X": 1.2139316621548976e-09,
+            "Y": 8.908849118874642e-10,
+            "Z": 7.713214580182309e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.6944357591919915e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3215574644951339e-14,
+            "E": 1.4487566311820506e-14,
+            "X": 1.6944357591919915e-14,
+            "Y": 1.4958597318122268e-14,
+            "Z": 1.1799168433178881e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.6747961381326248e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2982834783293164e-14,
+            "E": 1.4012806490008663e-14,
+            "X": 1.6747961381326248e-14,
+            "Y": 1.4426512036770752e-14,
+            "Z": 1.1506236229690265e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.3,
+      "index": 16,
+      "native_parameters": [
+        7889.650000000001,
+        1.0,
+        1.8970740046037893,
+        -50.65687204586901,
+        0.3,
+        0.15756011448195018,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.289376645149876e-09,
+          "relative_l2_by_channel": {
+            "A": 1.2686620731057461e-09,
+            "E": 1.1398051249285737e-09,
+            "X": 1.289376645149876e-09,
+            "Y": 1.1383768610397226e-09,
+            "Z": 1.1830787081611281e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.8589087859926793e-13,
+          "relative_l2_by_channel": {
+            "A": 2.8523830424242744e-13,
+            "E": 2.827843340619633e-13,
+            "X": 2.831100928313216e-13,
+            "Y": 2.8272414912911215e-13,
+            "Z": 2.8589087859926793e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.8597516670025406e-13,
+          "relative_l2_by_channel": {
+            "A": 2.8553112371240153e-13,
+            "E": 2.833796095229456e-13,
+            "X": 2.837708648396526e-13,
+            "Y": 2.8336173655241176e-13,
+            "Z": 2.8597516670025406e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -0.8,
+      "index": 17,
+      "native_parameters": [
+        39447.25,
+        1.0,
+        0.1120485971042488,
+        -50.65687204586901,
+        -0.8,
+        0.5094818224388507,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.615148895998602e-09,
+          "relative_l2_by_channel": {
+            "A": 2.187269578864824e-09,
+            "E": 4.615148895998602e-09,
+            "X": 3.3284776673016825e-09,
+            "Y": 2.7692696610256316e-09,
+            "Z": 2.031827855470634e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.2277881705547606e-14,
+          "relative_l2_by_channel": {
+            "A": 9.921174950321358e-15,
+            "E": 3.2277881705547606e-14,
+            "X": 1.2279266600279072e-14,
+            "Y": 2.6181973671610048e-14,
+            "Z": 1.2391887228532092e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.1353558567963914e-14,
+          "relative_l2_by_channel": {
+            "A": 1.0104883623805273e-14,
+            "E": 3.1353558567963914e-14,
+            "X": 1.2477163761136537e-14,
+            "Y": 2.548752282358342e-14,
+            "Z": 1.2270140812548825e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0,
+      "index": 18,
+      "native_parameters": [
+        236682.25,
+        1.0,
+        1.7170696367194977,
+        -50.65687204586901,
+        0.0,
+        2.773089878712551,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.771141479957103e-07,
+          "relative_l2_by_channel": {
+            "A": 7.3379619867056e-08,
+            "E": 1.771141479957103e-07,
+            "X": 1.4726933855508105e-07,
+            "Y": 1.4450249744741096e-07,
+            "Z": 4.525897285527884e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.3085957768657537e-14,
+          "relative_l2_by_channel": {
+            "A": 2.842016145791116e-14,
+            "E": 3.3085957768657537e-14,
+            "X": 2.5728138569699192e-14,
+            "Y": 3.24607263349849e-14,
+            "Z": 3.271218017012351e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.4689592842903506e-14,
+          "relative_l2_by_channel": {
+            "A": 3.031279078959896e-14,
+            "E": 3.4689592842903506e-14,
+            "X": 2.504054971609144e-14,
+            "Y": 3.313175357406725e-14,
+            "Z": 3.449799059598702e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 1.0,
+      "index": 19,
+      "native_parameters": [
+        788940.25,
+        1.0,
+        1.0671279159361682,
+        -50.65687204586901,
+        1.0,
+        2.0299300089454886,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.012991855958461e-10,
+          "relative_l2_by_channel": {
+            "A": 4.012991855958461e-10,
+            "E": 4.010171753124725e-10,
+            "X": 4.0124069919489985e-10,
+            "Y": 4.010167019048919e-10,
+            "Z": 4.0121716280134656e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.203439591498668e-12,
+          "relative_l2_by_channel": {
+            "A": 1.203185149290729e-12,
+            "E": 1.2016829479544919e-12,
+            "X": 1.2024384612086652e-12,
+            "Y": 1.2014459913245194e-12,
+            "Z": 1.203439591498668e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.750396786387408e-14,
+          "relative_l2_by_channel": {
+            "A": 1.6342824693768355e-14,
+            "E": 1.6733119833387416e-14,
+            "X": 1.7116353672840678e-14,
+            "Y": 1.750396786387408e-14,
+            "Z": 1.6759046419939656e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -1.0,
+      "index": 20,
+      "native_parameters": [
+        3156.01,
+        1.0,
+        4.4890410988595875,
+        -50.65687204586901,
+        -1.0,
+        1.7336705781829318,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 7.603497795849517e-10,
+          "relative_l2_by_channel": {
+            "A": 3.3235845916597306e-10,
+            "E": 4.767874353236675e-10,
+            "X": 7.603497795849517e-10,
+            "Y": 4.767871405871819e-10,
+            "Z": 2.84181028280868e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.9664643984459088e-12,
+          "relative_l2_by_channel": {
+            "A": 8.254759131139642e-13,
+            "E": 1.569640973892485e-12,
+            "X": 1.9664643984459088e-12,
+            "Y": 1.5695636997254293e-12,
+            "Z": 8.355004003940044e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.856312799837942e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2595212551100736e-14,
+            "E": 1.4820007555476134e-14,
+            "X": 2.856312799837942e-14,
+            "Y": 1.4876276506789234e-14,
+            "Z": 9.901074031899864e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0001,
+      "index": 21,
+      "native_parameters": [
+        31557.850000000002,
+        1.0,
+        2.3865754062016875,
+        -50.65687204586901,
+        0.0001,
+        2.2180512417899103,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 7.251296380429868e-10,
+          "relative_l2_by_channel": {
+            "A": 7.251296380429868e-10,
+            "E": 4.2663833222656165e-10,
+            "X": 5.67158404931144e-10,
+            "Y": 4.2643433427684533e-10,
+            "Z": 6.416663940474937e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.091116694604659e-12,
+          "relative_l2_by_channel": {
+            "A": 2.091116694604659e-12,
+            "E": 1.2563792254534486e-12,
+            "X": 1.6984149008920097e-12,
+            "Y": 1.2558907781165032e-12,
+            "Z": 1.781910129460684e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.0274676009619287e-14,
+          "relative_l2_by_channel": {
+            "A": 2.0274676009619287e-14,
+            "E": 1.1826195862724275e-14,
+            "X": 1.490541502999216e-14,
+            "Y": 1.1864073798726491e-14,
+            "Z": 1.9381459213780142e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.3,
+      "index": 22,
+      "native_parameters": [
+        157788.25,
+        1.0,
+        1.3237148459769972,
+        -50.65687204586901,
+        0.3,
+        0.10978481235212065,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.2470995540472823e-09,
+          "relative_l2_by_channel": {
+            "A": 2.0080546630558066e-09,
+            "E": 9.856467459033659e-10,
+            "X": 2.2470995540472823e-09,
+            "Y": 5.839012977548127e-10,
+            "Z": 1.7318926244646598e-09
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.56664110032088e-12,
+          "relative_l2_by_channel": {
+            "A": 5.77562390025894e-12,
+            "E": 3.0441072103464188e-12,
+            "X": 6.56664110032088e-12,
+            "Y": 2.036944528752345e-12,
+            "Z": 4.927633583001851e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.513886276820926e-14,
+          "relative_l2_by_channel": {
+            "A": 2.249057059612801e-14,
+            "E": 1.7265790096590224e-14,
+            "X": 2.513886276820926e-14,
+            "Y": 1.600595491546708e-14,
+            "Z": 2.015834316766371e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -0.8,
+      "index": 23,
+      "native_parameters": [
+        946728.25,
+        1.0,
+        6.132472301220713,
+        -50.65687204586901,
+        -0.8,
+        2.2076386929938097,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.2322294326324354e-08,
+          "relative_l2_by_channel": {
+            "A": 3.272778751084411e-08,
+            "E": 2.8328063132076273e-08,
+            "X": 4.2322294326324354e-08,
+            "Y": 1.863042560074582e-08,
+            "Z": 2.2397412111431526e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.3631128020023453e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1326819516971196e-10,
+            "E": 8.748853130399708e-11,
+            "X": 1.3631128020023453e-10,
+            "Y": 5.53099490248871e-11,
+            "Z": 8.647438901402187e-11
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.999828438020086e-13,
+          "relative_l2_by_channel": {
+            "A": 4.1315160038783505e-13,
+            "E": 3.1392567075495694e-13,
+            "X": 4.999828438020086e-13,
+            "Y": 1.961246269443707e-13,
+            "Z": 3.158770239269677e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0,
+      "index": 24,
+      "native_parameters": [
+        3155760.25,
+        1.0,
+        1.8653758905696685,
+        -50.65687204586901,
+        0.0,
+        0.4893302814469111,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.4916378015065087e-10,
+          "relative_l2_by_channel": {
+            "A": 2.491266021589392e-10,
+            "E": 2.4910407302062427e-10,
+            "X": 2.4916378015065087e-10,
+            "Y": 2.491038913186412e-10,
+            "Z": 2.4907832280186933e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.591022627044465e-08,
+          "relative_l2_by_channel": {
+            "A": 7.589494324541083e-08,
+            "E": 7.588563047264649e-08,
+            "X": 7.591022627044465e-08,
+            "Y": 7.588562986891504e-08,
+            "Z": 7.587500042059096e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.491637819299249e-10,
+          "relative_l2_by_channel": {
+            "A": 2.4912660312346263e-10,
+            "E": 2.491040709420756e-10,
+            "X": 2.491637819299249e-10,
+            "Y": 2.4910389174694606e-10,
+            "Z": 2.4907832261966047e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 1.0,
+      "index": 25,
+      "native_parameters": [
+        12623.29,
+        1.0,
+        5.598463544368661,
+        -50.65687204586901,
+        1.0,
+        0.6309892043392851,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.542481084825458e-10,
+          "relative_l2_by_channel": {
+            "A": 2.542481084825458e-10,
+            "E": 2.5308501821782686e-10,
+            "X": 2.54086588138798e-10,
+            "Y": 2.53083038635465e-10,
+            "Z": 2.5383100542842783e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.787205204885488e-08,
+          "relative_l2_by_channel": {
+            "A": 7.787205204885488e-08,
+            "E": 7.741085766018971e-08,
+            "X": 7.779983143418948e-08,
+            "Y": 7.741004606493065e-08,
+            "Z": 7.771497225960634e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.5424810844288557e-10,
+          "relative_l2_by_channel": {
+            "A": 2.5424810844288557e-10,
+            "E": 2.530850231172761e-10,
+            "X": 2.5408658862986807e-10,
+            "Y": 2.5308304297777603e-10,
+            "Z": 2.5383100354377937e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -1.0,
+      "index": 26,
+      "native_parameters": [
+        126230.65000000001,
+        1.0,
+        4.207650532217811,
+        -50.65687204586901,
+        -1.0,
+        0.49049507459526087,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.5492512112742895e-09,
+          "relative_l2_by_channel": {
+            "A": 1.8043226734427326e-10,
+            "E": 1.5492512112742895e-09,
+            "X": 2.3151328567205185e-10,
+            "Y": 1.5478241450813603e-09,
+            "Z": 1.9192421063605082e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.782735632777021e-07,
+          "relative_l2_by_channel": {
+            "A": 6.42460248687911e-08,
+            "E": 3.782735632777021e-07,
+            "X": 6.207688597707226e-08,
+            "Y": 3.7796960995690863e-07,
+            "Z": 7.497937351689192e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.549251219640099e-09,
+          "relative_l2_by_channel": {
+            "A": 1.8043225679362913e-10,
+            "E": 1.549251219640099e-09,
+            "X": 2.3151328315877747e-10,
+            "Y": 1.5478241377987725e-09,
+            "Z": 1.919242068042467e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0001,
+      "index": 27,
+      "native_parameters": [
+        631152.25,
+        1.0,
+        3.4461327932455585,
+        -50.65687204586901,
+        0.0001,
+        2.964719657989441,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.870268137358719e-09,
+          "relative_l2_by_channel": {
+            "A": 9.946848860142873e-10,
+            "E": 1.0692956330499582e-09,
+            "X": 1.870268137358719e-09,
+            "Y": 9.436666160855451e-10,
+            "Z": 5.376502247431439e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.910499937205578e-07,
+          "relative_l2_by_channel": {
+            "A": 3.170660490734857e-07,
+            "E": 3.3432388231666596e-07,
+            "X": 5.910499937205578e-07,
+            "Y": 2.951919167309938e-07,
+            "Z": 1.683295335136246e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.8702681409834627e-09,
+          "relative_l2_by_channel": {
+            "A": 9.94684890567921e-10,
+            "E": 1.0692956431670968e-09,
+            "X": 1.8702681409834627e-09,
+            "Y": 9.43666619320649e-10,
+            "Z": 5.376502257257115e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.3,
+      "index": 28,
+      "native_parameters": [
+        3786912.25,
+        1.0,
+        2.293065947305192,
+        -50.65687204586901,
+        0.3,
+        0.5297533782562188,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.3236064361229474e-08,
+          "relative_l2_by_channel": {
+            "A": 4.3236064361229474e-08,
+            "E": 3.1228251668363785e-08,
+            "X": 3.61641515327302e-08,
+            "Y": 2.4834453224761273e-08,
+            "Z": 3.197099472372238e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.2150165494513083e-05,
+          "relative_l2_by_channel": {
+            "A": 1.2150165494513083e-05,
+            "E": 7.939918720189258e-06,
+            "X": 9.868707710993176e-06,
+            "Y": 6.337099553274242e-06,
+            "Z": 9.061533732909162e-06
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.323606436587004e-08,
+          "relative_l2_by_channel": {
+            "A": 4.323606436587004e-08,
+            "E": 3.122825166245791e-08,
+            "X": 3.616415153576667e-08,
+            "Y": 2.48344532265036e-08,
+            "Z": 3.1970994723721415e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -0.8,
+      "index": 29,
+      "native_parameters": [
+        12623040.25,
+        1.0,
+        3.4747468921200104,
+        -50.65687204586901,
+        -0.8,
+        1.1572494114569616,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 1.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 5.768039057635519e-10,
+          "relative_l2_by_channel": {
+            "A": 4.055209541892729e-10,
+            "E": 5.768039057635519e-10,
+            "X": 3.7103729510786884e-10,
+            "Y": 5.768032899385651e-10,
+            "Z": 5.340351205442122e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.3119680396085896e-14,
+          "relative_l2_by_channel": {
+            "A": 2.5360070698914463e-14,
+            "E": 1.9716401984561476e-14,
+            "X": 2.1587720445177635e-14,
+            "Y": 1.9937592837158188e-14,
+            "Z": 3.3119680396085896e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.300551298879357e-14,
+          "relative_l2_by_channel": {
+            "A": 2.564140154770251e-14,
+            "E": 1.97854573664939e-14,
+            "X": 2.194700186469003e-14,
+            "Y": 1.9985073920434425e-14,
+            "Z": 3.300551298879357e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0,
+      "index": 30,
+      "native_parameters": [
+        789.19,
+        0.0,
+        2.486981147982013,
+        -50.65687204586901,
+        0.0,
+        1.1236860954922805,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.139806150594845e-10,
+          "relative_l2_by_channel": {
+            "A": 2.2133155440096934e-10,
+            "E": 3.139806150594845e-10,
+            "X": 2.6017392534470384e-10,
+            "Y": 3.139758738440131e-10,
+            "Z": 2.3225896477621228e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 8.456959934453922e-15,
+          "relative_l2_by_channel": {
+            "A": 6.475390496763997e-15,
+            "E": 8.072399538787514e-15,
+            "X": 7.52247285413408e-15,
+            "Y": 8.456959934453922e-15,
+            "Z": 6.631612026477074e-15
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 8.57998737770762e-15,
+          "relative_l2_by_channel": {
+            "A": 6.4869982459401426e-15,
+            "E": 8.273939328051173e-15,
+            "X": 7.68656211058879e-15,
+            "Y": 8.57998737770762e-15,
+            "Z": 6.662596383256817e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 1.0,
+      "index": 31,
+      "native_parameters": [
+        7889.650000000001,
+        0.0,
+        5.5689116380152095,
+        -50.65687204586901,
+        1.0,
+        0.9038527531660902,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.2005567388020715e-10,
+          "relative_l2_by_channel": {
+            "A": 1.9148061862841508e-10,
+            "E": 2.1961766611809313e-10,
+            "X": 1.7676276390064306e-10,
+            "Y": 2.2005567388020715e-10,
+            "Z": 2.186996502458518e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.0075658762987636e-14,
+          "relative_l2_by_channel": {
+            "A": 9.495608630380998e-15,
+            "E": 9.828174807491925e-15,
+            "X": 9.704357287668719e-15,
+            "Y": 1.0075658762987636e-14,
+            "Z": 9.780161627156476e-15
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.929500797536563e-15,
+          "relative_l2_by_channel": {
+            "A": 9.341655492203216e-15,
+            "E": 9.6837005354026e-15,
+            "X": 9.631342559106317e-15,
+            "Y": 9.929500797536563e-15,
+            "Z": 9.525157482259937e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -1.0,
+      "index": 32,
+      "native_parameters": [
+        39447.25,
+        0.0,
+        1.7087929961840944,
+        -50.65687204586901,
+        -1.0,
+        1.8219922005146327,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.016912279073433e-09,
+          "relative_l2_by_channel": {
+            "A": 2.460809422450472e-09,
+            "E": 2.661463723904156e-09,
+            "X": 2.5542745169021474e-09,
+            "Y": 2.5280963046543985e-09,
+            "Z": 3.016912279073433e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.6877844711150252e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3830038618940338e-14,
+            "E": 1.657788784997909e-14,
+            "X": 1.4841053049014414e-14,
+            "Y": 1.6877844711150252e-14,
+            "Z": 1.5320930214371576e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.669490593581987e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3254887734760147e-14,
+            "E": 1.6209378161994634e-14,
+            "X": 1.4183419676517842e-14,
+            "Y": 1.669490593581987e-14,
+            "Z": 1.482934418197765e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0001,
+      "index": 33,
+      "native_parameters": [
+        236682.25,
+        0.0,
+        1.2371480105643844,
+        -50.65687204586901,
+        0.0001,
+        1.3454871374268063,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.823228605659154e-08,
+          "relative_l2_by_channel": {
+            "A": 2.2308431946323498e-08,
+            "E": 8.823228605659154e-08,
+            "X": 3.40802587351954e-08,
+            "Y": 5.2698225898961164e-08,
+            "Z": 3.769558662298726e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.5266669591614024e-14,
+          "relative_l2_by_channel": {
+            "A": 3.984965100906758e-14,
+            "E": 5.3812656808633617e-14,
+            "X": 3.8050058828386145e-14,
+            "Y": 5.5266669591614024e-14,
+            "Z": 5.126129790747407e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 5.5779870002965784e-14,
+          "relative_l2_by_channel": {
+            "A": 4.098377073352963e-14,
+            "E": 5.5454828585107797e-14,
+            "X": 3.817632611998883e-14,
+            "Y": 5.5779870002965784e-14,
+            "Z": 5.3518084739905623e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.3,
+      "index": 34,
+      "native_parameters": [
+        788940.25,
+        0.0,
+        1.7116935747838369,
+        -50.65687204586901,
+        0.3,
+        2.0248486608144374,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.5631418341164485e-10,
+          "relative_l2_by_channel": {
+            "A": 1.4787997290816428e-10,
+            "E": 1.5631418341164485e-10,
+            "X": 1.506224131049423e-10,
+            "Y": 1.5631274090436122e-10,
+            "Z": 1.4887078129778272e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.77680901052653e-13,
+          "relative_l2_by_channel": {
+            "A": 4.665397847238976e-13,
+            "E": 4.3742990430185337e-13,
+            "X": 4.77680901052653e-13,
+            "Y": 4.3836748405992016e-13,
+            "Z": 4.411944679958566e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.299596882983787e-14,
+          "relative_l2_by_channel": {
+            "A": 1.6624462792441098e-14,
+            "E": 2.1039128354980317e-14,
+            "X": 1.900492029366481e-14,
+            "Y": 2.299596882983787e-14,
+            "Z": 1.8527410845348143e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -0.8,
+      "index": 35,
+      "native_parameters": [
+        3156.01,
+        0.0,
+        0.5712111042530489,
+        -50.65687204586901,
+        -0.8,
+        1.0392194747968297,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.2357099042580327e-10,
+          "relative_l2_by_channel": {
+            "A": 2.115716840576422e-10,
+            "E": 1.7847954143501005e-10,
+            "X": 1.7682537176455944e-10,
+            "Y": 1.7847936705758448e-10,
+            "Z": 2.2357099042580327e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.115428441258992e-13,
+          "relative_l2_by_channel": {
+            "A": 6.285072095400289e-13,
+            "E": 5.055868714531323e-13,
+            "X": 4.3694929610671407e-13,
+            "Y": 5.056576412842542e-13,
+            "Z": 7.115428441258992e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 8.975554834809868e-15,
+          "relative_l2_by_channel": {
+            "A": 8.975554834809868e-15,
+            "E": 7.676843906189786e-15,
+            "X": 8.836151707543278e-15,
+            "Y": 7.871982232699968e-15,
+            "Z": 8.833725816926352e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0,
+      "index": 36,
+      "native_parameters": [
+        31557.850000000002,
+        0.0,
+        4.516415540866703,
+        -50.65687204586901,
+        0.0,
+        0.30596786699033773,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.3003626843874532e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1669425511679518e-10,
+            "E": 1.3003626843874532e-10,
+            "X": 1.1978196987144066e-10,
+            "Y": 1.2984289032990937e-10,
+            "Z": 1.2145028744642867e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.364471012322181e-13,
+          "relative_l2_by_channel": {
+            "A": 3.9925505994487684e-13,
+            "E": 4.364471012322181e-13,
+            "X": 4.2223047747504554e-13,
+            "Y": 4.3581165114812076e-13,
+            "Z": 3.956296945849483e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.775120743573311e-15,
+          "relative_l2_by_channel": {
+            "A": 9.137468790079217e-15,
+            "E": 7.761221008118711e-15,
+            "X": 8.377896470472788e-15,
+            "Y": 7.86177487520937e-15,
+            "Z": 9.775120743573311e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 1.0,
+      "index": 37,
+      "native_parameters": [
+        157788.25,
+        0.0,
+        4.2107411153782195,
+        -50.65687204586901,
+        1.0,
+        0.5060649742633158,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.229469979594113e-10,
+          "relative_l2_by_channel": {
+            "A": 6.053011697504238e-10,
+            "E": 6.62545767140649e-10,
+            "X": 8.229469979594113e-10,
+            "Y": 6.67543458921651e-10,
+            "Z": 5.283262699493256e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.8192956301448326e-12,
+          "relative_l2_by_channel": {
+            "A": 2.084984818771774e-12,
+            "E": 2.3880125636662636e-12,
+            "X": 2.8192956301448326e-12,
+            "Y": 2.3099486999007762e-12,
+            "Z": 1.964224427530354e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.74540882921607e-14,
+          "relative_l2_by_channel": {
+            "A": 1.487814764377955e-14,
+            "E": 1.74540882921607e-14,
+            "X": 1.677689045319089e-14,
+            "Y": 1.682721707246016e-14,
+            "Z": 1.6490838171023683e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -1.0,
+      "index": 38,
+      "native_parameters": [
+        946728.25,
+        0.0,
+        5.297553836604273,
+        -50.65687204586901,
+        -1.0,
+        1.485267374880319,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.6612301415603966e-08,
+          "relative_l2_by_channel": {
+            "A": 2.3466207229832566e-08,
+            "E": 2.5691056928661803e-08,
+            "X": 1.2431268866997542e-08,
+            "Y": 2.603834742079954e-08,
+            "Z": 3.6612301415603966e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.198178399350885e-10,
+          "relative_l2_by_channel": {
+            "A": 7.28148757367512e-11,
+            "E": 8.08696459129237e-11,
+            "X": 3.8156599606710666e-11,
+            "Y": 9.232055665422254e-11,
+            "Z": 1.198178399350885e-10
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.1020292728721036e-13,
+          "relative_l2_by_channel": {
+            "A": 2.4936144289199155e-13,
+            "E": 2.863507103800337e-13,
+            "X": 1.3817919377860936e-13,
+            "Y": 3.2959531527748786e-13,
+            "Z": 4.1020292728721036e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0001,
+      "index": 39,
+      "native_parameters": [
+        3155760.25,
+        0.0,
+        2.8512923285164486,
+        -50.65687204586901,
+        0.0001,
+        1.2797410679423311,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 9.453099689783536e-11,
+          "relative_l2_by_channel": {
+            "A": 9.453099689783536e-11,
+            "E": 7.608757317765727e-11,
+            "X": 9.341986720225243e-11,
+            "Y": 7.608778508813388e-11,
+            "Z": 8.650819953919742e-11
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.9173973358980158e-08,
+          "relative_l2_by_channel": {
+            "A": 2.3257909074135374e-08,
+            "E": 2.9173973286698436e-08,
+            "X": 2.2111306493133986e-08,
+            "Y": 2.9173973358980158e-08,
+            "Z": 2.7473776887616287e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.453100300659404e-11,
+          "relative_l2_by_channel": {
+            "A": 9.453100300659404e-11,
+            "E": 7.608757238217843e-11,
+            "X": 9.34198815964026e-11,
+            "Y": 7.608778735966232e-11,
+            "Z": 8.650820512563536e-11
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.3,
+      "index": 40,
+      "native_parameters": [
+        12623.29,
+        0.0,
+        6.104648625905564,
+        -50.65687204586901,
+        0.3,
+        0.9002592310281166,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 9.061066854493798e-11,
+          "relative_l2_by_channel": {
+            "A": 9.061066854493798e-11,
+            "E": 8.672097807062802e-11,
+            "X": 9.03532932208109e-11,
+            "Y": 8.67213958148921e-11,
+            "Z": 8.913731789080662e-11
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.1865300553402535e-08,
+          "relative_l2_by_channel": {
+            "A": 2.1044605944653316e-08,
+            "E": 3.1864817549553625e-08,
+            "X": 2.10706663261055e-08,
+            "Y": 3.1865300553402535e-08,
+            "Z": 2.6508458281910063e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.06106809594482e-11,
+          "relative_l2_by_channel": {
+            "A": 9.06106809594482e-11,
+            "E": 8.672096634194293e-11,
+            "X": 9.035328733465009e-11,
+            "Y": 8.672138320347254e-11,
+            "Z": 8.913731882168064e-11
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -0.8,
+      "index": 41,
+      "native_parameters": [
+        126230.65000000001,
+        0.0,
+        5.348021847839667,
+        -50.65687204586901,
+        -0.8,
+        1.1095615371080327,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2650463584492852e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1904165099805492e-10,
+            "E": 1.2100668165334684e-10,
+            "X": 1.2650463584492852e-10,
+            "Y": 1.2095273653174937e-10,
+            "Z": 1.1446881759443511e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.59803717788399e-08,
+          "relative_l2_by_channel": {
+            "A": 4.088971091093797e-08,
+            "E": 2.8684172121416868e-08,
+            "X": 4.59803717788399e-08,
+            "Y": 2.8670251514477785e-08,
+            "Z": 3.1000854183640946e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.2650463532528296e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1904164088211076e-10,
+            "E": 1.2100669076759661e-10,
+            "X": 1.2650463532528296e-10,
+            "Y": 1.209527386515061e-10,
+            "Z": 1.1446882644775612e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0,
+      "index": 42,
+      "native_parameters": [
+        631152.25,
+        0.0,
+        1.6230150566351709,
+        -50.65687204586901,
+        0.0,
+        3.131947554141837,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 6.099746321105878e-10,
+          "relative_l2_by_channel": {
+            "A": 4.6142986976288327e-10,
+            "E": 5.014395794897153e-10,
+            "X": 6.099746321105878e-10,
+            "Y": 4.747710853063206e-10,
+            "Z": 4.854146840679591e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.491860925264545e-07,
+          "relative_l2_by_channel": {
+            "A": 1.1676792765625958e-07,
+            "E": 1.2166944962637154e-07,
+            "X": 1.491860925264545e-07,
+            "Y": 1.158029888312866e-07,
+            "Z": 1.2128606230542238e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 6.099744941917131e-10,
+          "relative_l2_by_channel": {
+            "A": 4.614296441354991e-10,
+            "E": 5.014394900046641e-10,
+            "X": 6.099744941917131e-10,
+            "Y": 4.747710173244261e-10,
+            "Z": 4.854144815032879e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 1.0,
+      "index": 43,
+      "native_parameters": [
+        3786912.25,
+        0.0,
+        2.9007146141786544,
+        -50.65687204586901,
+        1.0,
+        1.5106621995504008,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.6458166869076468e-08,
+          "relative_l2_by_channel": {
+            "A": 1.0667951717207692e-08,
+            "E": 1.2834371323704254e-08,
+            "X": 1.0831829257235577e-08,
+            "Y": 1.1540954655491608e-08,
+            "Z": 1.6458166869076468e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.728345009510962e-06,
+          "relative_l2_by_channel": {
+            "A": 2.461233343221723e-06,
+            "E": 2.9521494451418507e-06,
+            "X": 2.4997472577071444e-06,
+            "Y": 2.6661168279074035e-06,
+            "Z": 3.728345009510962e-06
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.645816652695428e-08,
+          "relative_l2_by_channel": {
+            "A": 1.0667952037514177e-08,
+            "E": 1.2834370943006101e-08,
+            "X": 1.0831829726355178e-08,
+            "Y": 1.154095452546096e-08,
+            "Z": 1.645816652695428e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -1.0,
+      "index": 44,
+      "native_parameters": [
+        12623040.25,
+        0.0,
+        2.4554366194932715,
+        -50.65687204586901,
+        -1.0,
+        2.296832739627388,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.0
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.0455805664874735e-09,
+          "relative_l2_by_channel": {
+            "A": 1.052724032175661e-09,
+            "E": 7.242901353229471e-10,
+            "X": 7.260497278314631e-10,
+            "Y": 7.242909037111078e-10,
+            "Z": 3.0455805664874735e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.490023367878057e-14,
+          "relative_l2_by_channel": {
+            "A": 1.708840901233596e-14,
+            "E": 1.6117854264127033e-14,
+            "X": 1.3022380654013281e-14,
+            "Y": 1.6714281744874224e-14,
+            "Z": 5.490023367878057e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 5.2107495169982405e-14,
+          "relative_l2_by_channel": {
+            "A": 1.7125387744467808e-14,
+            "E": 1.5928645784425894e-14,
+            "X": 1.3444878054633762e-14,
+            "Y": 1.6611484588276393e-14,
+            "Z": 5.2107495169982405e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0001,
+      "index": 45,
+      "native_parameters": [
+        789.19,
+        0.99999,
+        3.6556378293717526,
+        -50.65687204586901,
+        0.0001,
+        2.706780862538964,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2783649489074105e-09,
+          "relative_l2_by_channel": {
+            "A": 7.174825830419481e-10,
+            "E": 1.278355477226712e-09,
+            "X": 7.004503539796129e-10,
+            "Y": 1.2783649489074105e-09,
+            "Z": 9.25185895853661e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.0359501839146174e-14,
+          "relative_l2_by_channel": {
+            "A": 1.1728500809124544e-14,
+            "E": 2.0087084824524317e-14,
+            "X": 1.1668585653272018e-14,
+            "Y": 2.0359501839146174e-14,
+            "Z": 1.4629177696013317e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.0012059034657812e-14,
+          "relative_l2_by_channel": {
+            "A": 1.1389052247078616e-14,
+            "E": 1.9742600565889072e-14,
+            "X": 1.1517362609329537e-14,
+            "Y": 2.0012059034657812e-14,
+            "Z": 1.4095556721420822e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.3,
+      "index": 46,
+      "native_parameters": [
+        7889.650000000001,
+        0.99999,
+        3.4378424444266567,
+        -50.65687204586901,
+        0.3,
+        1.2013919999209404,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2845806194098993e-09,
+          "relative_l2_by_channel": {
+            "A": 1.2521069835560227e-09,
+            "E": 1.1651513333805765e-09,
+            "X": 1.2845806194098993e-09,
+            "Y": 1.1636721697619332e-09,
+            "Z": 1.1790977719425706e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.517887344175826e-14,
+          "relative_l2_by_channel": {
+            "A": 1.4661612130331718e-14,
+            "E": 1.3594922418256434e-14,
+            "X": 1.517887344175826e-14,
+            "Y": 1.3701737923170005e-14,
+            "Z": 1.382333177261086e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.5132316506433347e-14,
+          "relative_l2_by_channel": {
+            "A": 1.4779010967336346e-14,
+            "E": 1.3188914524806223e-14,
+            "X": 1.5132316506433347e-14,
+            "Y": 1.3290037829325464e-14,
+            "Z": 1.382520998259179e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -0.8,
+      "index": 47,
+      "native_parameters": [
+        39447.25,
+        0.99999,
+        1.9356622967940733,
+        -50.65687204586901,
+        -0.8,
+        1.2301908886469144,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 7.953737979784762e-09,
+          "relative_l2_by_channel": {
+            "A": 5.9057252103159234e-09,
+            "E": 1.5760071496943637e-09,
+            "X": 7.953737979784762e-09,
+            "Y": 1.2808808759198893e-09,
+            "Z": 2.3532066921081144e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.4502365974305118e-14,
+          "relative_l2_by_channel": {
+            "A": 2.2628236569731075e-14,
+            "E": 1.0795491082109859e-14,
+            "X": 2.4502365974305118e-14,
+            "Y": 1.1787496002242085e-14,
+            "Z": 1.2247536337683054e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.4238519199609704e-14,
+          "relative_l2_by_channel": {
+            "A": 2.2170900393572434e-14,
+            "E": 1.131042754589261e-14,
+            "X": 2.4238519199609704e-14,
+            "Y": 1.2304520948863525e-14,
+            "Z": 1.2348156308215688e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0,
+      "index": 48,
+      "native_parameters": [
+        236682.25,
+        0.99999,
+        3.1637941813248123,
+        -50.65687204586901,
+        0.0,
+        1.687427893056051,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.7576092062228457e-07,
+          "relative_l2_by_channel": {
+            "A": 7.305076681840156e-08,
+            "E": 1.7576092062228457e-07,
+            "X": 1.464837387288637e-07,
+            "Y": 1.4426964852023512e-07,
+            "Z": 4.4894567805050206e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.30254970763853e-14,
+          "relative_l2_by_channel": {
+            "A": 2.8398577104086074e-14,
+            "E": 3.30254970763853e-14,
+            "X": 2.5729366837628408e-14,
+            "Y": 3.254098568844348e-14,
+            "Z": 3.265133027058132e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.4452281761528295e-14,
+          "relative_l2_by_channel": {
+            "A": 3.02812498628897e-14,
+            "E": 3.4452281761528295e-14,
+            "X": 2.502259453307429e-14,
+            "Y": 3.291787856866028e-14,
+            "Z": 3.4445529834060544e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 1.0,
+      "index": 49,
+      "native_parameters": [
+        788940.25,
+        0.99999,
+        5.499379342935085,
+        -50.65687204586901,
+        1.0,
+        2.9541078603738153,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.0149789407072544e-10,
+          "relative_l2_by_channel": {
+            "A": 4.0149789407072544e-10,
+            "E": 4.0122178058806845e-10,
+            "X": 4.014416908943464e-10,
+            "Y": 4.012219034153944e-10,
+            "Z": 4.014159632098892e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.2026288330819393e-12,
+          "relative_l2_by_channel": {
+            "A": 1.2026166589172064e-12,
+            "E": 1.2011503470888556e-12,
+            "X": 1.2019358178740774e-12,
+            "Y": 1.2011434803120922e-12,
+            "Z": 1.2026288330819393e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.3740145218525935e-14,
+          "relative_l2_by_channel": {
+            "A": 2.2249543618026664e-14,
+            "E": 2.257038877514699e-14,
+            "X": 2.3304087978902614e-14,
+            "Y": 2.354681705609944e-14,
+            "Z": 2.3740145218525935e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -1.0,
+      "index": 50,
+      "native_parameters": [
+        3156.01,
+        0.99999,
+        1.7706788182531916,
+        -50.65687204586901,
+        -1.0,
+        0.5055976047642118,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2678419954715053e-09,
+          "relative_l2_by_channel": {
+            "A": 2.876366160826285e-10,
+            "E": 1.2678419954715053e-09,
+            "X": 3.24456350996943e-10,
+            "Y": 1.267841599679217e-09,
+            "Z": 3.4157726621841713e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.85160098776863e-12,
+          "relative_l2_by_channel": {
+            "A": 8.498344173078796e-13,
+            "E": 3.85160098776863e-12,
+            "X": 1.0571724949471394e-12,
+            "Y": 3.851595125157112e-12,
+            "Z": 8.531635527673547e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.755854504962472e-14,
+          "relative_l2_by_channel": {
+            "A": 1.1246611027499083e-14,
+            "E": 4.755854504962472e-14,
+            "X": 1.1878859417824332e-14,
+            "Y": 4.7505863152846386e-14,
+            "Z": 1.451168376679795e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0001,
+      "index": 51,
+      "native_parameters": [
+        31557.850000000002,
+        0.99999,
+        5.43835593594525,
+        -50.65687204586901,
+        0.0001,
+        0.09502268132095831,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 7.65852046567069e-10,
+          "relative_l2_by_channel": {
+            "A": 5.703408588850681e-10,
+            "E": 4.742505497358514e-10,
+            "X": 7.65852046567069e-10,
+            "Y": 4.739968004434501e-10,
+            "Z": 4.383177486014381e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.2731099872541333e-12,
+          "relative_l2_by_channel": {
+            "A": 1.7257528631885368e-12,
+            "E": 1.3135441766180607e-12,
+            "X": 2.2731099872541333e-12,
+            "Y": 1.3128573113753365e-12,
+            "Z": 1.3040486921541924e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.9518618224479302e-14,
+          "relative_l2_by_channel": {
+            "A": 1.4922168153445448e-14,
+            "E": 1.3190916600273358e-14,
+            "X": 1.9518618224479302e-14,
+            "Y": 1.3196210384137829e-14,
+            "Z": 1.2316267286417596e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.3,
+      "index": 52,
+      "native_parameters": [
+        157788.25,
+        0.99999,
+        3.75958101401292,
+        -50.65687204586901,
+        0.3,
+        2.1050739484074024,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.2512170188863733e-09,
+          "relative_l2_by_channel": {
+            "A": 2.005940455961934e-09,
+            "E": 9.86400297053262e-10,
+            "X": 2.2512170188863733e-09,
+            "Y": 5.833268778063878e-10,
+            "Z": 1.7260497636349642e-09
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.579018270645862e-12,
+          "relative_l2_by_channel": {
+            "A": 5.769497784752765e-12,
+            "E": 3.0481482316804353e-12,
+            "X": 6.579018270645862e-12,
+            "Y": 2.03719861579175e-12,
+            "Z": 4.910721970845681e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.61067077606575e-14,
+          "relative_l2_by_channel": {
+            "A": 2.3309219493795668e-14,
+            "E": 1.821364196360852e-14,
+            "X": 2.61067077606575e-14,
+            "Y": 1.7051700124370344e-14,
+            "Z": 2.075128569718506e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -0.8,
+      "index": 53,
+      "native_parameters": [
+        946728.25,
+        0.99999,
+        4.802555964170974,
+        -50.65687204586901,
+        -0.8,
+        2.49770365763011,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.6065119084629167e-08,
+          "relative_l2_by_channel": {
+            "A": 3.3583756321884325e-08,
+            "E": 2.9087350557677552e-08,
+            "X": 2.8149222327580888e-08,
+            "Y": 3.6065119084629167e-08,
+            "Z": 2.1528924241279373e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.3815142928626157e-10,
+          "relative_l2_by_channel": {
+            "A": 1.0309251162478064e-10,
+            "E": 1.1054453483509224e-10,
+            "X": 9.97783672732285e-11,
+            "Y": 1.3815142928626157e-10,
+            "Z": 6.020136033368034e-11
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 5.06204966858246e-13,
+          "relative_l2_by_channel": {
+            "A": 3.7109981190338967e-13,
+            "E": 4.060036633860901e-13,
+            "X": 3.688642840028013e-13,
+            "Y": 5.06204966858246e-13,
+            "Z": 2.1184696660598172e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0,
+      "index": 54,
+      "native_parameters": [
+        3155760.25,
+        0.99999,
+        4.0422271595627555,
+        -50.65687204586901,
+        0.0,
+        0.476891178902583,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.490007539240605e-10,
+          "relative_l2_by_channel": {
+            "A": 2.4896276275295296e-10,
+            "E": 2.4893988471310344e-10,
+            "X": 2.490007539240605e-10,
+            "Y": 2.48939627709031e-10,
+            "Z": 2.4891356330861937e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.584270687631994e-08,
+          "relative_l2_by_channel": {
+            "A": 7.58272889515792e-08,
+            "E": 7.581791618672813e-08,
+            "X": 7.584270687631994e-08,
+            "Y": 7.581791582027955e-08,
+            "Z": 7.580718094891587e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.490007516333596e-10,
+          "relative_l2_by_channel": {
+            "A": 2.4896275863332043e-10,
+            "E": 2.4893988716668627e-10,
+            "X": 2.490007516333596e-10,
+            "Y": 2.4893962815903063e-10,
+            "Z": 2.4891356746416575e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 1.0,
+      "index": 55,
+      "native_parameters": [
+        12623.29,
+        0.99999,
+        2.0896296411936794,
+        -50.65687204586901,
+        1.0,
+        0.030466967158249623,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.5432854773441154e-10,
+          "relative_l2_by_channel": {
+            "A": 2.5432854773441154e-10,
+            "E": 2.5317433169096704e-10,
+            "X": 2.541714711035344e-10,
+            "Y": 2.5317226072166814e-10,
+            "Z": 2.539115024071028e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.790872812247556e-08,
+          "relative_l2_by_channel": {
+            "A": 7.790872812247556e-08,
+            "E": 7.745058282886495e-08,
+            "X": 7.783789019876496e-08,
+            "Y": 7.744977047437e-08,
+            "Z": 7.775178325863714e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.5432854457070885e-10,
+          "relative_l2_by_channel": {
+            "A": 2.5432854457070885e-10,
+            "E": 2.5317432819624967e-10,
+            "X": 2.541714702590647e-10,
+            "Y": 2.5317225891568787e-10,
+            "Z": 2.539115004091134e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -1.0,
+      "index": 56,
+      "native_parameters": [
+        126230.65000000001,
+        0.99999,
+        6.207113192094495,
+        -50.65687204586901,
+        -1.0,
+        1.072727674921986,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.885749594761653e-10,
+          "relative_l2_by_channel": {
+            "A": 2.1306444048761663e-10,
+            "E": 3.885749594761653e-10,
+            "X": 1.9636776566042316e-10,
+            "Y": 3.8845859293774275e-10,
+            "Z": 3.248072720142228e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.326357011988138e-07,
+          "relative_l2_by_channel": {
+            "A": 5.564084297337183e-08,
+            "E": 1.326357011988138e-07,
+            "X": 4.0496503085129795e-08,
+            "Y": 1.3261279664892708e-07,
+            "Z": 1.1426326272201264e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 3.8857495658645107e-10,
+          "relative_l2_by_channel": {
+            "A": 2.1306444165947606e-10,
+            "E": 3.8857495658645107e-10,
+            "X": 1.9636777091012512e-10,
+            "Y": 3.884585842261781e-10,
+            "Z": 3.2480727009873577e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0001,
+      "index": 57,
+      "native_parameters": [
+        631152.25,
+        0.99999,
+        4.214813553862914,
+        -50.65687204586901,
+        0.0001,
+        0.31341784212535273,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.8854660877008985e-09,
+          "relative_l2_by_channel": {
+            "A": 1.4182584806286232e-09,
+            "E": 8.374463010724886e-10,
+            "X": 1.8854660877008985e-09,
+            "Y": 7.516267224560979e-10,
+            "Z": 6.725962752742049e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.954409946326362e-07,
+          "relative_l2_by_channel": {
+            "A": 4.498215102767032e-07,
+            "E": 2.622222924812046e-07,
+            "X": 5.954409946326362e-07,
+            "Y": 2.3401315244662606e-07,
+            "Z": 2.1167143831550928e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.8854660931039583e-09,
+          "relative_l2_by_channel": {
+            "A": 1.4182584805093181e-09,
+            "E": 8.374463009423874e-10,
+            "X": 1.8854660931039583e-09,
+            "Y": 7.516267195420014e-10,
+            "Z": 6.725962759316341e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.3,
+      "index": 58,
+      "native_parameters": [
+        3786912.25,
+        0.99999,
+        1.105742370092873,
+        -50.65687204586901,
+        0.3,
+        2.8655589767952114,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.365232536671082e-08,
+          "relative_l2_by_channel": {
+            "A": 4.365232536671082e-08,
+            "E": 3.110442586274272e-08,
+            "X": 3.6426146826129886e-08,
+            "Y": 2.4636247469254045e-08,
+            "Z": 3.2354753034327365e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.2250859747515112e-05,
+          "relative_l2_by_channel": {
+            "A": 1.2250859747515112e-05,
+            "E": 7.908023818880532e-06,
+            "X": 9.935039328244478e-06,
+            "Y": 6.2870932664577335e-06,
+            "Z": 9.156806548716635e-06
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.3652325363534306e-08,
+          "relative_l2_by_channel": {
+            "A": 4.3652325363534306e-08,
+            "E": 3.1104425862187325e-08,
+            "X": 3.642614682789753e-08,
+            "Y": 2.4636247467636774e-08,
+            "Z": 3.235475302664385e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -0.8,
+      "index": 59,
+      "native_parameters": [
+        12623040.25,
+        0.99999,
+        2.792297260025191,
+        -50.65687204586901,
+        -0.8,
+        0.1888500637477455,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.99999
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.742906149241477e-10,
+          "relative_l2_by_channel": {
+            "A": 5.308044222466067e-10,
+            "E": 8.742893345678282e-10,
+            "X": 5.128341958558995e-10,
+            "Y": 8.742906149241477e-10,
+            "Z": 6.174321965806121e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.4190197723839255e-14,
+          "relative_l2_by_channel": {
+            "A": 1.706804637483393e-14,
+            "E": 4.2644956312678045e-14,
+            "X": 1.8646615763991038e-14,
+            "Y": 4.4190197723839255e-14,
+            "Z": 2.3496676011735356e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.243325197922483e-14,
+          "relative_l2_by_channel": {
+            "A": 1.711469660913697e-14,
+            "E": 4.126625841956716e-14,
+            "X": 1.8478728006893867e-14,
+            "Y": 4.243325197922483e-14,
+            "Z": 2.34977452538472e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0,
+      "index": 60,
+      "native_parameters": [
+        789.19,
+        -0.65,
+        2.167307698997062,
+        -50.65687204586901,
+        0.0,
+        0.4374959516190631,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.4955421042709496e-09,
+          "relative_l2_by_channel": {
+            "A": 8.545353502430631e-10,
+            "E": 1.4955421042709496e-09,
+            "X": 8.549228977144558e-10,
+            "Y": 1.4955379305160179e-09,
+            "Z": 1.0441304451408325e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.9807860262254744e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2240618715231264e-14,
+            "E": 1.970003278162925e-14,
+            "X": 1.2063057999649398e-14,
+            "Y": 1.9807860262254744e-14,
+            "Z": 1.4945657228720054e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.9546290595554994e-14,
+          "relative_l2_by_channel": {
+            "A": 1.198766081566535e-14,
+            "E": 1.9335216825231318e-14,
+            "X": 1.1831086558475657e-14,
+            "Y": 1.9546290595554994e-14,
+            "Z": 1.4576384479781044e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 1.0,
+      "index": 61,
+      "native_parameters": [
+        7889.650000000001,
+        -0.65,
+        1.9825583430431053,
+        -50.65687204586901,
+        1.0,
+        1.6866119055018067,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.6562175277945674e-10,
+          "relative_l2_by_channel": {
+            "A": 3.6562175277945674e-10,
+            "E": 3.0505440415275646e-10,
+            "X": 3.5879552987894774e-10,
+            "Y": 3.049208147138383e-10,
+            "Z": 3.4345547454761257e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.1461345494426996e-13,
+          "relative_l2_by_channel": {
+            "A": 2.1453446790256396e-13,
+            "E": 2.1411858436726832e-13,
+            "X": 2.1433525287055122e-13,
+            "Y": 2.1404516980573838e-13,
+            "Z": 2.1461345494426996e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.1482189296229588e-13,
+          "relative_l2_by_channel": {
+            "A": 2.1482189296229588e-13,
+            "E": 2.144438906023598e-13,
+            "X": 2.1476788598756765e-13,
+            "Y": 2.1441816121757973e-13,
+            "Z": 2.1472700003102972e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -1.0,
+      "index": 62,
+      "native_parameters": [
+        39447.25,
+        -0.65,
+        1.5742292130340085,
+        -50.65687204586901,
+        -1.0,
+        2.2190215904166637,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.0606720850156277e-09,
+          "relative_l2_by_channel": {
+            "A": 1.3889146617056981e-09,
+            "E": 2.0606720850156277e-09,
+            "X": 1.5744089601710929e-09,
+            "Y": 1.847167547428254e-09,
+            "Z": 2.0098924530407324e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.124839802142759e-14,
+          "relative_l2_by_channel": {
+            "A": 1.7366018587018442e-14,
+            "E": 2.010777126250228e-14,
+            "X": 1.6597578267549715e-14,
+            "Y": 1.9538747937825602e-14,
+            "Z": 2.124839802142759e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.0651223614243527e-14,
+          "relative_l2_by_channel": {
+            "A": 1.6995965634911898e-14,
+            "E": 2.044139917522468e-14,
+            "X": 1.6624080676457014e-14,
+            "Y": 1.9949600963509584e-14,
+            "Z": 2.0651223614243527e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0001,
+      "index": 63,
+      "native_parameters": [
+        236682.25,
+        -0.65,
+        3.7818111098850404,
+        -50.65687204586901,
+        0.0001,
+        1.49319349656496,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.1635984248819298e-07,
+          "relative_l2_by_channel": {
+            "A": 9.121850766689595e-08,
+            "E": 8.047284419542428e-08,
+            "X": 1.1635984248819298e-07,
+            "Y": 3.2895116154634694e-08,
+            "Z": 3.488173297835642e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 4.397988790991766e-14,
+          "relative_l2_by_channel": {
+            "A": 4.397988790991766e-14,
+            "E": 4.0136189279337235e-14,
+            "X": 4.269924775517223e-14,
+            "Y": 3.885119687434543e-14,
+            "Z": 3.809973562307437e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.4597753668965617e-14,
+          "relative_l2_by_channel": {
+            "A": 4.4597753668965617e-14,
+            "E": 4.0743236929167526e-14,
+            "X": 4.4355734978007206e-14,
+            "Y": 3.876223370817924e-14,
+            "Z": 3.8640494167146454e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.3,
+      "index": 64,
+      "native_parameters": [
+        788940.25,
+        -0.65,
+        4.531581127226154,
+        -50.65687204586901,
+        0.3,
+        2.006348707579501,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.1526407525115736e-10,
+          "relative_l2_by_channel": {
+            "A": 2.1160559325493116e-10,
+            "E": 2.1500421565709353e-10,
+            "X": 2.0959981102552884e-10,
+            "Y": 2.1500360796709594e-10,
+            "Z": 2.1526407525115736e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.809781694215145e-13,
+          "relative_l2_by_channel": {
+            "A": 6.531622702223201e-13,
+            "E": 6.809781694215145e-13,
+            "X": 6.429856406453481e-13,
+            "Y": 6.808885946031945e-13,
+            "Z": 6.771901732629237e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.449881921801173e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3701839854007354e-14,
+            "E": 1.2765585803596698e-14,
+            "X": 1.449881921801173e-14,
+            "Y": 1.3510704465377698e-14,
+            "Z": 1.3989325254680199e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -0.8,
+      "index": 65,
+      "native_parameters": [
+        3156.01,
+        -0.65,
+        1.3917348426470506,
+        -50.65687204586901,
+        -0.8,
+        2.095746704372888,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.6703766147561197e-10,
+          "relative_l2_by_channel": {
+            "A": 3.392426819324156e-10,
+            "E": 2.377319926872231e-10,
+            "X": 2.4694725183302367e-10,
+            "Y": 2.3773195625454465e-10,
+            "Z": 3.6703766147561197e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.185151889043882e-12,
+          "relative_l2_by_channel": {
+            "A": 1.0585220925918769e-12,
+            "E": 6.498930163769732e-13,
+            "X": 6.618286686887307e-13,
+            "Y": 6.498202468381782e-13,
+            "Z": 1.185151889043882e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.2276862239148523e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2150753637737637e-14,
+            "E": 9.858273458172159e-15,
+            "X": 1.094523302360639e-14,
+            "Y": 9.977996025195597e-15,
+            "Z": 1.2276862239148523e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0,
+      "index": 66,
+      "native_parameters": [
+        31557.850000000002,
+        -0.65,
+        2.0758412729224887,
+        -50.65687204586901,
+        0.0,
+        2.2747539806630366,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.606417085056679e-10,
+          "relative_l2_by_channel": {
+            "A": 2.5753475315526696e-10,
+            "E": 2.5348819628897073e-10,
+            "X": 2.606417085056679e-10,
+            "Y": 2.538705295486222e-10,
+            "Z": 2.521080030366299e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.825842318468328e-13,
+          "relative_l2_by_channel": {
+            "A": 7.710711872229816e-13,
+            "E": 7.740256398858131e-13,
+            "X": 7.825842318468328e-13,
+            "Y": 7.749670654043065e-13,
+            "Z": 7.599993045238952e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.1387947737308722e-14,
+          "relative_l2_by_channel": {
+            "A": 1.1147740577576312e-14,
+            "E": 1.0480070850985986e-14,
+            "X": 1.0944583634247379e-14,
+            "Y": 1.0564858674875623e-14,
+            "Z": 1.1387947737308722e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 1.0,
+      "index": 67,
+      "native_parameters": [
+        157788.25,
+        -0.65,
+        3.637109356563241,
+        -50.65687204586901,
+        1.0,
+        0.24534815203445873,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 9.677598084300507e-10,
+          "relative_l2_by_channel": {
+            "A": 8.950619361126921e-10,
+            "E": 7.869210865553647e-10,
+            "X": 9.677598084300507e-10,
+            "Y": 8.308823922908733e-10,
+            "Z": 9.608266937475197e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.062188933036576e-12,
+          "relative_l2_by_channel": {
+            "A": 2.687586007119503e-12,
+            "E": 2.5482391698979156e-12,
+            "X": 3.062188933036576e-12,
+            "Y": 2.6357637744232352e-12,
+            "Z": 2.91852650867476e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.7574393758804906e-14,
+          "relative_l2_by_channel": {
+            "A": 1.614716005212052e-14,
+            "E": 1.5280132558548698e-14,
+            "X": 1.611194863781664e-14,
+            "Y": 1.5861690283077608e-14,
+            "Z": 1.7574393758804906e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -1.0,
+      "index": 68,
+      "native_parameters": [
+        946728.25,
+        -0.65,
+        4.522610562425635,
+        -50.65687204586901,
+        -1.0,
+        2.505983253502645,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 6.80005640082501e-08,
+          "relative_l2_by_channel": {
+            "A": 3.6862489786435704e-08,
+            "E": 4.351028165854363e-08,
+            "X": 3.4113251529285054e-08,
+            "Y": 4.435250993001919e-08,
+            "Z": 6.80005640082501e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.444075500969957e-10,
+          "relative_l2_by_channel": {
+            "A": 1.203633916708091e-10,
+            "E": 1.6081187429034124e-10,
+            "X": 1.3092971002355325e-10,
+            "Y": 1.660273482102903e-10,
+            "Z": 2.444075500969957e-10
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 8.962807313582501e-13,
+          "relative_l2_by_channel": {
+            "A": 4.0644864491376636e-13,
+            "E": 5.960462810108019e-13,
+            "X": 5.012386471107981e-13,
+            "Y": 6.232277340877493e-13,
+            "Z": 8.962807313582501e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0001,
+      "index": 69,
+      "native_parameters": [
+        3155760.25,
+        -0.65,
+        4.286659653588616,
+        -50.65687204586901,
+        0.0001,
+        1.542834394436405,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.879900346809606e-10,
+          "relative_l2_by_channel": {
+            "A": 1.7513717557400997e-10,
+            "E": 1.879899326186925e-10,
+            "X": 1.8679888772066513e-10,
+            "Y": 1.879900346809606e-10,
+            "Z": 1.710764130790061e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.582326633989457e-08,
+          "relative_l2_by_channel": {
+            "A": 4.885560970025915e-08,
+            "E": 6.582326633989457e-08,
+            "X": 6.311732656427969e-08,
+            "Y": 6.582326611928075e-08,
+            "Z": 4.381291478423273e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.8799002937492905e-10,
+          "relative_l2_by_channel": {
+            "A": 1.7513717710535827e-10,
+            "E": 1.8798993069895832e-10,
+            "X": 1.8679888969091027e-10,
+            "Y": 1.8799002937492905e-10,
+            "Z": 1.7107641078456416e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.3,
+      "index": 70,
+      "native_parameters": [
+        12623.29,
+        -0.65,
+        1.6660568477942408,
+        -50.65687204586901,
+        0.3,
+        0.20384149940188817,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.7973696099109567e-10,
+          "relative_l2_by_channel": {
+            "A": 1.784054429120525e-10,
+            "E": 1.7369603150599878e-10,
+            "X": 1.7973696099109567e-10,
+            "Y": 1.736960137706913e-10,
+            "Z": 1.7476368944862996e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.5560310465576036e-08,
+          "relative_l2_by_channel": {
+            "A": 5.5560310465576036e-08,
+            "E": 5.3849293510605594e-08,
+            "X": 5.525864275378712e-08,
+            "Y": 5.384931851276615e-08,
+            "Z": 5.499857211235324e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.7973694798599802e-10,
+          "relative_l2_by_channel": {
+            "A": 1.7840544038116455e-10,
+            "E": 1.736960184746564e-10,
+            "X": 1.7973694798599802e-10,
+            "Y": 1.7369599869870763e-10,
+            "Z": 1.7476369958595448e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -0.8,
+      "index": 71,
+      "native_parameters": [
+        126230.65000000001,
+        -0.65,
+        4.765072564711281,
+        -50.65687204586901,
+        -0.8,
+        2.721876916345578,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.860854483675125e-10,
+          "relative_l2_by_channel": {
+            "A": 1.5470152550677842e-10,
+            "E": 1.860854483675125e-10,
+            "X": 1.5102875985705787e-10,
+            "Y": 1.8595027815310527e-10,
+            "Z": 1.773227618544237e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.482225048978743e-08,
+          "relative_l2_by_channel": {
+            "A": 4.735180829369773e-08,
+            "E": 5.6137110961498145e-08,
+            "X": 3.662217769348948e-08,
+            "Y": 5.608050923847494e-08,
+            "Z": 6.482225048978743e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.860854481101263e-10,
+          "relative_l2_by_channel": {
+            "A": 1.54701531550018e-10,
+            "E": 1.860854481101263e-10,
+            "X": 1.5102876725152162e-10,
+            "Y": 1.859502723177549e-10,
+            "Z": 1.773227642457776e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0,
+      "index": 72,
+      "native_parameters": [
+        631152.25,
+        -0.65,
+        4.666918846257501,
+        -50.65687204586901,
+        0.0,
+        0.8434982655578424,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 8.081028822664086e-10,
+          "relative_l2_by_channel": {
+            "A": 5.892993275028551e-10,
+            "E": 4.2470197656326605e-10,
+            "X": 8.081028822664086e-10,
+            "Y": 3.776276431604134e-10,
+            "Z": 2.6035374509301793e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.517104122310779e-07,
+          "relative_l2_by_channel": {
+            "A": 1.830175370898156e-07,
+            "E": 1.2619535650031086e-07,
+            "X": 2.517104122310779e-07,
+            "Y": 1.0717218471156592e-07,
+            "Z": 7.458642295065425e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 8.081028840843993e-10,
+          "relative_l2_by_channel": {
+            "A": 5.8929932822072e-10,
+            "E": 4.2470197956465854e-10,
+            "X": 8.081028840843993e-10,
+            "Y": 3.7762764397042145e-10,
+            "Z": 2.6035374359702296e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 1.0,
+      "index": 73,
+      "native_parameters": [
+        3786912.25,
+        -0.65,
+        3.800647788692165,
+        -50.65687204586901,
+        1.0,
+        0.4108864089145459,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 5.6144783907841864e-08,
+          "relative_l2_by_channel": {
+            "A": 3.848334840841176e-08,
+            "E": 4.1898143885903354e-08,
+            "X": 2.352538574054397e-08,
+            "Y": 4.399426592195503e-08,
+            "Z": 5.6144783907841864e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.2409837583926445e-05,
+          "relative_l2_by_channel": {
+            "A": 8.308762231797276e-06,
+            "E": 9.157862262627265e-06,
+            "X": 5.136771085436294e-06,
+            "Y": 9.81891369987066e-06,
+            "Z": 1.2409837583926445e-05
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 5.6144783909403336e-08,
+          "relative_l2_by_channel": {
+            "A": 3.848334841391853e-08,
+            "E": 4.1898143892237076e-08,
+            "X": 2.3525385732879142e-08,
+            "Y": 4.39942659307128e-08,
+            "Z": 5.6144783909403336e-08
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -1.0,
+      "index": 74,
+      "native_parameters": [
+        12623040.25,
+        -0.65,
+        3.873518204603755,
+        -50.65687204586901,
+        -1.0,
+        2.042821080631532,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": -0.65
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 5.894307696995601e-10,
+          "relative_l2_by_channel": {
+            "A": 5.390811577297959e-10,
+            "E": 1.942012277669573e-10,
+            "X": 3.639265394204644e-10,
+            "Y": 1.942016881591621e-10,
+            "Z": 5.894307696995601e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.356419906935754e-14,
+          "relative_l2_by_channel": {
+            "A": 2.72534974634617e-14,
+            "E": 1.5114997627801816e-14,
+            "X": 1.7019836521432462e-14,
+            "Y": 1.6270411841086244e-14,
+            "Z": 5.356419906935754e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.9884202755146245e-14,
+          "relative_l2_by_channel": {
+            "A": 2.6306420249001908e-14,
+            "E": 1.431358045159616e-14,
+            "X": 1.7279062241541925e-14,
+            "Y": 1.571209538951101e-14,
+            "Z": 4.9884202755146245e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 0.0001,
+      "index": 75,
+      "native_parameters": [
+        789.19,
+        0.38,
+        2.734688758472613,
+        -50.65687204586901,
+        0.0001,
+        2.0450460355782085,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 6.652084636280142e-10,
+          "relative_l2_by_channel": {
+            "A": 5.837213555698607e-10,
+            "E": 6.590509685253312e-10,
+            "X": 6.652084636280142e-10,
+            "Y": 6.590446756787527e-10,
+            "Z": 5.627040235042185e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.6454269079995683e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2585219457172157e-14,
+            "E": 1.5842988911420636e-14,
+            "X": 1.636973303529718e-14,
+            "Y": 1.6454269079995683e-14,
+            "Z": 1.1353366110039429e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.6048177552189736e-14,
+          "relative_l2_by_channel": {
+            "A": 1.2150776443392042e-14,
+            "E": 1.5510157766651633e-14,
+            "X": 1.5754007725094234e-14,
+            "Y": 1.6048177552189736e-14,
+            "Z": 1.112564151816647e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.3,
+      "index": 76,
+      "native_parameters": [
+        7889.650000000001,
+        0.38,
+        4.911331176331452,
+        -50.65687204586901,
+        0.3,
+        2.7059348735115325,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 5.622265015055204e-10,
+          "relative_l2_by_channel": {
+            "A": 4.782749591705848e-10,
+            "E": 4.346332749556445e-10,
+            "X": 5.622265015055204e-10,
+            "Y": 4.3440093525239984e-10,
+            "Z": 4.004734249292375e-10
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.6542825687988745e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3878946420564429e-14,
+            "E": 1.4624910280734516e-14,
+            "X": 1.6542825687988745e-14,
+            "Y": 1.4889873093346234e-14,
+            "Z": 1.2411123768801336e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.5975949332833892e-14,
+          "relative_l2_by_channel": {
+            "A": 1.3425451254429758e-14,
+            "E": 1.4405095242078028e-14,
+            "X": 1.5975949332833892e-14,
+            "Y": 1.462189348397152e-14,
+            "Z": 1.2162095726329886e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": -0.8,
+      "index": 77,
+      "native_parameters": [
+        39447.25,
+        0.38,
+        6.203648323280386,
+        -50.65687204586901,
+        -0.8,
+        0.21596079764977605,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 3.002224032280161e-09,
+          "relative_l2_by_channel": {
+            "A": 3.002224032280161e-09,
+            "E": 1.4551672652565775e-09,
+            "X": 2.7010267787909716e-09,
+            "Y": 1.3972215420632092e-09,
+            "Z": 2.480483369915711e-09
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.1675618527964604e-14,
+          "relative_l2_by_channel": {
+            "A": 2.1180167211812907e-14,
+            "E": 1.455275474649924e-14,
+            "X": 1.66172479248431e-14,
+            "Y": 1.4889164904387385e-14,
+            "Z": 2.1675618527964604e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.1987501544475705e-14,
+          "relative_l2_by_channel": {
+            "A": 2.1629324714006983e-14,
+            "E": 1.4792368136068458e-14,
+            "X": 1.713883693938162e-14,
+            "Y": 1.50299144686668e-14,
+            "Z": 2.1987501544475705e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.0,
+      "index": 78,
+      "native_parameters": [
+        236682.25,
+        0.38,
+        3.806843869078327,
+        -50.65687204586901,
+        0.0,
+        1.1009501625210456,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 6.033605563149957e-08,
+          "relative_l2_by_channel": {
+            "A": 3.833825678935837e-08,
+            "E": 2.7320268036227436e-08,
+            "X": 6.033605563149957e-08,
+            "Y": 3.272210741703356e-08,
+            "Z": 3.708521317249676e-08
+          },
+          "resolved_response_samples": 32,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 6.754358651351068e-14,
+          "relative_l2_by_channel": {
+            "A": 6.713216257356907e-14,
+            "E": 5.2336777619750616e-14,
+            "X": 6.754358651351068e-14,
+            "Y": 5.442665849141916e-14,
+            "Z": 5.4461556814348445e-14
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 6.658672655215802e-14,
+          "relative_l2_by_channel": {
+            "A": 6.458939304114698e-14,
+            "E": 5.140576950479437e-14,
+            "X": 6.658672655215802e-14,
+            "Y": 5.423843541984462e-14,
+            "Z": 5.442554555304476e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 7889400.0,
+      "duration_years": 0.25,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 1.0,
+      "index": 79,
+      "native_parameters": [
+        788940.25,
+        0.38,
+        3.806311091421545,
+        -50.65687204586901,
+        1.0,
+        2.6304229806232753,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.9195105066749716e-10,
+          "relative_l2_by_channel": {
+            "A": 1.8814274248785471e-10,
+            "E": 1.8305624589326607e-10,
+            "X": 1.9195105066749716e-10,
+            "Y": 1.8305556033947348e-10,
+            "Z": 1.8159512936139353e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 5.986813152396365e-13,
+          "relative_l2_by_channel": {
+            "A": 5.835514747487993e-13,
+            "E": 5.28793325126394e-13,
+            "X": 5.986813152396365e-13,
+            "Y": 5.284564249544232e-13,
+            "Z": 5.416935022700866e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 2.35612205616171e-14,
+          "relative_l2_by_channel": {
+            "A": 2.1923826274840498e-14,
+            "E": 1.9617122506789808e-14,
+            "X": 2.2309783565075326e-14,
+            "Y": 2.039542250929257e-14,
+            "Z": 2.35612205616171e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": -1.0,
+      "index": 80,
+      "native_parameters": [
+        3156.01,
+        0.38,
+        5.366374128655918,
+        -50.65687204586901,
+        -1.0,
+        0.37524152025136753,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.3139407631767193e-10,
+          "relative_l2_by_channel": {
+            "A": 1.4525794867763505e-10,
+            "E": 2.3139407631767193e-10,
+            "X": 1.605336088921271e-10,
+            "Y": 2.3139383207895326e-10,
+            "Z": 1.7237075490311032e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.369576237565103e-13,
+          "relative_l2_by_channel": {
+            "A": 3.6703692610968694e-13,
+            "E": 7.368474049085716e-13,
+            "X": 4.829241355119694e-13,
+            "Y": 7.369576237565103e-13,
+            "Z": 4.4737170633223113e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.91534485764538e-15,
+          "relative_l2_by_channel": {
+            "A": 8.90743890165318e-15,
+            "E": 9.635619757916849e-15,
+            "X": 8.684977798307321e-15,
+            "Y": 9.71696994887624e-15,
+            "Z": 9.91534485764538e-15
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": 0.0001,
+      "index": 81,
+      "native_parameters": [
+        31557.850000000002,
+        0.38,
+        1.014264277049217,
+        -50.65687204586901,
+        0.0001,
+        0.5066412174521051,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 2.3159410490960158e-10,
+          "relative_l2_by_channel": {
+            "A": 1.8643648848676422e-10,
+            "E": 2.3159410490960158e-10,
+            "X": 1.9540483796140893e-10,
+            "Y": 2.3130871464100471e-10,
+            "Z": 2.0443318142318243e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 7.402885830612357e-13,
+          "relative_l2_by_channel": {
+            "A": 5.09852356533772e-13,
+            "E": 7.402885830612357e-13,
+            "X": 5.980185514790365e-13,
+            "Y": 7.393336806107404e-13,
+            "Z": 5.573178407997963e-13
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.0432540124368345e-14,
+          "relative_l2_by_channel": {
+            "A": 9.415826878702358e-15,
+            "E": 8.955205526755591e-15,
+            "X": 8.67164747888961e-15,
+            "Y": 9.079793166483235e-15,
+            "Z": 1.0432540124368345e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.3,
+      "index": 82,
+      "native_parameters": [
+        157788.25,
+        0.38,
+        4.326316079745665,
+        -50.65687204586901,
+        0.3,
+        0.3453814061854661,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 6.432082500877729e-10,
+          "relative_l2_by_channel": {
+            "A": 5.378751242560926e-10,
+            "E": 4.397527857109621e-10,
+            "X": 6.432082500877729e-10,
+            "Y": 4.750258020764366e-10,
+            "Z": 3.762794155876639e-10
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 2.0307775937934253e-12,
+          "relative_l2_by_channel": {
+            "A": 1.7917919496727831e-12,
+            "E": 1.3956578624339785e-12,
+            "X": 2.0307775937934253e-12,
+            "Y": 1.4573538167444043e-12,
+            "Z": 1.4008988398341687e-12
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.7356701150783314e-14,
+          "relative_l2_by_channel": {
+            "A": 1.6441097903665535e-14,
+            "E": 1.4916191039237912e-14,
+            "X": 1.597481801224539e-14,
+            "Y": 1.4895205546921627e-14,
+            "Z": 1.7356701150783314e-14
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": -0.8,
+      "index": 83,
+      "native_parameters": [
+        946728.25,
+        0.38,
+        4.397496459307411,
+        -50.65687204586901,
+        -0.8,
+        1.4338801254859312,
+        0.41
+      ],
+      "parameter_count": 7,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.51836659447514e-08,
+          "relative_l2_by_channel": {
+            "A": 3.7948351380928034e-08,
+            "E": 2.5928091320599567e-08,
+            "X": 4.51836659447514e-08,
+            "Y": 2.6663077981424465e-08,
+            "Z": 4.045279090122378e-08
+          },
+          "resolved_response_samples": 128,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.4546503199415518e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1031403953450703e-10,
+            "E": 8.820276169462308e-11,
+            "X": 1.349828886440382e-10,
+            "Y": 1.0085242814493957e-10,
+            "Z": 1.4546503199415518e-10
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 5.077819496561217e-13,
+          "relative_l2_by_channel": {
+            "A": 3.4622014406228945e-13,
+            "E": 3.0087979083885593e-13,
+            "X": 4.314129383992335e-13,
+            "Y": 3.8757887474350253e-13,
+            "Z": 5.077819496561217e-13
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 31557600.0,
+      "duration_years": 1.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": 0.0,
+      "index": 84,
+      "native_parameters": [
+        3155760.25,
+        0.38,
+        2.332115034262828,
+        -50.65687204586901,
+        0.0,
+        0.4766856505561337,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.143066567964765e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1259851975091638e-10,
+            "E": 1.038576554265645e-10,
+            "X": 1.143066567964765e-10,
+            "Y": 1.0385747109798293e-10,
+            "Z": 1.0609718331583107e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.555603924863019e-08,
+          "relative_l2_by_channel": {
+            "A": 3.266763329530855e-08,
+            "E": 3.1102497366705245e-08,
+            "X": 2.8493230273954506e-08,
+            "Y": 3.110249673503044e-08,
+            "Z": 3.555603924863019e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.143066571102111e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1259852565058061e-10,
+            "E": 1.0385765208647152e-10,
+            "X": 1.143066571102111e-10,
+            "Y": 1.0385747238031634e-10,
+            "Z": 1.0609718662966951e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.0001,
+      "inclination_cosine": 1.0,
+      "index": 85,
+      "native_parameters": [
+        12623.29,
+        0.38,
+        2.9071651096987106,
+        -50.65687204586901,
+        1.0,
+        0.9168725533680169,
+        0.41,
+        -0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.2465864171571818e-10,
+          "relative_l2_by_channel": {
+            "A": 1.2345406792160718e-10,
+            "E": 1.1331243322512828e-10,
+            "X": 1.173222069438342e-10,
+            "Y": 1.1331274532450904e-10,
+            "Z": 1.2465864171571818e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.7548542292272855e-08,
+          "relative_l2_by_channel": {
+            "A": 3.5197963708190245e-08,
+            "E": 3.754823366621383e-08,
+            "X": 3.642447950017303e-08,
+            "Y": 3.7548542292272855e-08,
+            "Z": 3.516707486763132e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.2465863429677016e-10,
+          "relative_l2_by_channel": {
+            "A": 1.234540706036128e-10,
+            "E": 1.1331246045555629e-10,
+            "X": 1.1732220638939414e-10,
+            "Y": 1.1331275329608515e-10,
+            "Z": 1.2465863429677016e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.001,
+      "inclination_cosine": -1.0,
+      "index": 86,
+      "native_parameters": [
+        126230.65000000001,
+        0.38,
+        5.770265186300607,
+        -50.65687204586901,
+        -1.0,
+        2.50169241679498,
+        0.41,
+        0.2
+      ],
+      "parameter_count": 8,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 1.349901834566666e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1983472145125444e-10,
+            "E": 1.2971372542981937e-10,
+            "X": 1.349901834566666e-10,
+            "Y": 1.296326325736899e-10,
+            "Z": 1.111403677740327e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.788511378774489e-08,
+          "relative_l2_by_channel": {
+            "A": 3.699214192139219e-08,
+            "E": 3.725063587625444e-08,
+            "X": 3.60148030855494e-08,
+            "Y": 3.720703206745766e-08,
+            "Z": 3.788511378774489e-08
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 1.3499019558680878e-10,
+          "relative_l2_by_channel": {
+            "A": 1.1983472956647393e-10,
+            "E": 1.2971374870929582e-10,
+            "X": 1.3499019558680878e-10,
+            "Y": 1.2963266644243456e-10,
+            "Z": 1.1114037030185181e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 12345.0,
+      "frequency_hz": 0.005,
+      "inclination_cosine": 0.0001,
+      "index": 87,
+      "native_parameters": [
+        631152.25,
+        0.38,
+        3.7425273911198422,
+        -50.65687204586901,
+        0.0001,
+        0.4784487626269062,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 4.683236979796424e-10,
+          "relative_l2_by_channel": {
+            "A": 4.360885048572779e-10,
+            "E": 3.8422776495021737e-10,
+            "X": 4.3524634159104153e-10,
+            "Y": 4.0632727732391253e-10,
+            "Z": 4.683236979796424e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 1.230321168618146e-07,
+          "relative_l2_by_channel": {
+            "A": 1.2020245950133668e-07,
+            "E": 1.0021280739593192e-07,
+            "X": 1.2225564474528016e-07,
+            "Y": 1.1199242491026925e-07,
+            "Z": 1.230321168618146e-07
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 4.68323696592008e-10,
+          "relative_l2_by_channel": {
+            "A": 4.3608851585255463e-10,
+            "E": 3.842277206067167e-10,
+            "X": 4.3524632331441786e-10,
+            "Y": 4.0632725982938234e-10,
+            "Z": 4.68323696592008e-10
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": -6311520.0,
+      "frequency_hz": 0.03,
+      "inclination_cosine": 0.3,
+      "index": 88,
+      "native_parameters": [
+        3786912.25,
+        0.38,
+        2.083969296704784,
+        -50.65687204586901,
+        0.3,
+        0.8615417733461825,
+        0.41,
+        0.2,
+        2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    },
+    {
+      "comparisons": [
+        {
+          "max_relative_l2": 9.859220788197795e-09,
+          "relative_l2_by_channel": {
+            "A": 9.352774148747663e-09,
+            "E": 8.567080825552654e-09,
+            "X": 9.603904340170952e-09,
+            "Y": 9.859220788197795e-09,
+            "Z": 7.974857620680324e-09
+          },
+          "resolved_response_samples": 512,
+          "response_samples": null
+        },
+        {
+          "max_relative_l2": 3.3733022280581835e-06,
+          "relative_l2_by_channel": {
+            "A": 2.8329994648991216e-06,
+            "E": 2.4260614602028118e-06,
+            "X": 3.1448001157688103e-06,
+            "Y": 3.3733022280581835e-06,
+            "Z": 2.360507760985698e-06
+          },
+          "resolved_response_samples": 256,
+          "response_samples": 256
+        },
+        {
+          "max_relative_l2": 9.85922122060589e-09,
+          "relative_l2_by_channel": {
+            "A": 9.352773898186468e-09,
+            "E": 8.56708130455285e-09,
+            "X": 9.603904323127257e-09,
+            "Y": 9.85922122060589e-09,
+            "Z": 7.974857338368967e-09
+          },
+          "resolved_response_samples": 512,
+          "response_samples": 512
+        }
+      ],
+      "duration_seconds": 126230400.0,
+      "duration_years": 4.0,
+      "epoch_seconds": 66270960.0,
+      "frequency_hz": 0.1,
+      "inclination_cosine": -0.8,
+      "index": 89,
+      "native_parameters": [
+        12623040.25,
+        0.38,
+        4.27802773510086,
+        -50.65687204586901,
+        -0.8,
+        1.121689619037638,
+        0.41,
+        -0.2,
+        -2.0
+      ],
+      "parameter_count": 9,
+      "sky_cosine": 0.38
+    }
+  ],
+  "generated_at_utc": "2026-09-18T19:51:27.512772+00:00",
+  "largest_errors": [
+    {
+      "all_frequencies": {
+        "case_index": 4,
+        "duration_years": 0.25,
+        "frequency_hz": 0.1,
+        "max_relative_l2": 2.060188051475109e-07,
+        "parameter_count": 8,
+        "resolved_response_samples": 32
+      },
+      "frequencies_up_to_30_mhz": {
+        "case_index": 3,
+        "duration_years": 0.25,
+        "frequency_hz": 0.03,
+        "max_relative_l2": 1.364470120746224e-08,
+        "parameter_count": 8,
+        "resolved_response_samples": 32
+      },
+      "response_samples": null
+    },
+    {
+      "all_frequencies": {
+        "case_index": 74,
+        "duration_years": 4.0,
+        "frequency_hz": 0.1,
+        "max_relative_l2": 1.2409837583926445e-05,
+        "parameter_count": 7,
+        "resolved_response_samples": 256
+      },
+      "frequencies_up_to_30_mhz": {
+        "case_index": 58,
+        "duration_years": 4.0,
+        "frequency_hz": 0.03,
+        "max_relative_l2": 5.954409946326362e-07,
+        "parameter_count": 8,
+        "resolved_response_samples": 256
+      },
+      "response_samples": 256
+    },
+    {
+      "all_frequencies": {
+        "case_index": 74,
+        "duration_years": 4.0,
+        "frequency_hz": 0.1,
+        "max_relative_l2": 5.6144783909403336e-08,
+        "parameter_count": 7,
+        "resolved_response_samples": 512
+      },
+      "frequencies_up_to_30_mhz": {
+        "case_index": 58,
+        "duration_years": 4.0,
+        "frequency_hz": 0.03,
+        "max_relative_l2": 1.8854660931039583e-09,
+        "parameter_count": 8,
+        "resolved_response_samples": 512
+      },
+      "response_samples": 512
+    }
+  ],
+  "physical_validity": "not assessed; pinned spline C fixtures cover that separately",
+  "provenance": {
+    "devices": [
+      "TFRT_CPU_0"
+    ],
+    "git_head": "9e6a9ce23897671954cdd452cedebe2d5cf12246",
+    "git_status": "M ../../NOTICE\n M ../../README.md\n M ../../docs/performance.md\n M ../../docs/quality-review.md\n M ../../docs/superpowers/specs/2026-09-13-gbonfly-glass-migration.md\n M ../../examples/quickstart.py\n M ../../examples/typing_contract.py\n M ../../pyproject.toml\n M __init__.py\n M detector.py\n M glass/__init__.py\n M glass/_validation.py\n M glass/alignment.py\n M glass/bandwidth.py\n M glass/compat.py\n M glass/convert.py\n M glass/proposals.py\n M glass/waveform.py\n M parameters.py\n M ../../tests/glass/test_alignment.py\n M ../../tests/glass/test_bandwidth.py\n M ../../tests/glass/test_compat.py\n M ../../tests/glass/test_proposals.py\n M ../../tests/test_detector.py\n M ../../tests/test_glass_reference.py\n M ../../tests/test_waveform.py\n M ../../tools/benchmark_waveform.py\n M ../../tools/tdi_zero_crossings/README.md\n?? ../../docs/superpowers/plans/2026-09-18-tdi-onfly-performance.md\n?? ../../docs/superpowers/plans/2026-09-18-tdi-onfly.md\n?? ../../docs/superpowers/specs/2026-09-18-tdi-onfly-design.md\n?? glass/fourier.py\n?? glass/interpolation.py\n?? glass/onfly.py\n?? glass/sparse.py\n?? ../../tests/data/onfly/\n?? ../../tests/glass/test_carrier.py\n?? ../../tests/glass/test_interpolation.py\n?? ../../tests/glass/test_onfly_response.py\n?? ../../tests/glass/test_sparse.py\n?? ../../tests/test_onfly.py\n?? ../../tests/test_onfly_derivatives.py\n?? ../../tools/benchmark_onfly.py\n?? ../../tools/onfly_reference/\n?? ../../tools/performance/onfly-hermite.json\n?? ../../tools/performance/onfly-initial.json\n?? ../../tools/performance/onfly-validation.json\n?? ../../tools/performance/onfly.json\n?? ../../tools/validate_onfly.py",
+    "jax": "0.7.2",
+    "jax_backend": "cpu",
+    "jaxlib": "0.7.2",
+    "logical_cpu_count": 16,
+    "machine": "arm64",
+    "numpy": "2.3.5",
+    "package_directory": "/Users/aaron/Documents/lisa/binary_galactica/src/binary_galactica",
+    "package_version": "0.3.0",
+    "platform": "macOS-14.3.1-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.11.8 | packaged by conda-forge | (main, Feb 16 2024, 20:49:36) [Clang 16.0.6 ]",
+    "python_executable": "/Users/aaron/miniconda3/bin/python",
+    "source_tree_sha256": "b0f22dee0bb65c283570a5c2d0c690247d00ab6a290e375e0346cbac1bb11c89"
+  },
+  "purpose": "production sparse-spectrum convergence against dense public response",
+  "settings": {
+    "BW": 2048,
+    "automatic_policy": {
+      "buckets": [
+        32,
+        64,
+        128,
+        256,
+        512,
+        1024,
+        2048
+      ],
+      "cap": 2048,
+      "density_per_year": 128,
+      "year_seconds": 31558149.7632
+    },
+    "dense_reference": "public tdi_response plus explicit phase and sqrt(T)/(2*BW) FFT",
+    "response_samples": [
+      null,
+      256,
+      512
+    ]
+  }
+}

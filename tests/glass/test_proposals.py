@@ -387,16 +387,27 @@ def test_fisher_cache_uses_the_configured_refresh_interval():
     assert len(calls) == 2
 
 
-def test_fisher_cache_refreshes_at_the_position_it_is_called_with():
+@pytest.mark.parametrize("integer_type", [int, np.int32, np.int64, np.uint64])
+def test_fisher_cache_refreshes_at_the_position_it_is_called_with(integer_type):
     from binary_galactica.glass.proposals import FisherCache
 
     calls = []
-    cache = FisherCache(_fisher_oracle(calls), every=2)
+    cache = FisherCache(_fisher_oracle(calls), every=integer_type(2))
     cache(P0)
     cache(P0 + 1.0)  # cached, oracle not called
     cache(P0 + 2.0)  # refresh, at THIS position
     assert len(calls) == 2
     assert np.allclose(calls[1], P0 + 2.0)
+
+
+@pytest.mark.parametrize(
+    "every", [0, -1, True, np.bool_(True), 1.9, 2.0, np.nan, np.inf]
+)
+def test_fisher_cache_requires_a_positive_integer_refresh_interval(every):
+    from binary_galactica.glass.proposals import FisherCache
+
+    with pytest.raises(ValueError, match="every must be a positive integer"):
+        FisherCache(_fisher_oracle(), every=every)
 
 
 def test_fisher_cache_invalidate_forces_a_refresh():

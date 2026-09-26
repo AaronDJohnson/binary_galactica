@@ -2,6 +2,11 @@
 
 Status: implemented and verified on 2026-09-13 following user approval.
 
+The mainline backend choice is superseded by the
+[September 18 TDI-on-the-fly design](2026-09-18-tdi-onfly-design.md).
+The Fourier implementation and its reference checks remain available through
+explicit `backend="fourier"` selection.
+
 This supersedes the implementation choices in the August 22 subsumption
 design, especially its amplitude correction and unverified reference claims.
 

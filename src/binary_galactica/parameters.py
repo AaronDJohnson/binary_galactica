@@ -1,11 +1,13 @@
-"""The eight-dimensional galactic-binary parameter space.
+"""The eight-dimensional physical galactic-binary parameter space.
 
 The parameters are carried in a fixed order,
 
     (amp, f0, fdot, phi0, iota, psi, lam, beta),
 
-so that a single ``(8,)`` array is an unambiguous point in the sampling space.
-:class:`GBParams` names those slots without changing the representation: it is
+for the physical waveform interfaces. GLASS-native arrays use a different
+ordering despite having the same shape; use :func:`to_glass_vector` and
+:func:`from_glass_vector` to convert between them. :class:`GBParams` names
+the physical slots without changing the representation: it is
 a :class:`~typing.NamedTuple`, hence a JAX pytree, so it may be passed through
 ``jit``, ``vmap`` and ``grad`` exactly like the bare array.
 """
@@ -17,7 +19,7 @@ from typing import NamedTuple
 import jax.numpy as jnp
 from jax import Array
 
-#: Parameter names, in the canonical order used by every array in this package.
+#: Parameter names, in the canonical order used by physical parameter arrays.
 PARAMETER_NAMES: tuple[str, ...] = (
     "amp",
     "f0",
@@ -136,7 +138,7 @@ def to_glass_vector(theta: Array | GBParams, duration: Array | float) -> Array:
     Args:
         theta: Physical ``GBParams`` or an array with trailing dimension 8.
         duration: Observation duration in seconds, positive and broadcastable
-            with the parameter fields. Must remain a traced operand under JIT.
+            with the parameter fields. Supports traced values under JIT.
 
     Returns:
         A JAX array with trailing dimension 8. All operations support AD.

@@ -33,13 +33,13 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 
+from . import _validation
 from .convert import GLASS_TO_CONTINUOUS
-from .waveform import ucb_waveform
+from .waveform import DEFAULT_RESPONSE_SAMPLES, _options, ucb_waveform
 
 jax.config.update("jax_enable_x64", True)
 
 
-@partial(jax.jit, static_argnames=("BW", "bin_lo", "n_bins", "fmt"))
 def template_on_window(
     params,
     *,
@@ -50,6 +50,8 @@ def template_on_window(
     t0=0.0,
     fmt: str = "sangria",
     positions=None,
+    backend="onfly",
+    response_samples: int | None = DEFAULT_RESPONSE_SAMPLES,
 ):
     """``(2, n_bins)`` complex ``[A, E]`` on bins ``bin_lo .. bin_lo+n_bins-1``.
 
@@ -63,7 +65,8 @@ def template_on_window(
     T
         Observation time [s].
     bin_lo, n_bins
-        The analysis window, in absolute rfft bin indices. Static.
+        The analysis window, in absolute rfft bin indices. Static integers;
+        ``n_bins`` must be non-negative. Zero returns an empty ``(2, 0)`` array.
     BW
         Generator bandwidth. Choose it from
         :func:`binary_galactica.glass.bandwidth.ucb_bw`, or fix it for reproducibility.
@@ -72,10 +75,54 @@ def template_on_window(
     fmt
         TDI convention.
     positions
-        Optional cached orbit for this ``(T, t0, BW)``.
+        Optional cached orbit for this ``(T, t0, BW)``. On the on-fly path
+        it is interpolated and its grid limits the geometry accuracy.
+    backend
+        Algorithm: ``"onfly"`` (default) or the legacy ``"fourier"`` path.
+    response_samples
+        ``None`` selects a duration-dependent power-of-two grid of 32–2048
+        samples, targeting 128 samples per year. An explicit static integer
+        of at least four fixes the count independently of ``BW``. Unused by
+        the legacy backend. Pass an explicit count when differentiating ``T``
+        across automatic grid thresholds: automatic selection is piecewise
+        and changes the interpolation grid.
 
     """
-    w = ucb_waveform(params, T=T, BW=BW, t0=t0, fmt=fmt, positions=positions)
+    bin_lo = _validation.integer(bin_lo, "bin_lo")
+    n_bins = _validation.integer(n_bins, "n_bins", minimum=0)
+    response_samples = _options(backend, response_samples)
+    return _template_on_window(
+        params,
+        T=T,
+        bin_lo=bin_lo,
+        n_bins=n_bins,
+        BW=BW,
+        t0=t0,
+        fmt=fmt,
+        positions=positions,
+        backend=backend,
+        response_samples=response_samples,
+    )
+
+
+@partial(
+    jax.jit,
+    static_argnames=("BW", "bin_lo", "n_bins", "fmt", "backend", "response_samples"),
+)
+def _template_on_window(
+    params, *, T, bin_lo, n_bins, BW, t0, fmt, positions, backend, response_samples
+):
+    """Compile waveform generation and placement after validating static indices."""
+    w = ucb_waveform(
+        params,
+        T=T,
+        BW=BW,
+        t0=t0,
+        fmt=fmt,
+        positions=positions,
+        backend=backend,
+        response_samples=response_samples,
+    )
     c = GLASS_TO_CONTINUOUS(T)
 
     idx = jnp.asarray(w["freq_bin_indices"] - bin_lo, dtype=jnp.int32)

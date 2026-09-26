@@ -1,4 +1,4 @@
-"""GLASS fast-slow galactic-binary TDI waveforms in JAX.
+"""Galactic-binary LISA TDI waveforms in JAX.
 
 ``ucb_waveform`` uses GLASS-native parameter vectors; ``tdi_waveform`` accepts
 physical ``GBParams``. Both return frequency-domain LISA detector channels.
@@ -22,6 +22,8 @@ _jax.config.update("jax_enable_x64", True)
 from binary_galactica.constants import DAY, YEAR  # noqa: E402
 from binary_galactica.detector import tdi_waveform  # noqa: E402
 from binary_galactica.glass import (  # noqa: E402
+    BACKENDS,
+    DEFAULT_RESPONSE_SAMPLES,
     FORMATS,
     FSTAR,
     GLASS_TO_CONTINUOUS,
@@ -51,6 +53,7 @@ from binary_galactica.glass import (  # noqa: E402
     slow_time_grid,
     snr_cut,
     synthesize,
+    tdi_response,
     template_on_window,
     to_continuous_ft,
     ucb_alignment,
@@ -76,9 +79,12 @@ from binary_galactica.waveform import (  # noqa: E402
     polarizations,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
+    "BACKENDS",
+    "DEFAULT_RESPONSE_SAMPLES",
+    "tdi_response",
     "DAY",
     "NUM_PARAMS",
     "PARAMETER_NAMES",

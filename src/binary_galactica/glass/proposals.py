@@ -65,6 +65,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from . import _validation
 from .constants import YEAR
 from .prior import UCBPrior
 
@@ -366,16 +367,14 @@ class FisherCache:
     fisher
         ``fisher(params) -> (evalues, evectors)``.
     every
-        Refresh interval in calls to this cache.
+        Positive integer refresh interval in calls to this cache.
 
     """
 
     def __init__(self, fisher: FisherOracle, every: int = FISHER_REFRESH_STEPS) -> None:
         """Initialize a Fisher cache with a positive refresh interval."""
-        if every < 1:
-            raise ValueError("refresh interval must be >= 1 Fisher call")
         self._fisher = fisher
-        self.every = int(every)
+        self.every = _validation.integer(every, "every", minimum=1)
         self._cached: FisherDecomposition | None = None
         self._since = 0
         self.refreshes = 0

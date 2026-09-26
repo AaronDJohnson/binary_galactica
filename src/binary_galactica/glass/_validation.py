@@ -5,6 +5,22 @@ import jax.numpy as jnp
 import numpy as np
 
 
+def integer(value, name, *, minimum=None):
+    """Require a concrete integer index/count without truncating or accepting bools."""
+    requirement = {
+        None: "an integer",
+        0: "a non-negative integer",
+        1: "a positive integer",
+    }[minimum]
+    if (
+        isinstance(value, (bool, np.bool_))
+        or not isinstance(value, (int, np.integer))
+        or (minimum is not None and value < minimum)
+    ):
+        raise ValueError(f"{name} must be {requirement}; got {value!r}")
+    return int(value)
+
+
 def _contains_jax(value):
     """Detect JAX values and conversion protocols before packing sequences."""
     if isinstance(value, (jax.Array, jax.core.Tracer)) or callable(

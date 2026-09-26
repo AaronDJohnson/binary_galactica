@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""``binary_galactica.glass`` --- the GLASS fast-slow galactic-binary generator, in JAX.
+"""GLASS-compatible galactic-binary TDI waveforms in JAX.
 
-A JAX transcription of the UCB waveform path in GLASS commit
-``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``
-(``glass/ucb/src/glass_ucb_waveform.c`` and ``glass/utils/src/glass_lisa.c``),
-so that the generator can be cited as the published method rather than
-re-derived. The algorithm is Cornish & Littenberg's fast-slow / reduced-DFT
-construction.
+The default waveform constructs first-generation frozen-geometry XYZ directly
+at sparse reception times, interpolates its demodulated analytic response, and
+then Fourier transforms it. It follows the pinned GLASS
+``LISA_spline_response`` / ``LISA_TDI_spline`` path from commit
+``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. The explicit
+``backend="fourier"`` option retains GLASS's earlier fast-slow / reduced-DFT
+link-response construction for legacy reference comparisons.
 
 Quick start
 -----------
@@ -27,8 +28,7 @@ Quick start
 >>> p = binary_galactica.glass.params_from_native(
 ...     f0=1e-3, fdot=1e-18, amp=7.16e-22, phi0=0.5,
 ...     colat=1.78, lon=0.0, psi=0.7, cos_iota=0.3, T=T)
->>> orb = binary_galactica.glass.orbit_cache(T, 0.0, BW)
->>> w = binary_galactica.glass.ucb_waveform(p, T=T, BW=BW, positions=orb)
+>>> w = binary_galactica.glass.ucb_waveform(p, T=T, BW=BW)
 >>> w["A"].shape
 (64,)
 
@@ -61,9 +61,19 @@ from .proposals import (
 from .response import detector_tensor, polarization_tensor
 from .tdi import FORMATS, synthesize, xyz_to_ae, xyz_to_aet
 from .types import WaveformResult
-from .waveform import orbit_cache, params_from_native, ucb_waveform
+from .waveform import (
+    BACKENDS,
+    DEFAULT_RESPONSE_SAMPLES,
+    orbit_cache,
+    params_from_native,
+    tdi_response,
+    ucb_waveform,
+)
 
 __all__ = [
+    "BACKENDS",
+    "DEFAULT_RESPONSE_SAMPLES",
+    "tdi_response",
     "Alignment",
     "FORMATS",
     "FSTAR",

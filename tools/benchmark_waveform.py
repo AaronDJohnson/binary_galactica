@@ -293,10 +293,20 @@ def benchmark_bandwidth(
             t0=epoch,
             fmt=FORMAT,
             positions=cached_positions,
+            backend=args.backend,
+            response_samples=args.response_samples,
         )
 
     def uncached_call(p, duration, cached_positions, epoch):
-        return bg.ucb_waveform(p, T=duration, BW=bandwidth, t0=epoch, fmt=FORMAT)
+        return bg.ucb_waveform(
+            p,
+            T=duration,
+            BW=bandwidth,
+            t0=epoch,
+            fmt=FORMAT,
+            backend=args.backend,
+            response_samples=args.response_samples,
+        )
 
     def physical_call(p, duration, cached_positions, epoch):
         return bg.tdi_waveform(
@@ -306,6 +316,8 @@ def benchmark_bandwidth(
             t0=epoch,
             fmt=FORMAT,
             positions=cached_positions,
+            backend=args.backend,
+            response_samples=args.response_samples,
         )
 
     bin_lo = 23_652 - bandwidth // 2 - 32
@@ -319,6 +331,21 @@ def benchmark_bandwidth(
             t0=epoch,
             fmt=FORMAT,
             positions=cached_positions,
+            backend=args.backend,
+            response_samples=args.response_samples,
+            bin_lo=bin_lo,
+            n_bins=n_bins,
+        )
+
+    def uncached_window_call(p, duration, cached_positions, epoch):
+        return bg.template_on_window(
+            p,
+            T=duration,
+            BW=bandwidth,
+            t0=epoch,
+            fmt=FORMAT,
+            backend=args.backend,
+            response_samples=args.response_samples,
             bin_lo=bin_lo,
             n_bins=n_bins,
         )
@@ -328,8 +355,14 @@ def benchmark_bandwidth(
         channels = jnp.stack((waveform["A"], waveform["E"]))
         return jnp.stack((channels.real, channels.imag))
 
+    def uncached_ae_vector(p, duration, cached_positions, epoch):
+        waveform = uncached_call(p, duration, cached_positions, epoch)
+        channels = jnp.stack((waveform["A"], waveform["E"]))
+        return jnp.stack((channels.real, channels.imag))
+
     host_input = "NumPy float64 native vector; cached JAX positions"
     device_input = "device float64 native vector; cached JAX positions"
+    uncached_device_input = "device float64 native vector; analytic orbit in waveform"
     # T is an explicit dynamic argument throughout; closing over a Python T
     # can change float64 carrier rounding when XLA rewrites division.
     workloads = [
@@ -386,7 +419,39 @@ def benchmark_bandwidth(
             uncached_call,
             native_args,
             FULL_OUTPUTS,
-            "NumPy float64 native vector; orbits recomputed in waveform",
+            "NumPy float64 native vector; analytic orbit in waveform",
+            1,
+        ),
+        (
+            "native_outer_jit_uncached",
+            jax.jit(uncached_call),
+            device_args,
+            FULL_OUTPUTS,
+            uncached_device_input,
+            1,
+        ),
+        (
+            "fixed_window_ae_outer_jit_uncached",
+            jax.jit(uncached_window_call),
+            device_args,
+            "A/E, shape (2, BW+64), continuous Fourier units",
+            uncached_device_input,
+            1,
+        ),
+        (
+            "batch_native_outer_jit_uncached",
+            jax.jit(jax.vmap(uncached_call, in_axes=(0, None, None, None))),
+            batch_args,
+            FULL_OUTPUTS + "; leading batch axis on every leaf",
+            "device float64 native batch; analytic orbit in waveform",
+            args.batch_size,
+        ),
+        (
+            "jacfwd_ae_outer_jit_uncached",
+            jax.jit(jax.jacfwd(uncached_ae_vector, argnums=0)),
+            device_args,
+            "Jacobian (real/imag, A/E, BW, 8 native parameters), raw GLASS units",
+            uncached_device_input,
             1,
         ),
     ]
@@ -415,6 +480,18 @@ def benchmark_bandwidth(
     }
 
 
+def parse_response_samples(value: str) -> int | None:
+    """Accept an explicit sparse grid size or the automatic ``none`` policy."""
+    if value.lower() == "none":
+        return None
+    try:
+        return int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "response-samples must be an integer at least 4 or 'none'"
+        ) from error
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse reproducibility settings and reject empty timing runs."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -425,6 +502,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument("--bandwidths", type=int, nargs="+", default=[128, 512, 2048])
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--backend", choices=bg.BACKENDS, default="onfly")
+    parser.add_argument(
+        "--response-samples",
+        type=parse_response_samples,
+        default=bg.DEFAULT_RESPONSE_SAMPLES,
+        metavar="INTEGER|none",
+        help="sparse grid size, or none for the package's automatic default",
+    )
     args = parser.parse_args(argv)
     if args.repeats < 1 or args.warmups < 1 or args.batch_size < 1:
         parser.error("repeats, warmups, and batch-size must be positive")
@@ -432,6 +517,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         parser.error("bandwidths must be positive even integers")
     if len(set(args.bandwidths)) != len(args.bandwidths):
         parser.error("bandwidths must be distinct")
+    if args.response_samples is not None and args.response_samples < 4:
+        parser.error("response-samples must be an integer at least 4")
     return args
 
 
@@ -458,6 +545,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             "repeats": args.repeats,
             "warmups": args.warmups,
             "batch_size": args.batch_size,
+            "backend": args.backend,
+            "response_samples": args.response_samples,
         },
         "methodology": {
             "clock": "time.perf_counter_ns; synchronized wall-clock latency",
@@ -479,7 +568,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             ),
             "dynamic_arguments": (
                 "Observation duration T, epoch t0, parameters, cached positions; "
-                "BW, format and window shape are static."
+                "BW, backend, response_samples, format and window shape are static."
             ),
             "batch_order": (
                 "Contiguous disjoint catalogue slices, cycling across repeats; "
