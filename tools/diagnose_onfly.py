@@ -28,7 +28,7 @@ import binary_galactica as bg
 import binary_galactica.glass.waveform as waveform
 from binary_galactica.glass.onfly import reference_phase_shift, tdi_response
 from binary_galactica.glass.orbit import slow_time_grid
-from binary_galactica.glass.sparse import interpolate_uniform
+from binary_galactica.glass.sparse import _coefficient_matrix, interpolate_uniform
 
 SAMPLES = 32
 DURATION = 7_884_000.0
@@ -43,6 +43,29 @@ PARAMETERS = [
     0.17,
     0.2,
 ]
+
+
+def gathered_interpolation(values, coordinates):
+    """Reproduce the pre-fix sampler: windows gathered directly from the response."""
+    values = jnp.asarray(values, dtype=jnp.complex128)
+    count, channels = values.shape
+    points = min(8, count)
+    center = points // 2 - 1
+    windows = jnp.arange(count - points + 1)[:, None] + jnp.arange(points)[None, :]
+    samples = values[windows]
+    anchor = samples[:, center, :]
+    matrix = jnp.asarray(_coefficient_matrix(points), dtype=jnp.float64)
+    coefficients = jnp.einsum("kj,wjc->wck", matrix, samples - anchor[:, None, :])
+    coefficients = coefficients.at[..., 0].add(anchor)
+    sample_coordinate = coordinates.ravel() * (count - 1)
+    cell = jnp.floor(sample_coordinate).astype(jnp.int32)
+    window = jnp.clip(cell - center, 0, count - points)
+    local = sample_coordinate - (window + center)
+    selected = coefficients[window]
+    result = selected[..., -1]
+    for degree in range(points - 2, -1, -1):
+        result = result * local[:, None] + selected[..., degree]
+    return result.reshape(coordinates.shape + (channels,))
 
 
 def conditional_interpolation(values, coordinates):
@@ -140,6 +163,7 @@ def diagnose(bandwidth: int, repeats: int, hlo_directory: Path | None) -> dict:
         ("fourier", "fourier", None, interpolate_uniform),
         ("automatic", "onfly", None, interpolate_uniform),
         ("fixed32", "onfly", SAMPLES, interpolate_uniform),
+        ("gathered", "onfly", SAMPLES, gathered_interpolation),
         ("barrier", "onfly", SAMPLES, barrier_interpolation),
         ("materialized", "onfly", SAMPLES, conditional_interpolation),
         ("matrix", "onfly", SAMPLES, matrix_interpolation(bandwidth)),

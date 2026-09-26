@@ -7,7 +7,8 @@ A controlled change that forces the sparse values to be materialized reduces
 latency without changing the samples, interpolation degree, or measured output.
 Small FFT savings and automatic-grid compilation choices also matter. These
 results explain the observed crossover; they do not establish a universal
-speed ordering. This investigation does not change the production backend.
+speed ordering. The production interpolator now avoids the duplicated work
+with an exact window selection; see [the adopted fix](#adopted-fix--september-25-2026).
 
 The [TDI on the fly paper, section III.1][paper] explicitly constructs a
 Fourier-domain galactic-binary response by sparse TDI evaluation, heterodyning,
@@ -110,6 +111,33 @@ measurements are recorded separately in
 [performance.md](performance.md#native-glass-on-fly-measurements--september-19-2026);
 they distinguish the response kernel from the complete WDM waveform.
 
+## Adopted fix — September 25, 2026
+
+`interpolate_uniform` no longer gathers its overlapping windows from the
+response. It selects them with a valid cross-correlation against an identity
+kernel (`sparse._windows`). Every selected element is one sample times one
+plus exact zeros, so the windows, and therefore every waveform, Jacobian and
+batch output, are bitwise identical to direct indexing. A non-finite sample
+still reaches only the windows that contain it. A convolution is not an XLA
+fusion consumer, so the response is evaluated once per sparse sample.
+A one-hot selection matrix was also exact but grows as `8 * N**2` and was
+6.4 times slower at 2048 response samples; it was rejected.
+
+The [recorded diagnostic](../tools/performance/onfly-gather-fix.json) adds the
+pre-fix path as the `gathered` variant (medians over 300 interleaved runs,
+JAX 0.9.0.1, arm64 CPU):
+
+| Precompiled XYZ median, microseconds | BW 128 | BW 512 | BW 2048 |
+| --- | ---: | ---: | ---: |
+| Pre-fix window gather | 94.71 | 120.81 | 176.13 |
+| Convolution window selection (production) | 72.77 | 97.44 | 157.65 |
+| Change | −23% | −19% | −10% |
+
+The `barrier`, `materialized` and `matrix` rows of that record now wrap the
+production interpolator. An `optimization_barrier` on the response gives a
+further few percent there, but it changes the response's fusion and hence
+its rounding, so it is not part of this exact fix.
+
 Reproduce the measurements and inspect the optimized HLO with:
 
 ```sh
@@ -121,8 +149,9 @@ of three channels versus six links per fast-slow sample. At 32 sparse nodes
 and BW 128, these contribution counts already match before interpolation and
 dense phase restoration. Counts are not equivalent-cost operations, but they
 explain why sparsity alone cannot guarantee a small-band speedup. The HLO and
-controlled ablation establish an additional, avoidable implementation cost;
-larger bands amortize the sparse response work and favor the current method.
+controlled ablation established an additional, avoidable implementation cost,
+now removed; larger bands amortize the sparse response work and favor the
+current method.
 
 [paper]: https://arxiv.org/html/2506.08093v1#S3.SS1
 [benchmark]: https://github.com/tlittenberg/ldasoft/blob/079c6a3a6fcf380a7c107f39640fff7fc720d0f1/apps/src/ucb_waveform_benchmark.c#L118

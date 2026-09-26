@@ -8,6 +8,7 @@ No time derivatives or additional response evaluations are needed.
 
 from functools import lru_cache
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from jax import Array
@@ -26,6 +27,31 @@ def _coefficient_matrix(points: int) -> np.ndarray:
             / np.prod(nodes[index] - other)
         )
     return np.stack(columns, axis=1)
+
+
+def _windows(values: Array, points: int) -> Array:
+    """Return every ``points``-sample window, shape ``(N - points + 1, points, C)``.
+
+    Selection is a valid cross-correlation with an identity kernel: each window
+    element is one sample times one plus exact zeros, so the result equals
+    direct indexing, and a non-finite sample reaches only the windows that
+    contain it. A gather would be equivalent, but XLA fuses the elementwise
+    response computation into a consuming gather and repeats it for every
+    gathered element, about ``points`` times per sample. The convolution is not
+    a fusion consumer, so the response is evaluated once per sample.
+    """
+    channels = values.shape[1]
+    stacked = jnp.concatenate((values.real.T, values.imag.T))[:, None, :]
+    kernel = jnp.eye(points, dtype=jnp.float64)[:, None, :]
+    windows = jax.lax.conv_general_dilated(
+        stacked,
+        kernel,
+        window_strides=(1,),
+        padding="VALID",
+        dimension_numbers=("NCH", "OIH", "NCH"),
+        precision=jax.lax.Precision.HIGHEST,
+    )
+    return jax.lax.complex(windows[:channels], windows[channels:]).transpose(2, 1, 0)
 
 
 def interpolate_uniform(values: Array, coordinates: Array) -> Array:
@@ -58,8 +84,7 @@ def interpolate_uniform(values: Array, coordinates: Array) -> Array:
     count, channels = values.shape
     points = min(8, count)
     center = points // 2 - 1
-    windows = jnp.arange(count - points + 1)[:, None] + jnp.arange(points)[None, :]
-    samples = values[windows]
+    samples = _windows(values, points)
     anchor = samples[:, center, :]
     matrix = jnp.asarray(_coefficient_matrix(points), dtype=jnp.float64)
     # Subtract a sampled central value before fitting. A constant response then
