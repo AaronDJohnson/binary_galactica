@@ -39,6 +39,25 @@ def test_host_validation_does_not_transfer_to_device(value):
     np.testing.assert_array_equal(result, np.asarray(value))
 
 
+@pytest.mark.parametrize("value", [2, 2.0, np.float64(2.0), [2.0, 3.0]])
+def test_float32_validation_casts_on_the_host(value):
+    with jax.transfer_guard("disallow"):
+        result = _validation.finite_array(value, "value", dtype=np.float32)
+    assert isinstance(result, np.ndarray)
+    assert result.dtype == np.float32
+    traced = jax.jit(lambda x: _validation.finite_array(x, "value", dtype=np.float32))(
+        jnp.asarray(value, dtype=jnp.float64)
+    )
+    assert traced.dtype == np.float32
+
+
+def test_float32_validation_rejects_values_that_overflow():
+    with pytest.raises(ValueError, match="finite"):
+        _validation.finite_array([1.0, 1e39], "value", dtype=np.float32)
+    with pytest.raises(ValueError, match="positive"):
+        _validation.scalar(1e-50, "T", positive=True, dtype=np.float32)
+
+
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf, [1.0, np.nan]])
 def test_invalid_host_values_raise_before_any_device_transfer(value):
     with jax.transfer_guard("disallow"), pytest.raises(ValueError, match="finite"):

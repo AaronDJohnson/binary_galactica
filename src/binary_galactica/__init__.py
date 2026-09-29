@@ -17,6 +17,7 @@ from __future__ import annotations
 # never fall back to float32 silently.  binary_galactica.single provides float32
 # waveforms, with the frequency split into a reference bin and a small offset,
 # for processes that keep x64 disabled.
+from binary_galactica import single
 from binary_galactica.constants import DAY, YEAR
 from binary_galactica.detector import tdi_waveform
 from binary_galactica.glass import (
@@ -134,4 +135,5 @@ __all__ = [
     "tdi_waveform",
     "to_glass_vector",
     "from_glass_vector",
+    "single",
 ]

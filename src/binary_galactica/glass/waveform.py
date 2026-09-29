@@ -238,6 +238,22 @@ def _cached_positions(positions, times, T, t0):
     return result
 
 
+def _duration_boundaries(real):
+    """Durations above which the automatic grid takes its next count.
+
+    Lower precisions round the float64 thresholds down. A duration then
+    exceeds one exactly when its float64 value exceeds the float64 threshold,
+    so both precisions choose the same grid at identical inputs.
+    """
+    if real == jnp.float64:
+        return YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=real) / 128
+    exact = YEAR * np.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=np.float64) / 128
+    rounded = exact.astype(real)
+    return np.where(
+        rounded > exact, np.nextafter(rounded, rounded.dtype.type(0)), rounded
+    )
+
+
 def _response_envelope(params, T, BW, t0, positions, response_samples):
     """Interpolate on a static grid, selecting a duration bucket when requested.
 
@@ -264,7 +280,7 @@ def _response_envelope(params, T, BW, t0, positions, response_samples):
         return sample(response_samples, params, T, t0, positions)
     # Every branch returns the same FFT-grid shape. Only the selected sparse
     # response is evaluated for a scalar T; JAX can still trace T and its AD.
-    boundaries = YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=real) / 128
+    boundaries = _duration_boundaries(real)
     index = jnp.sum(boundaries < T, dtype=jnp.int32)
     branches = tuple(partial(sample, count) for count in _AUTO_RESPONSE_SAMPLES)
     return jax.lax.switch(index, branches, params, T, t0, positions)

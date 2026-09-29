@@ -44,20 +44,28 @@ def _contains_jax(value):
     return isinstance(value, (list, tuple)) and any(_contains_jax(x) for x in value)
 
 
-def finite_array(value, name):
-    """Validate float64 inputs, keeping host values off device until the JIT call."""
+def finite_array(value, name, *, dtype=np.float64):
+    """Validate floating inputs, keeping host values off device until the JIT call.
+
+    Values are cast to ``dtype``: float64 for the double-precision API and
+    float32 for :mod:`binary_galactica.single`. A host value too large for
+    float32 becomes infinite and is rejected like any other nonfinite input.
+    """
     # Packing host scalars with jnp dispatches before the compiled waveform.
     # JAX arrays and nested tracers must stay in JAX to preserve placement/AD.
-    array_module = jnp if _contains_jax(value) else np
-    value = array_module.asarray(value, dtype=np.float64)
+    if _contains_jax(value):
+        value = jnp.asarray(value, dtype=dtype)
+    else:
+        with np.errstate(over="ignore"):
+            value = np.asarray(value, dtype=dtype)
     if not isinstance(value, jax.core.Tracer) and not np.all(np.isfinite(value)):
         raise ValueError(f"{name} must be finite")
     return value
 
 
-def scalar(value, name, *, positive=False):
+def scalar(value, name, *, positive=False, dtype=np.float64):
     """Validate scalar shape during tracing, and concrete value eagerly."""
-    value = finite_array(value, name)
+    value = finite_array(value, name, dtype=dtype)
     if value.ndim != 0:
         raise ValueError(f"{name} must be a scalar; got shape {value.shape}")
     if positive and not isinstance(value, jax.core.Tracer) and np.asarray(value) <= 0:
@@ -65,7 +73,7 @@ def scalar(value, name, *, positive=False):
     return value
 
 
-def observation(T, BW, t0, positions):
+def observation(T, BW, t0, positions, *, dtype=np.float64):
     """Check the shared observation arguments at the public boundary."""
     if (
         isinstance(BW, bool)
@@ -74,10 +82,10 @@ def observation(T, BW, t0, positions):
         or BW % 2
     ):
         raise ValueError(f"BW must be a positive even integer; got {BW!r}")
-    T = scalar(T, "T", positive=True)
-    t0 = scalar(t0, "t0")
+    T = scalar(T, "T", positive=True, dtype=dtype)
+    t0 = scalar(t0, "t0", dtype=dtype)
     if positions is not None:
-        positions = finite_array(positions, "positions")
+        positions = finite_array(positions, "positions", dtype=dtype)
         if positions.shape != (3, BW, 3):
             raise ValueError(
                 "positions must have shape (3, BW, 3); "
