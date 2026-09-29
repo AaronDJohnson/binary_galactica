@@ -13,10 +13,15 @@ import jax.numpy as jnp
 import numpy as np
 from jax import Array
 
+from ._precision import CONTRACTION, complex_dtype, real_dtype
+
 
 @lru_cache(maxsize=5)
 def _coefficient_matrix(points: int) -> np.ndarray:
-    """Return centered cardinal-polynomial coefficients as host constants."""
+    """Return centered cardinal-polynomial coefficients as float64 host constants.
+
+    Callers round them once to their working dtype.
+    """
     center = points // 2 - 1
     nodes = np.arange(points, dtype=float) - center
     columns = []
@@ -42,14 +47,14 @@ def _windows(values: Array, points: int) -> Array:
     """
     channels = values.shape[1]
     stacked = jnp.concatenate((values.real.T, values.imag.T))[:, None, :]
-    kernel = jnp.eye(points, dtype=jnp.float64)[:, None, :]
+    kernel = jnp.eye(points, dtype=stacked.dtype)[:, None, :]
     windows = jax.lax.conv_general_dilated(
         stacked,
         kernel,
         window_strides=(1,),
         padding="VALID",
         dimension_numbers=("NCH", "OIH", "NCH"),
-        precision=jax.lax.Precision.HIGHEST,
+        precision=CONTRACTION,
     )
     return jax.lax.complex(windows[:channels], windows[channels:]).transpose(2, 1, 0)
 
@@ -60,9 +65,11 @@ def interpolate_uniform(values: Array, coordinates: Array) -> Array:
     ``values`` has shape ``(N, channels)`` with ``N >= 4`` and represents a
     uniform grid on the closed interval ``[0, 1]``. ``coordinates`` has arbitrary
     shape with entries in that interval; the caller validates their domain.
-    The result has shape ``coordinates.shape + (channels,)`` and complex128
-    dtype. Fixed normalized coordinates keep stencil selection independent of
-    traced observation duration, epoch, and source parameters.
+    The result has shape ``coordinates.shape + (channels,)``. Samples set the
+    precision: float32 or complex64 ``values`` give a complex64 result and
+    float64 or complex128 give complex128, with coordinates cast to the
+    matching real dtype. Fixed normalized coordinates keep stencil selection
+    independent of traced observation duration, epoch, and source parameters.
 
     Each local polynomial uses up to eight neighboring samples, with one-sided
     stencils at observation boundaries. Four through seven samples use the
@@ -77,8 +84,8 @@ def interpolate_uniform(values: Array, coordinates: Array) -> Array:
     the sparse grid for the intended source. Near misses retain their complex
     residual; this function neither asserts zeros nor changes amplitude signs.
     """
-    values = jnp.asarray(values, dtype=jnp.complex128)
-    coordinates = jnp.asarray(coordinates, dtype=jnp.float64)
+    values = jnp.asarray(values, dtype=complex_dtype(values))
+    coordinates = jnp.asarray(coordinates, dtype=real_dtype(values))
     if values.ndim != 2 or values.shape[0] < 4 or values.shape[1] < 1:
         raise ValueError("values must have shape (N, channels), N >= 4, channels >= 1")
     count, channels = values.shape
@@ -86,10 +93,12 @@ def interpolate_uniform(values: Array, coordinates: Array) -> Array:
     center = points // 2 - 1
     samples = _windows(values, points)
     anchor = samples[:, center, :]
-    matrix = jnp.asarray(_coefficient_matrix(points), dtype=jnp.float64)
+    matrix = jnp.asarray(_coefficient_matrix(points), dtype=coordinates.dtype)
     # Subtract a sampled central value before fitting. A constant response then
     # has exactly zero higher coefficients, avoiding cancellation in the fit.
-    coefficients = jnp.einsum("kj,wjc->wck", matrix, samples - anchor[:, None, :])
+    coefficients = jnp.einsum(
+        "kj,wjc->wck", matrix, samples - anchor[:, None, :], precision=CONTRACTION
+    )
     coefficients = coefficients.at[..., 0].add(anchor)
     sample_coordinate = coordinates.ravel() * (count - 1)
     cell = jnp.floor(sample_coordinate).astype(jnp.int32)

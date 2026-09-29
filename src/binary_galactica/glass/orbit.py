@@ -40,7 +40,9 @@ normalise it away.
 from __future__ import annotations
 
 import jax.numpy as jnp
+from jax.typing import ArrayLike
 
+from ._precision import cast, real_dtype
 from .constants import AU, LARM, PI2, RORB, SQ3, YEAR
 
 # sin/cos of beta_i = 2 pi i / 3, copied verbatim from glass_lisa.c.
@@ -77,11 +79,35 @@ def analytic_orbits(t, *, kappa_0: float = 0.0):
     :data:`binary_galactica.glass.constants.LARM` instead; ``RORB`` and
     ``FSTAR`` derive from it.
 
+    This is :func:`positions_from_phase` of :func:`orbital_phase`, computed in
+    the floating dtype of ``t``.
+
     """
-    t = jnp.asarray(t, dtype=jnp.float64)
+    return positions_from_phase(orbital_phase(t, kappa_0=kappa_0))
+
+
+def orbital_phase(t, *, kappa_0: float = 0.0):
+    """Guiding-centre phase ``alpha = PI2*t/YEAR + kappa_0`` [rad].
+
+    ``t`` has any shape and sets the working dtype; ``kappa_0`` is as for
+    :func:`analytic_orbits`. The phase is resolved only to the relative
+    precision of that dtype. A caller needing more, such as float32 at
+    multi-year times, can compute the phase another way and pass it to
+    :func:`positions_from_phase`.
+    """
+    t = jnp.asarray(t, dtype=real_dtype(t))
+    return PI2 * t / YEAR + cast(kappa_0, t.dtype)
+
+
+def positions_from_phase(alpha):
+    """Spacecraft positions at guiding-centre phase ``alpha`` [rad].
+
+    Returns ``(3,) + alpha.shape + (3,)`` metres indexed ``[spacecraft, ...,
+    xyz]``, in the floating dtype of ``alpha``. See :func:`analytic_orbits`.
+    """
+    alpha = jnp.asarray(alpha, dtype=real_dtype(alpha))
     R = RORB
 
-    alpha = PI2 * t / YEAR + kappa_0
     sa = jnp.sin(alpha)
     ca = jnp.cos(alpha)
     sa2, ca2, saca = sa * sa, ca * ca, sa * ca
@@ -116,15 +142,22 @@ def arm_vectors(positions):
     )
 
 
-def slow_time_grid(T: float, t0: float, BW: int):
+def slow_time_grid(T: ArrayLike, t0: ArrayLike, BW: int):
     """Return the GLASS slow-time grid for ``n = 0..BW-1``.
 
     GLASS writes ``t = t0 + T*(double)(n-1)/(double)BW`` over ``n = 1..BW``
     (``glass_ucb_waveform.c``), which is this grid. Note the comment there:
     *"First time sample must be at t=0 for phasing"* --- the grid starts at
-    ``t0`` and does **not** include ``t0 + T``.
+    ``t0`` and does **not** include ``t0 + T``. The grid has the floating
+    dtype of ``T`` and ``t0``.
     """
-    return t0 + T * jnp.arange(BW, dtype=jnp.float64) / BW
+    return t0 + T * jnp.arange(BW, dtype=real_dtype(T, t0)) / BW
 
 
-__all__ = ["analytic_orbits", "arm_vectors", "slow_time_grid"]
+__all__ = [
+    "analytic_orbits",
+    "arm_vectors",
+    "orbital_phase",
+    "positions_from_phase",
+    "slow_time_grid",
+]

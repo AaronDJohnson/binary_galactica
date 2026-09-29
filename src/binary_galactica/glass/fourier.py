@@ -57,6 +57,7 @@ from jax.custom_batching import custom_vmap
 from jax.typing import ArrayLike
 
 from . import _validation
+from ._precision import CONTRACTION
 from .constants import CLIGHT, FSTAR, PI2
 from .orbit import analytic_orbits, arm_vectors, slow_time_grid
 from .response import LINKS, detector_tensor, polarization_tensor
@@ -306,7 +307,8 @@ def _ucb_waveform(
     DC = -Aplus * sinps - 1j * Across * cosps
 
     # --- per-spacecraft retarded quantities -----------------------------
-    kdotx = jnp.einsum("sta,a->st", positions, k) / CLIGHT  # (3, BW)
+    # k.x/c for each spacecraft and slow time, shape (3, BW).
+    kdotx = jnp.einsum("sta,a->st", positions, k, precision=CONTRACTION) / CLIGHT
     xi = t[None, :] - kdotx
     f_inst = f0 + fdot * xi + 0.5 * d2fdt2 * xi * xi
     fonfs = f_inst / FSTAR
@@ -367,6 +369,8 @@ def orbit_cache(T: ArrayLike, t0: ArrayLike, BW: int) -> Array:
     Hoist this out of a sampler loop: it depends on no source parameter.
     """
     _validation.require_x64()
+    # The orbit kernels follow their inputs' dtype; this entry point is float64.
+    T, t0 = jnp.asarray(T, dtype=jnp.float64), jnp.asarray(t0, dtype=jnp.float64)
     return analytic_orbits(slow_time_grid(T, t0, BW))
 
 

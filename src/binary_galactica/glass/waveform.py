@@ -15,6 +15,7 @@ from jax import Array
 from jax.typing import ArrayLike
 
 from . import _validation
+from ._precision import cast, real_dtype
 from .constants import FSTAR, PI2, YEAR
 from .fourier import (  # noqa: F401 -- private compatibility
     _carrier_bin,
@@ -215,13 +216,19 @@ def ucb_waveform(
 
 
 def _cached_positions(positions, times, T, t0):
-    """Evaluate a legacy uniform position cache by local polynomial interpolation."""
+    """Evaluate a legacy uniform position cache by local polynomial interpolation.
+
+    The result has the floating dtype of ``times``; the other inputs are cast to it.
+    """
+    real = real_dtype(times)
+    positions = jnp.asarray(positions, dtype=real)
+    T, t0 = cast(T, real), cast(t0, real)
     count = positions.shape[1]
     width = min(4, count)
     x = (times - t0) * count / T
     start = jnp.clip(jnp.floor(x).astype(jnp.int32) - 1, 0, count - width)
     local = x - start
-    result = jnp.zeros((3, times.shape[0], 3), dtype=jnp.float64)
+    result = jnp.zeros((3, times.shape[0], 3), dtype=real)
     for i in range(width):
         weight = jnp.ones_like(local)
         for j in range(width):
@@ -232,23 +239,32 @@ def _cached_positions(positions, times, T, t0):
 
 
 def _response_envelope(params, T, BW, t0, positions, response_samples):
-    """Interpolate on a static grid, selecting a duration bucket when requested."""
+    """Interpolate on a static grid, selecting a duration bucket when requested.
+
+    Knots, coordinates and the duration buckets use the floating dtype of
+    ``params``, to which ``T``, ``t0`` and positions are cast.
+    """
+    real = real_dtype(params)
+    T, t0 = cast(T, real), cast(t0, real)
+    if positions is not None:
+        positions = jnp.asarray(positions, dtype=real)
 
     def sample(count, params, T, t0, positions):
-        knots = t0 + T * (1 - 1 / BW) * jnp.linspace(0.0, 1.0, count)
+        knots = t0 + T * (1 - 1 / BW) * jnp.linspace(0.0, 1.0, count, dtype=real)
         geometry = (
             None if positions is None else _cached_positions(positions, knots, T, t0)
         )
         response = _raw_response(params, knots, T, geometry, reference_phase=True).T
         # Static normalized coordinates avoid clock-subtraction rounding and
         # stencil changes when duration, epoch or source coordinates are traced.
-        return interpolate_uniform(response, jnp.arange(BW) / (BW - 1)).T
+        coordinates = jnp.arange(BW, dtype=real) / (BW - 1)
+        return interpolate_uniform(response, coordinates).T
 
     if response_samples is not None:
         return sample(response_samples, params, T, t0, positions)
     # Every branch returns the same FFT-grid shape. Only the selected sparse
     # response is evaluated for a scalar T; JAX can still trace T and its AD.
-    boundaries = YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1]) / 128
+    boundaries = YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=real) / 128
     index = jnp.sum(boundaries < T, dtype=jnp.int32)
     branches = tuple(partial(sample, count) for count in _AUTO_RESPONSE_SAMPLES)
     return jax.lax.switch(index, branches, params, T, t0, positions)

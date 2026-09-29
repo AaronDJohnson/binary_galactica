@@ -1,4 +1,4 @@
-"""Shared fixtures and an independent reference implementation."""
+"""Shared fixtures, an independent reference implementation and jaxpr checks."""
 
 from __future__ import annotations
 
@@ -60,3 +60,54 @@ def reference_polarizations(
     )
     hp, hc = rotation @ source_frame
     return hp, hc
+
+
+#: Dtypes that a float32 computation must never produce.
+DOUBLE_DTYPES = (np.dtype(np.float64), np.dtype(np.complex128))
+
+
+def nested_jaxprs(jaxpr):
+    """Yield a (closed) jaxpr and every jaxpr nested in its equations."""
+    jaxpr = getattr(jaxpr, "jaxpr", jaxpr)
+    yield jaxpr
+    for equation in jaxpr.eqns:
+        for value in equation.params.values():
+            for item in value if isinstance(value, (tuple, list)) else (value,):
+                inner = getattr(item, "jaxpr", item)
+                if hasattr(inner, "eqns"):
+                    yield from nested_jaxprs(inner)
+
+
+def double_precision_values(jaxpr) -> list[str]:
+    """Describe the float64 and complex128 values in a jaxpr and its inner jaxprs.
+
+    With x64 enabled, a Python scalar passed to a jit-wrapped ``jnp`` function
+    such as ``where`` or ``linspace`` enters that function as a weakly typed
+    float64 scalar, which is converted to the working dtype before any
+    arithmetic. Those are allowed. Every other double-precision input, such as
+    a NumPy float64 constant, and every equation result in double precision is
+    reported.
+    """
+
+    def double(var):
+        return getattr(var.aval, "dtype", None) in DOUBLE_DTYPES
+
+    def python_scalar(var):
+        return var.aval.weak_type and var.aval.shape == ()
+
+    found = []
+    for inner in nested_jaxprs(jaxpr):
+        inputs = [*inner.constvars, *inner.invars]
+        inputs += [var for equation in inner.eqns for var in equation.invars]
+        found += [
+            f"input {var.aval.str_short()}"
+            for var in inputs
+            if double(var) and not python_scalar(var)
+        ]
+        found += [
+            f"{equation.primitive.name} result {var.aval.str_short()}"
+            for equation in inner.eqns
+            for var in equation.outvars
+            if double(var)
+        ]
+    return found

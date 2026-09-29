@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import jax.numpy as jnp
 
+from ._precision import CONTRACTION, cast, real_dtype
 from .constants import CLIGHT, PI2
 from .orbit import analytic_orbits
 from .response import polarization_tensor
@@ -50,14 +51,19 @@ def reference_phase_shift(params, times, T, positions=None):
     the default source-phase-demodulated response. Inputs and shapes follow
     :func:`tdi_response`; spacecraft zero supplies the reference position.
     """
-    params = jnp.asarray(params, dtype=jnp.float64)
-    times = jnp.asarray(times, dtype=jnp.float64)
+    real = real_dtype(params)
+    params = jnp.asarray(params, dtype=real)
+    times = jnp.asarray(times, dtype=real)
+    T = cast(T, real)
     f0 = params[0] / T
-    fdot = params[7] / T**2 if params.shape[0] > 7 else jnp.array(0.0)
-    fddot = params[8] / T**3 if params.shape[0] > 8 else jnp.array(0.0)
+    zero = jnp.zeros((), dtype=real)
+    fdot = params[7] / T**2 if params.shape[0] > 7 else zero
+    fddot = params[8] / T**3 if params.shape[0] > 8 else zero
     _, _, k = polarization_tensor(params[1], params[2])
-    positions = analytic_orbits(times) if positions is None else jnp.asarray(positions)
-    delay = jnp.einsum("ta,a->t", positions[0] / CLIGHT, k)
+    if positions is None:
+        positions = analytic_orbits(times)
+    positions = jnp.asarray(positions, dtype=real)
+    delay = jnp.einsum("ta,a->t", positions[0] / CLIGHT, k, precision=CONTRACTION)
     return PI2 * (
         -delay * (f0 + fdot * times + 0.5 * fddot * times**2)
         + 0.5 * delay**2 * (fdot + fddot * times)
@@ -70,9 +76,11 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
 
     ``params`` has the usual 7/8/9 GLASS parameters, ``times`` has shape
     ``(N,)`` in seconds, and optional positions have shape ``(3,N,3)`` in
-    metres. This internal kernel assumes validated inputs. ``phi0`` cancels
-    exactly because the full analytic source phase is removed. Unlike the C
-    spline helper, which fixes fddot=0, the nine-parameter model retains fddot.
+    metres. This internal kernel assumes validated inputs and computes in the
+    floating dtype of ``params``, casting times, ``T`` and positions to it.
+    ``phi0`` cancels exactly because the full analytic source phase is removed.
+    Unlike the C spline helper, which fixes fddot=0, the nine-parameter model
+    retains fddot.
 
     The static ``reference_phase=True`` option removes ``phi(t-k.x0/c)``
     instead, matching the reference used by GLASS's UCB spline interpolation.
@@ -80,11 +88,14 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
     and retarded times are the same. Use :func:`reference_phase_shift` to
     restore the default phase convention after interpolation.
     """
-    params = jnp.asarray(params, dtype=jnp.float64)
-    times = jnp.asarray(times, dtype=jnp.float64)
+    real = real_dtype(params)
+    params = jnp.asarray(params, dtype=real)
+    times = jnp.asarray(times, dtype=real)
+    T = cast(T, real)
     f0 = params[0] / T
-    fdot = params[7] / T**2 if params.shape[0] > 7 else jnp.array(0.0)
-    fddot = params[8] / T**3 if params.shape[0] > 8 else jnp.array(0.0)
+    zero = jnp.zeros((), dtype=real)
+    fdot = params[7] / T**2 if params.shape[0] > 7 else zero
+    fddot = params[8] / T**3 if params.shape[0] > 8 else zero
     amp = jnp.exp(params[3])
     slope = (2 / 3) * fdot / f0
     cosi, psi = params[4], params[5]
@@ -92,14 +103,14 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
     dp = 0.5 * (1 + cosi**2) * jnp.cos(2 * psi) + 1j * cosi * jnp.sin(2 * psi)
     dc = -0.5 * (1 + cosi**2) * jnp.sin(2 * psi) + 1j * cosi * jnp.cos(2 * psi)
 
-    p = (
-        analytic_orbits(times) if positions is None else jnp.asarray(positions)
-    ) / CLIGHT
+    if positions is None:
+        positions = analytic_orbits(times)
+    p = jnp.asarray(positions, dtype=real) / CLIGHT
     arm = jnp.stack((p[1] - p[2], p[2] - p[0], p[0] - p[1]))
     lengths = jnp.sqrt(jnp.sum(arm**2, axis=-1))
     unit = arm / lengths[..., None]
-    mu = jnp.einsum("sta,a->st", unit, k)
-    kr = jnp.einsum("sta,a->st", p, k)
+    mu = jnp.einsum("sta,a->st", unit, k, precision=CONTRACTION)
+    kr = jnp.einsum("sta,a->st", p, k, precision=CONTRACTION)
     if reference_phase:
         # Center source time and all delays on spacecraft zero before any
         # complex exponentials. This removes orbital Doppler phase directly,
@@ -107,9 +118,11 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
         reference_delay = kr[0]
         times = times - reference_delay
         kr = kr - reference_delay[None, :]
-    antenna = dp * jnp.einsum("sti,ij,stj->st", unit, ep, unit) + dc * jnp.einsum(
-        "sti,ij,stj->st", unit, ec, unit
-    )
+
+    def project(tensor):
+        return jnp.einsum("sti,ij,stj->st", unit, tensor, unit, precision=CONTRACTION)
+
+    antenna = dp * project(ep) + dc * project(ec)
 
     def difference(first, second, length, denominator):
         # first-second = length*denominator algebraically. Evaluate that

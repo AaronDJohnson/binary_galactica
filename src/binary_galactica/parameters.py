@@ -19,6 +19,8 @@ from typing import NamedTuple
 import jax.numpy as jnp
 from jax import Array
 
+from binary_galactica.glass._precision import real_dtype
+
 #: Parameter names, in the canonical order used by physical parameter arrays.
 PARAMETER_NAMES: tuple[str, ...] = (
     "amp",
@@ -141,12 +143,15 @@ def to_glass_vector(theta: Array | GBParams, duration: Array | float) -> Array:
             with the parameter fields. Supports traced values under JIT.
 
     Returns:
-        A JAX array with trailing dimension 8. All operations support AD.
+        A JAX array with trailing dimension 8, in the floating dtype of
+        ``theta``; ``duration`` is cast to it. All operations support AD.
         The physical amplitude must be positive for its logarithm to exist.
 
     """
     p = GBParams.from_array(theta)
-    duration = jnp.asarray(duration, dtype=jnp.float64)
+    real = real_dtype(*p)
+    p = GBParams(*(jnp.asarray(field, dtype=real) for field in p))
+    duration = jnp.asarray(duration, dtype=real)
     fields = (
         p.f0 * duration,
         jnp.sin(p.beta),
