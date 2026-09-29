@@ -212,13 +212,14 @@ def tdi_response(
 
     The float32 counterpart of :func:`binary_galactica.tdi_response`, in the
     same units and phase convention. ``params`` and ``q_ref`` are as for
-    :func:`ucb_waveform`; ``q_ref`` may be any int32 value. ``times`` is a
-    nonempty one-dimensional vector of seconds from the source reference
-    epoch, and ``T`` (seconds) unscales the frequency derivatives. Both are
-    cast to float32, and each float32 time is taken as exact: the orbital
-    phase is reduced from it in paired float32 arithmetic, so late times keep
-    their Doppler delay. Optional positions have shape ``(3,n,3)`` in metres
-    at exactly these times and are cast to float32.
+    :func:`ucb_waveform`; ``q_ref`` and ``q_ref + floor(params[0])`` may be
+    any int32 values. ``times`` is a nonempty one-dimensional vector of
+    seconds from the source reference epoch, and ``T`` (seconds) unscales the
+    frequency derivatives. Both are cast to float32, and each float32 time is
+    taken as exact: the orbital phase is reduced from it in paired float32
+    arithmetic, so late times keep their Doppler delay. Optional positions
+    have shape ``(3,n,3)`` in metres at exactly these times and are cast to
+    float32.
 
     Multiply by ``exp(1j * Phi(times))`` to restore the source phase, where
     ``Phi(t) = 2*pi*(f0*t + fdot*t**2/2 + fddot*t**3/6) - phi0``. With
@@ -322,14 +323,39 @@ def _duration(T):
     return float(duration)
 
 
-def _reference_bins(scaled_frequency):
-    """Return ``floor(f0*T)`` as a Python int or int32 array, and the offset."""
+def _reference_bins(scaled_frequency, error=0.0):
+    """Return ``floor(f0*T)`` as a Python int or int32 array, and the offset.
+
+    ``f0*T`` is exactly ``scaled_frequency + error``, where ``error`` is at
+    most half an ulp of ``scaled_frequency``.
+    """
     q_ref = np.floor(scaled_frequency)
+    # A whole scaled frequency with a negative low part lies in the bin below.
+    q_ref = np.where((q_ref == scaled_frequency) & (error < 0), q_ref - 1, q_ref)
     if np.any(q_ref > _single.INT32_MAX):
         raise ValueError("f0*T must lie below 2**31")
-    offset = scaled_frequency - q_ref
+    offset = (scaled_frequency - q_ref) + error
     q_ref = q_ref.astype(np.int32)
     return (int(q_ref) if q_ref.ndim == 0 else q_ref), offset
+
+
+def _halves(x):
+    """Split float64 ``x`` into high and low parts of at most 26 bits each."""
+    scaled = 134_217_729.0 * x  # 2**27 + 1
+    high = scaled - (scaled - x)
+    return high, x - high
+
+
+def _exact_product(a, b):
+    """Return float64 ``(p, e)`` with ``p + e`` exactly ``a*b`` (Dekker).
+
+    NumPy rounds every operation separately, as the correction requires.
+    """
+    p = a * b
+    a_high, a_low = _halves(a)
+    b_high, b_low = _halves(b)
+    error = ((a_high * b_high - p) + a_high * b_low + a_low * b_high) + a_low * b_low
+    return p, error
 
 
 def _float32(values, name):
@@ -390,11 +416,11 @@ def split_physical(
     ``(amp, f0, fdot, phi0, iota, psi, lam, beta)`` with ``f0`` in hertz;
     leading axes hold sources. The float32 functions receive ``T`` (seconds)
     rounded to float32, so the split uses that duration ``T32``: ``q_ref =
-    floor(f0*T32)`` is a Python integer for one source and an int32 array
-    otherwise, and the returned frequency field is the offset
-    ``f0 - q_ref/T32`` in hertz, which lies in ``[0, 1/T32)`` before rounding.
-    ``q_ref/T32`` plus that offset reproduces ``f0`` to float32 precision in
-    the offset alone. Other fields are rounded to float32.
+    floor(f0*T32)``, with the product formed exactly, is a Python integer for
+    one source and an int32 array otherwise, and the returned frequency field
+    is the offset ``f0 - q_ref/T32`` in hertz, which lies in ``[0, 1/T32)``
+    before rounding. ``q_ref/T32`` plus that offset reproduces ``f0`` to
+    within one float32 ulp of the offset. Other fields are rounded to float32.
 
     All fields must be finite, ``amp`` and ``f0`` positive, ``iota`` in
     ``[0, pi]`` and ``beta`` in ``[-pi/2, pi/2]``. This is a host NumPy
@@ -416,7 +442,7 @@ def split_physical(
         raise ValueError("iota must lie in [0, pi]")
     if np.any(np.abs(theta[..., 7]) > np.pi / 2):
         raise ValueError("beta must lie in [-pi/2, pi/2]")
-    q_ref, offset = _reference_bins(theta[..., 1] * duration)
+    q_ref, offset = _reference_bins(*_exact_product(theta[..., 1], duration))
     result = _float32(theta, "theta")
     result[..., 1] = offset / duration
     return q_ref, result

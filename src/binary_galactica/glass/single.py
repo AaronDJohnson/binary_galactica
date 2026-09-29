@@ -159,6 +159,11 @@ def check_frequency(offset, q_ref, T, *, BW=None, q=None):
     residual = np.float32(offset - np.float32(whole))
     if natural < 0 or (natural == 0 and residual == 0):
         raise ValueError("f0 must be positive: q_ref + params[0] must exceed zero")
+    # The compiled carrier is int32; beyond it every output would be NaN.
+    if natural > INT32_MAX:
+        raise ValueError(
+            f"q_ref + floor(params[0]) must lie in int32 range; got {natural}"
+        )
     with np.errstate(over="ignore", divide="ignore"):
         frequency = (np.float32(natural) + residual) / np.float32(T)
     if not np.isfinite(frequency):
