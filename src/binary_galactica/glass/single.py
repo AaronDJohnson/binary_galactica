@@ -15,9 +15,11 @@ Three reformulations keep the remaining large quantities out of float32:
     as large as ``f0*T`` enters the restored phase.
 ``epoch``
     The FFT-grid phase is re-expanded about ``u0 = t0/T`` as
-    ``c0 + c1*v + c2*v**2 + c3*v**3`` with ``v = n/BW``. The coefficients are
-    formed as float32 pairs; this is algebraically the float64 formula,
-    including its epoch convention, but keeps per-sample terms small.
+    ``c0 + c1*v + c2*v**2 + c3*v**3`` with ``v = n/BW``. This is
+    algebraically the float64 formula, including its epoch convention. The
+    coefficients and the per-sample sum are float32 pairs reduced modulo one
+    cycle, because the terms reach thousands of cycles for a strongly
+    chirping source or a distant carrier override.
 ``orbit``
     The full Doppler delay ``k.x0/c`` (about 500 s) needs the orbital phase to
     about 1e-7 cycles. ``t/YEAR`` is reduced with float32 pairs: on the FFT
@@ -223,33 +225,42 @@ def grid_orbital_phase(T, t0, BW):
     return PI2 * tf.value(tf.fraction(cycles))
 
 
-def epoch_coefficients(residual, params, T, t0):
-    """Return ``(c0 mod 1, c1, c2, c3)`` of the restored phase in cycles.
+def epoch_coefficients(residual, params, T, t0, first=None):
+    """Return pairs ``(c0 mod 1, c1, c2, c3)`` of the restored phase in cycles.
 
     With ``u0 = t0/T``, ``r = residual``, ``F = params[7]`` and
     ``G = params[8]``, ``r*u + F*u**2/2 + G*u**3/6`` at ``u = u0 + v`` equals
     ``c0 + c1*v + c2*v**2 + c3*v**3`` with ``c0 = r*u0 + F*u0**2/2 +
     G*u0**3/6``, ``c1 = r + F*u0 + G*u0**2/2``, ``c2 = (F + G*u0)/2`` and
-    ``c3 = G/6``. Pairs keep ``u0`` and ``c0``, which reaches hundreds of
-    cycles at late epochs, accurate before the whole cycles are removed.
+    ``c3 = G/6``. ``c0`` reaches hundreds of cycles at late epochs, and ``c1``
+    and ``c2`` thousands for a strongly chirping source or a distant carrier
+    override, so all four stay pairs. ``first`` optionally gives ``F`` as a
+    pair, for an ``F`` computed more precisely than its float32 ``params[7]``.
     """
     u0 = tf.divide(t0, T)
     zero = jnp.zeros((), dtype=jnp.float32)
-    F = params[7] if params.shape[0] > 7 else zero
+    if first is None:
+        first = tf.pair(params[7] if params.shape[0] > 7 else zero)
     G = params[8] if params.shape[0] > 8 else zero
-    half_F, half_G = tf.pair(0.5 * F), tf.pair(0.5 * G)
+    half_F, half_G = (0.5 * first[0], 0.5 * first[1]), tf.pair(0.5 * G)
     sixth_G = tf.multiply(tf.pair(G), _SIXTH)
     c0 = tf.multiply(
         u0,
         tf.add(residual, tf.multiply(u0, tf.add(half_F, tf.multiply(u0, sixth_G)))),
     )
-    c1 = tf.add(residual, tf.multiply(u0, tf.add(tf.pair(F), tf.multiply(u0, half_G))))
+    c1 = tf.add(residual, tf.multiply(u0, tf.add(first, tf.multiply(u0, half_G))))
     c2 = tf.add(half_F, tf.multiply(u0, half_G))
-    return tf.value(tf.fraction(c0)), tf.value(c1), tf.value(c2), tf.value(sixth_G)
+    return tf.fraction(c0), c1, c2, sixth_G
 
 
-def _grid_cycles(residual, params, T, t0, BW, disabled):
-    """Restored source cycles, less the carrier, on the FFT grid."""
+def grid_cycles(residual, params, T, t0, BW, disabled=(), first=None):
+    """Return the restored cycles less the carrier on the FFT grid, modulo one.
+
+    The re-expanded polynomial is summed per sample in pairs: its terms reach
+    thousands of cycles when the frequency moves far from the carrier, where
+    float32 alone rounds the phase by about 1e-4 cycles. Disabling ``epoch``
+    evaluates the float64 formula in float32 instead, without the reduction.
+    """
     if "epoch" in disabled:
         # The float64 formula evaluated directly in float32.
         u = slow_time_grid(T, t0, BW) / T
@@ -259,13 +270,21 @@ def _grid_cycles(residual, params, T, t0, BW, disabled):
         if params.shape[0] > 8:
             cycles = cycles + params[8] * u**3 / 6.0
         return cycles
-    c0, c1, c2, c3 = epoch_coefficients(residual, params, T, t0)
-    v = jnp.arange(BW, dtype=jnp.float32) / BW
-    return c0 + v * (c1 + v * (c2 + v * c3))
+    c0, c1, c2, c3 = epoch_coefficients(residual, params, T, t0, first)
+    v = tf.constant(np.arange(BW) / BW)
+    cycles = tf.add(c2, tf.multiply(v, c3))
+    cycles = tf.add(c1, tf.multiply(v, cycles))
+    cycles = tf.add(c0, tf.multiply(v, cycles))
+    return tf.value(tf.fraction(cycles))
 
 
-def _waveform(params, q_ref, T, BW, t0, fmt, positions, q, response_samples, disabled):
-    """Return unmasked float32 channels, int32 bins and their validity."""
+def _waveform(
+    params, q_ref, T, BW, t0, fmt, positions, q, response_samples, disabled, first=None
+):
+    """Return unmasked float32 channels, int32 bins and their validity.
+
+    ``first`` optionally gives ``params[7]`` as a more precise pair.
+    """
     carrier, residual, scaled_frequency, valid = _carrier(params[0], q_ref, q)
     if "carrier" in disabled:
         residual = tf.pair(scaled_frequency - carrier.astype(jnp.float32))
@@ -288,7 +307,7 @@ def _waveform(params, q_ref, T, BW, t0, fmt, positions, q, response_samples, dis
     # The shift multiplies the delay by the frequency at t, so rounded times suffice.
     times = slow_time_grid(T, t0, BW)
     phase = (
-        PI2 * _grid_cycles(residual, params, T, t0, BW, disabled)
+        PI2 * grid_cycles(residual, params, T, t0, BW, disabled, first)
         - params[6]
         + reference_phase_shift(native, times, T, geometry)
     )
@@ -355,8 +374,21 @@ def _tdi_waveform(
         & (jnp.abs(theta[7]) <= jnp.pi / 2)
     )
     native = jnp.where(valid, to_glass_vector(theta, T), jnp.nan)
+    # fdot*T**2 reaches thousands of bins for a chirping source, where rounding
+    # it to float32 would move the phase by about 1e-4 cycles.
+    first = tf.multiply(tf.product(theta[2], T), tf.pair(T))
     result, source_valid = _waveform(
-        native, q_ref, T, BW, t0, fmt, positions, None, response_samples, disabled
+        native,
+        q_ref,
+        T,
+        BW,
+        t0,
+        fmt,
+        positions,
+        None,
+        response_samples,
+        disabled,
+        first,
     )
     return _masked(result, valid & source_valid)
 
@@ -418,6 +450,7 @@ __all__ = [
     "bin_index",
     "check_frequency",
     "epoch_coefficients",
+    "grid_cycles",
     "grid_orbital_phase",
     "offset_parameters",
     "orbital_phase",

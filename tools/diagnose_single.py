@@ -9,19 +9,26 @@ The report is written to ``tools/performance/single-precision.json`` unless
 
 The corners of the validated range are T in {0.25, 10} years, f0 in
 {0.1, 30} mHz, t0 in {0, 10} years and both signs of each frequency
-derivative. At each corner and in every TDI format,
+derivative, drifting a few bins. Stress cases add sources whose derivatives
+come from gravitational radiation, drifting hundreds to tens of thousands of
+bins, some with the carrier pinned mid-observation, and a steady source with
+the carrier a thousand bins away. In each case and in every TDI format,
 with and without a position cache, the float32 ``ucb_waveform`` runs with all
 reformulations and with each one disabled through the private diagnostic
 switch. The float64 inputs are the exact float64 values of the float32 ones,
 with ``f0*T = q_ref + offset`` and the carrier pinned to the float32 carrier.
 Both paths use the same ``BW`` from ``ucb_bw`` and the same explicit response
 grid, which is the automatic count for T. The arbitrary-time ``tdi_response``
-and the physical ``tdi_waveform`` are measured at the same corners.
+is measured in every case, and the physical ``tdi_waveform``, which has no
+carrier override, wherever the carrier is the default. For the chirps, float32
+waveforms split from the unrounded float64 source are also compared with
+float64 at those unrounded inputs, so that rounding ``fdot*T**2`` or ``fdot``
+to float32 counts: the input error of converting a catalogue.
 
 A/E relative L2 error and mismatch (flat weighting over the band) are computed
-in float64: raw strains near 1e-21 square below float32's range. A
-reformulation is kept only if disabling it takes some corner beyond half the
-budget, relative L2 5e-5 or mismatch 5e-9.
+in float64: raw strains near 1e-21 square below float32's range. As the design
+requires, a reformulation is kept only if disabling it takes some case beyond
+the target, relative L2 1e-4 or mismatch 1e-8.
 """
 
 from __future__ import annotations
@@ -52,7 +59,6 @@ from binary_galactica.glass.waveform import _AUTO_RESPONSE_SAMPLES
 jax.config.update("jax_enable_x64", True)
 
 BUDGET = {"relative_l2": 1e-4, "mismatch": 1e-8}
-HALF_BUDGET = {name: value / 2 for name, value in BUDGET.items()}
 DURATIONS_YEARS = (0.25, 10.0)
 FREQUENCIES_HZ = (1e-4, 3e-2)
 EPOCHS_YEARS = (0.0, 10.0)
@@ -69,6 +75,27 @@ SOURCE = {"amp": 1e-22, "phi0": 0.7, "iota": 1.1, "psi": 0.4}
 CADENCE = 5.0
 RESPONSE_TIMES = 257
 CONFIGURATIONS = ("all", *(f"without_{name}" for name in single_impl.REFORMULATIONS))
+#: Stress cases: duration, frequency at time zero and epoch in years and hertz,
+#: the chirp mass in solar masses (zero for a steady source), and the carrier:
+#: the default, the bin mid-observation, or a whole number of bins from the
+#: default. Chirp masses up to one solar mass lie in the package's own prior.
+STRESS = (
+    (4.0, 3e-2, 0.0, 0.3, "default"),
+    (10.0, 1e-2, 0.0, 1.0, "default"),
+    (0.25, 3e-2, 10.0, 1.0, "middle"),
+    (10.0, 3e-2, 10.0, 0.3, "middle"),
+    (4.0, 1e-2, 0.0, 0.0, -1000),
+)
+#: Inputs that identify a case in the summary.
+WHERE = (
+    "kind",
+    "T_years",
+    "f0_hz",
+    "t0_years",
+    "derivative_signs",
+    "chirp_mass",
+    "carrier",
+)
 
 
 def automatic_samples(duration: float) -> int:
@@ -117,11 +144,13 @@ def corner(
         "T": duration32,
         "t0": epoch32,
         "q_ref": q_ref,
+        "q": q_ref,
         "params": params,
         "native": native,
         "BW": int(bandwidth),
         "response_samples": automatic_samples(duration),
         "inputs": {
+            "kind": "corner",
             "T_years": years,
             "f0_hz": native[0] / duration,
             "t0_years": epoch_years,
@@ -134,6 +163,75 @@ def corner(
             "derivative_signs": list(signs),
             "params_float32": params.tolist(),
         },
+    }
+
+
+def stress(
+    years: float,
+    frequency: float,
+    epoch_years: float,
+    chirp_mass: float,
+    carrier: str | int,
+) -> dict:
+    """Return a stress case in the layout of :func:`corner`.
+
+    A chirp takes ``fdot`` from ``ucb_fdot`` at time zero and
+    ``fddot = 11/3*fdot**2/f0``; the band from ``ucb_bw`` holds the drift about
+    the frequency mid-observation.
+    """
+    case = corner(years, frequency, epoch_years, (1.0, 1.0))
+    duration, epoch = float(case["T"]), float(case["t0"])
+    fdot = fddot = 0.0
+    if chirp_mass:
+        fdot = bg.ucb_fdot(chirp_mass, frequency)
+        fddot = 11 / 3 * fdot**2 / frequency
+    params = case["params"].copy()
+    params[7], params[8] = fdot * duration**2, fddot * duration**3
+    native = params.astype(np.float64)
+    native[0] = case["q_ref"] + native[0]
+    middle = (epoch + duration / 2) / duration
+    middle_bin = math.floor(native[0] + native[7] * middle + native[8] * middle**2 / 2)
+    if carrier == "default":
+        q = case["q_ref"]
+    elif carrier == "middle":
+        q = middle_bin
+    else:
+        q = case["q_ref"] + int(carrier)
+    bandwidth = int(
+        bg.ucb_bw(
+            middle_bin / duration,
+            (native[7] + native[8] * middle) / duration**2,
+            native[1],
+            SOURCE["amp"],
+            duration,
+            int(duration / CADENCE),
+        )
+    )
+    if not isinstance(carrier, str):
+        # The band must reach from the distant carrier to the whole source.
+        bandwidth = 1 << (2 * abs(carrier) + bandwidth - 1).bit_length()
+    inputs = {
+        **case["inputs"],
+        "kind": "stress",
+        "chirp_mass": chirp_mass,
+        "carrier": carrier,
+        "carrier_minus_default": q - case["q_ref"],
+        "fdot": float(params[7]) / duration**2,
+        "fddot": float(params[8]) / duration**3,
+        "params_float32": params.tolist(),
+    }
+    del inputs["derivative_signs"]
+    # The unrounded float64 source that a catalogue would hold.
+    original = native.copy()
+    original[7], original[8] = fdot * duration**2, fddot * duration**3
+    return {
+        **case,
+        "q": q,
+        "params": params,
+        "native": native,
+        "original": original if chirp_mass else None,
+        "BW": bandwidth,
+        "inputs": inputs,
     }
 
 
@@ -188,7 +286,7 @@ def waveform_rows(case: dict) -> list[dict[str, Any]]:
                 t0=float(epoch),
                 fmt=fmt,
                 positions=positions64,
-                q=float(case["q_ref"]),
+                q=float(case["q"]),
                 response_samples=samples,
             )
             row: dict[str, Any] = {
@@ -207,6 +305,7 @@ def waveform_rows(case: dict) -> list[dict[str, Any]]:
                         t0=epoch,
                         fmt=fmt,
                         positions=positions32,
+                        q=None if case["q"] == case["q_ref"] else case["q"],
                         response_samples=samples,
                     )
                 check_single(result)
@@ -287,15 +386,69 @@ def physical_row(case: dict) -> dict[str, Any]:
     return errors(channels(result), channels(reference))
 
 
-def summarize(corners: list[dict[str, Any]]) -> dict[str, Any]:
+def split_row(case: dict) -> dict[str, Any]:
+    """Measure float32 waveforms split from the unrounded float64 source.
+
+    ``split_native`` keeps the case's carrier; ``split_physical`` feeds
+    ``tdi_waveform``, which has none, so it runs only at the default carrier.
+    Both are compared with float64 at the unrounded inputs, in Sangria format
+    without a cache.
+    """
+    duration32, epoch, bandwidth = case["T"], case["t0"], case["BW"]
+    duration, original = float(duration32), case["original"]
+    observation = {
+        "BW": bandwidth,
+        "response_samples": case["response_samples"],
+    }
+    q_ref, params = bg32.split_native(original, duration)
+    q = case["q"] - case["q_ref"] + q_ref
+    single = bg32.ucb_waveform(
+        params, q_ref=q_ref, T=duration32, t0=epoch, q=q, **observation
+    )
+    check_single(single)
+    double = bg.ucb_waveform(
+        original, T=duration, t0=float(epoch), q=float(q), **observation
+    )
+    row: dict[str, Any] = {"native": errors(channels(single), channels(double))}
+    if case["q"] != case["q_ref"]:
+        return row
+    theta = np.array(
+        [
+            SOURCE["amp"],
+            original[0] / duration,
+            original[7] / duration**2,
+            SOURCE["phi0"],
+            SOURCE["iota"],
+            SOURCE["psi"],
+            SKY["lam"],
+            SKY["beta"],
+        ]
+    )
+    q_ref, theta32 = bg32.split_physical(theta, duration)
+    single = bg32.tdi_waveform(
+        theta32, q_ref=q_ref, T=duration32, t0=epoch, **observation
+    )
+    check_single(single)
+    double = bg.ucb_waveform(
+        np.asarray(bg.to_glass_vector(jnp.asarray(theta), duration)),
+        T=duration,
+        t0=float(epoch),
+        q=float(q_ref),
+        **observation,
+    )
+    row["physical"] = errors(channels(single), channels(double))
+    return row
+
+
+def summarize(cases: list[dict[str, Any]]) -> dict[str, Any]:
     """Largest errors per configuration, where they occur, and the decisions."""
 
-    def rows(configuration):
-        for entry in corners:
-            where = {
-                key: entry["inputs"][key]
-                for key in ("T_years", "f0_hz", "t0_years", "derivative_signs")
-            }
+    def rows(configuration, kinds=("corner", "stress")):
+        for entry in cases:
+            if entry["inputs"]["kind"] not in kinds:
+                continue
+            inputs = entry["inputs"]
+            where = {key: inputs[key] for key in WHERE if key in inputs}
             for row in entry["waveform"]:
                 yield row[configuration], {
                     **where,
@@ -319,8 +472,27 @@ def summarize(corners: list[dict[str, Any]]) -> dict[str, Any]:
         configuration: {metric: largest(configuration, metric) for metric in BUDGET}
         for configuration in CONFIGURATIONS
     }
+    by_kind = {
+        kind: {
+            metric: max(value[metric] for value, _ in rows("all", (kind,)))
+            for metric in BUDGET
+        }
+        for kind in ("corner", "stress")
+    }
     physical = {
-        metric: max(entry["physical"][metric] for entry in corners) for metric in BUDGET
+        metric: max(entry["physical"][metric] for entry in cases if entry["physical"])
+        for metric in BUDGET
+    }
+    split = {
+        adapter: {
+            metric: max(
+                entry["split"][adapter][metric]
+                for entry in cases
+                if entry["split"] and adapter in entry["split"]
+            )
+            for metric in BUDGET
+        }
+        for adapter in ("native", "physical")
     }
     decisions = {
         name: {
@@ -328,7 +500,7 @@ def summarize(corners: list[dict[str, Any]]) -> dict[str, Any]:
                 metric: worst[f"without_{name}"][metric]["value"] for metric in BUDGET
             },
             "keep": any(
-                worst[f"without_{name}"][metric]["value"] > HALF_BUDGET[metric]
+                worst[f"without_{name}"][metric]["value"] > BUDGET[metric]
                 for metric in BUDGET
             ),
         }
@@ -341,14 +513,16 @@ def summarize(corners: list[dict[str, Any]]) -> dict[str, Any]:
     )
     return {
         "largest": worst,
+        "largest_by_kind": by_kind,
         "largest_physical": physical,
+        "largest_split_from_float64": split,
         "within_budget": within,
         "reformulations": decisions,
     }
 
 
 def main() -> None:
-    """Measure every corner and write the report."""
+    """Measure every case and write the report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
@@ -357,50 +531,49 @@ def main() -> None:
     )
     arguments = parser.parse_args()
     start = time.perf_counter()
-    corners = []
-    for years in DURATIONS_YEARS:
-        for frequency in FREQUENCIES_HZ:
-            for epoch_years, signs in itertools.product(EPOCHS_YEARS, SIGNS):
-                case = corner(years, frequency, epoch_years, signs)
-                entry = {
-                    "inputs": case["inputs"],
-                    "BW": case["BW"],
-                    "response_samples": case["response_samples"],
-                    "waveform": waveform_rows(case),
-                    "response": response_rows(case),
-                    "physical": physical_row(case),
-                }
-                corners.append(entry)
-                largest = {
-                    configuration: max(
-                        row[configuration]["relative_l2"] for row in entry["waveform"]
-                    )
-                    for configuration in CONFIGURATIONS
-                }
-                print(
-                    years,
-                    frequency,
-                    epoch_years,
-                    signs,
-                    case["BW"],
-                    largest,
-                    flush=True,
-                )
+    cases = [
+        corner(years, frequency, epoch_years, signs)
+        for years in DURATIONS_YEARS
+        for frequency in FREQUENCIES_HZ
+        for epoch_years, signs in itertools.product(EPOCHS_YEARS, SIGNS)
+    ]
+    cases += [stress(*arguments) for arguments in STRESS]
+    entries = []
+    for case in cases:
+        entry = {
+            "inputs": case["inputs"],
+            "BW": case["BW"],
+            "response_samples": case["response_samples"],
+            "waveform": waveform_rows(case),
+            "response": response_rows(case),
+            "physical": physical_row(case) if case["q"] == case["q_ref"] else None,
+            "split": split_row(case) if case.get("original") is not None else None,
+        }
+        entries.append(entry)
+        largest = {
+            configuration: max(
+                row[configuration]["relative_l2"] for row in entry["waveform"]
+            )
+            for configuration in CONFIGURATIONS
+        }
+        where = {key: case["inputs"][key] for key in WHERE if key in case["inputs"]}
+        print(where, case["BW"], largest, flush=True)
     report = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": provenance(),
         "purpose": (
             "Float32 on-fly waveform error against float64 at identical inputs, "
-            "at the corners of the validated range, with each float32 "
-            "reformulation disabled in turn."
+            "at the corners of the validated range and in stress cases, with "
+            "each float32 reformulation disabled in turn."
         ),
         "method": {
             "budget": BUDGET,
-            "adoption_threshold": HALF_BUDGET,
+            "adoption_threshold": BUDGET,
             "inputs": (
                 "float64 inputs are the exact float64 values of the float32 "
                 "inputs, with f0*T = q_ref + offset; the float64 carrier q is "
-                "pinned to q_ref; caches are float32-rounded orbit_cache output"
+                "pinned to the float32 carrier, q_ref unless a stress case "
+                "moves it; caches are float32-rounded orbit_cache output"
             ),
             "metrics": (
                 "A and E stacked, computed in float64; mismatch uses a flat "
@@ -416,13 +589,46 @@ def main() -> None:
                 **SKY,
                 **SOURCE,
             },
+            "stress": {
+                "cases": [
+                    dict(
+                        zip(
+                            ("T_years", "f0_hz", "t0_years", "chirp_mass", "carrier"),
+                            arguments,
+                            strict=True,
+                        )
+                    )
+                    for arguments in STRESS
+                ],
+                "derivatives": (
+                    "fdot = ucb_fdot(chirp_mass, f0) at time zero and "
+                    "fddot = 11/3*fdot**2/f0; zero for a chirp mass of zero"
+                ),
+                "carrier": (
+                    "default: q_ref; middle: the bin of the frequency at "
+                    "t0 + T/2; an integer: that many bins from q_ref"
+                ),
+                "bandwidth": (
+                    "ucb_bw at the frequency and fdot mid-observation, widened "
+                    "to a power of two reaching back to a distant carrier"
+                ),
+            },
             "bandwidth": f"ucb_bw with N = T/{CADENCE} s, amplitude as above",
             "response_samples": "the automatic count for T, passed explicitly",
-            "physical": "tdi_waveform, all reformulations, Sangria, no cache",
+            "physical": (
+                "tdi_waveform, all reformulations, Sangria, no cache; only where "
+                "the carrier is the default"
+            ),
+            "split": (
+                "chirps only: split_native (at the case's carrier) and "
+                "split_physical (default carrier only) of the unrounded float64 "
+                "source, against float64 at the unrounded inputs; Sangria, no "
+                "cache. Not part of the budget: it measures input rounding"
+            ),
         },
         "seconds": time.perf_counter() - start,
-        "summary": summarize(corners),
-        "corners": corners,
+        "summary": summarize(entries),
+        "cases": entries,
     }
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_text(json.dumps(report, indent=2) + "\n")

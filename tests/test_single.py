@@ -487,7 +487,7 @@ def test_epoch_expansion_reproduces_the_float64_phase():
     coefficients = jax.jit(single_impl.epoch_coefficients)(
         residual, PARAMS, T32, EPOCH32
     )
-    c0, c1, c2, c3 = (float(c) for c in coefficients)
+    c0, c1, c2, c3 = (float(hi) + float(lo) for hi, lo in coefficients)
     v = np.arange(BW) / BW
     single = c0 + v * (c1 + v * (c2 + v * c3))
     r, first, second = (float(PARAMS[i]) for i in (0, 7, 8))

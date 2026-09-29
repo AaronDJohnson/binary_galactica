@@ -18,8 +18,12 @@ Python integer or an int32 scalar, and may be traced or batched with
 Against the float64 path at identical inputs, ``tools/diagnose_single.py``
 measures A/E relative L2 errors below 1.5e-5 and mismatches below 1e-10, for
 a target of 1e-4 and 1e-8, at the corners of T = 0.25-10 years, f0 = 0.1-30
-mHz and t0 = 0-10 years, for sources whose frequency derivatives drift a few
-bins. Results are in ``tools/performance/single-precision.json``.
+mHz and t0 = 0-10 years, and for chirps driven by gravitational radiation
+that drift up to 20,000 bins, some with the carrier 30,000 bins from its
+default. Results are in ``tools/performance/single-precision.json``. Only the
+frequency is split: the other float32 entries are inputs, and for such a chirp
+their rounding from float64, which grows as ``(t/T)**2`` at late epochs, can
+exceed that error; the same record measures it.
 
 Raw channel values near 1e-21 are representable in float32, but their squares
 (about 1e-42) underflow. Form inner products from whitened data, or rescale:

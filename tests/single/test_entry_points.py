@@ -24,6 +24,7 @@ from tests.single.support import (
     Source,
     assert_accurate,
     channels,
+    chirping,
     errors,
     physical,
     source,
@@ -192,6 +193,22 @@ PHYSICAL = [
 )
 def test_physical_waveform_matches_float64(years, frequency, epoch, signs):
     case = source(years, frequency, epoch, signs)
+    theta, double_theta = physical(case)
+    single = bg32.tdi_waveform(theta, q_ref=case.q_ref, **case.observation())
+    double = bg.tdi_waveform(double_theta, **case.double_observation())
+    assert int(single["qmin"]) == int(double["qmin"])
+    assert_accurate(channels(single), channels(double))
+
+
+@pytest.mark.parametrize(
+    "years, frequency, chirp_mass", [(4.0, 3e-2, 0.3), (10.0, 1e-2, 1.0)]
+)
+def test_physical_waveform_of_a_chirping_source(years, frequency, chirp_mass):
+    """Chirps drifting about 3000 bins, where ``fdot*T**2`` must not be rounded.
+
+    Rounding that product to float32 moves the phase by about 1e-4 cycles.
+    """
+    case = chirping(years, frequency, chirp_mass)
     theta, double_theta = physical(case)
     single = bg32.tdi_waveform(theta, q_ref=case.q_ref, **case.observation())
     double = bg.tdi_waveform(double_theta, **case.double_observation())

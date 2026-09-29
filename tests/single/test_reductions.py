@@ -8,6 +8,7 @@ which plain float32 misses at multi-year times.
 
 from __future__ import annotations
 
+import dataclasses
 from fractions import Fraction
 
 import jax
@@ -17,7 +18,7 @@ import pytest
 
 from binary_galactica.glass import _twofloat as tf
 from binary_galactica.glass import single as single_impl
-from tests.single.support import YEAR, source
+from tests.single.support import YEAR, chirping, middle_bin, source
 
 PI2 = 2 * np.pi
 
@@ -139,15 +140,15 @@ def test_epoch_expansion_matches_exact_arithmetic(evaluate, years, epoch, signs)
     """``c0 + c1*v + c2*v**2 + c3*v**3`` is the float64 phase modulo whole cycles.
 
     Compared with rational arithmetic at the float32 inputs. The coefficients
-    are good to float32 rounding of terms of a few cycles. Evaluating the
-    float64 formula directly in float32 rounds terms of tens of cycles at late
-    epochs, which the spec's re-expansion avoids.
+    are float32 pairs. Evaluating the float64 formula directly in float32
+    rounds terms of tens of cycles at late epochs, which the spec's
+    re-expansion avoids.
     """
     case = source(years, 1e-2, epoch, signs)
     residual = tf.pair(case.params[0])
     c0, c1, c2, c3 = (
-        Fraction(float(c))
-        for c in evaluate(
+        Fraction(float(hi)) + Fraction(float(lo))
+        for hi, lo in evaluate(
             single_impl.epoch_coefficients,
             residual,
             case.params,
@@ -173,6 +174,76 @@ def test_epoch_expansion_matches_exact_arithmetic(evaluate, years, epoch, signs)
         expanded = c0 + v * (c1 + v * (c2 + v * c3))
         expanded_error = max(expanded_error, cycles_off(expanded, exact))
         direct_error = max(direct_error, cycles_off(Fraction(float(direct[n])), exact))
-    assert expanded_error < 5e-7
+    assert expanded_error < 1e-10
     if epoch / years >= 40:
         assert direct_error > 1e-5
+
+
+def large_terms(kind):
+    """Return a source, its observation and a carrier far from its frequency.
+
+    ``chirp``: a 0.3 solar-mass chirp at 30 mHz, drifting about 3000 bins in
+    four years, with the default carrier. ``late chirp``: the same source ten
+    years later, observed for ten years with the carrier mid-observation, about
+    30000 bins from the default. ``override``: a steady source at 10 mHz with
+    the carrier a thousand bins away.
+    """
+    if kind == "override":
+        case = source(4.0, 1e-2, 0.0)
+        params = case.params.copy()
+        params[0] = np.float32(0.3719)
+        case = dataclasses.replace(case, params=params)
+        return case, case.carrier - 1000
+    if kind == "chirp":
+        case = chirping(4.0, 3e-2, 0.3)
+        return case, case.carrier
+    case = chirping(10.0, 3e-2, 0.3, 10.0)
+    return case, middle_bin(case)
+
+
+@EVALUATIONS
+@pytest.mark.parametrize("kind", ["chirp", "late chirp", "override"])
+def test_grid_cycles_keep_large_terms_exact(evaluate, kind):
+    """The restored grid phase stays exact when its terms reach thousands of cycles.
+
+    The per-sample polynomial is summed in pairs and reduced modulo one before
+    rounding, so only the final float32 rounding, below 2**-25 cycles, remains.
+    Float32 Horner steps on the coefficients rounded to float32 miss by 1e-5
+    to 1e-3 cycles.
+    """
+    case, carrier = large_terms(kind)
+    bandwidth = 4096
+    offset = case.params[0]
+    shift = np.float32(case.carrier - carrier)
+    residual = tf.two_sum(offset, shift)
+
+    def cycles(residual, params, duration, epoch):
+        return single_impl.grid_cycles(residual, params, duration, epoch, bandwidth)
+
+    arguments = (residual, case.params, case.duration, case.epoch)
+    reduced = np.asarray(evaluate(cycles, *arguments), dtype=np.float64)
+    # Reduced by the nearest whole cycle of the leading float32 part.
+    assert np.all(np.abs(reduced) < 0.501)
+    rounded = [
+        np.float32(hi) + np.float32(lo)
+        for hi, lo in evaluate(single_impl.epoch_coefficients, *arguments)
+    ]
+    v = np.arange(bandwidth, dtype=np.float32) / np.float32(bandwidth)
+    plain = rounded[0] + v * (rounded[1] + v * (rounded[2] + v * rounded[3]))
+
+    r = Fraction(float(offset)) + Fraction(float(shift))
+    first, second = (Fraction(float(case.params[i])) for i in (7, 8))
+    u0 = Fraction(float(case.epoch)) / Fraction(float(case.duration))
+
+    def cycles_off(value, exact):
+        difference = Fraction(value) - exact
+        return abs(float((difference + Fraction(1, 2)) % 1 - Fraction(1, 2)))
+
+    pair_error = plain_error = 0.0
+    for n in range(0, bandwidth, bandwidth // 128):
+        u = u0 + Fraction(n, bandwidth)
+        exact = r * u + first * u**2 / 2 + second * u**3 / 6
+        pair_error = max(pair_error, cycles_off(float(reduced[n]), exact))
+        plain_error = max(plain_error, cycles_off(float(plain[n]), exact))
+    assert pair_error < 2.0**-25 + 1e-9
+    assert plain_error > 1e-5

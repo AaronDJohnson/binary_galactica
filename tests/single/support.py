@@ -9,6 +9,7 @@ square below float32's smallest normal number.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -159,6 +160,47 @@ def source(
         bandwidth=int(bandwidth),
         samples=automatic_samples(float(duration)),
     )
+
+
+def chirping(
+    years: float, frequency: float, chirp_mass: float, epoch_years: float = 0.0
+) -> Source:
+    """Build a source whose frequency derivatives come from gravitational radiation.
+
+    At time zero ``fdot`` is :func:`binary_galactica.ucb_fdot` for
+    ``chirp_mass`` solar masses at ``frequency`` hertz, and
+    ``fddot = 11/3*fdot**2/f0``. Chirp masses up to one solar mass lie in the
+    package's own prior; at tens of millihertz the phase terms reach thousands
+    of cycles. The band from :func:`binary_galactica.ucb_bw` holds the drift
+    about the frequency at the middle of the observation.
+    """
+    case = source(years, frequency, epoch_years)
+    duration = float(case.duration)
+    fdot = bg.ucb_fdot(chirp_mass, frequency)
+    fddot = 11 / 3 * fdot**2 / frequency
+    params = case.params.copy()
+    params[7], params[8] = fdot * duration**2, fddot * duration**3
+    middle = float(case.epoch) + duration / 2
+    bandwidth = bg.ucb_bw(
+        frequency + fdot * middle + fddot * middle**2 / 2,
+        fdot + fddot * middle,
+        np.sin(BETA),
+        AMPLITUDE,
+        duration,
+        2**31,
+    )
+    return dataclasses.replace(case, params=params, bandwidth=int(bandwidth))
+
+
+def middle_bin(case: Source) -> int:
+    """Return the bin holding the source's frequency mid-observation.
+
+    A carrier pinned there centres the band on a source that has drifted far
+    from its frequency at time zero.
+    """
+    native = case.native
+    u = (float(case.epoch) + float(case.duration) / 2) / float(case.duration)
+    return math.floor(native[0] + native[7] * u + native[8] * u**2 / 2)
 
 
 def physical(case: Source) -> tuple[np.ndarray, np.ndarray]:

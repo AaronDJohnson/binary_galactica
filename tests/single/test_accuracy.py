@@ -25,7 +25,9 @@ from tests.single.support import (
     SIGNS,
     assert_accurate,
     channels,
+    chirping,
     errors,
+    middle_bin,
     source,
 )
 
@@ -138,6 +140,45 @@ def test_larger_drifts_in_a_wider_band(years, frequency, drift):
     """
     case = source(years, frequency, 10.0, (1, 1), drift=drift)
     assert_accurate(channels(case.single()), channels(case.double()))
+
+
+@pytest.mark.parametrize(
+    "years, frequency, chirp_mass, epoch",
+    [(4.0, 3e-2, 0.3, 0.0), (10.0, 1e-2, 1.0, 0.0), (0.25, 3e-2, 1.0, 10.0)],
+)
+def test_chirping_sources(years, frequency, chirp_mass, epoch):
+    """Gravitational-radiation derivatives, drifting hundreds to thousands of bins.
+
+    The phase polynomial's terms then reach thousands of cycles, which float32
+    rounds by about 1e-4 cycles per sample (relative L2 2.8e-4 at four years
+    and 30 mHz before the per-sample sum was made in pairs). At the late epoch
+    the carrier is pinned mid-observation, thousands of bins from the default.
+    """
+    case = chirping(years, frequency, chirp_mass, epoch)
+    carrier = {"q": middle_bin(case)} if epoch else {}
+    for fmt in bg.FORMATS:
+        single = case.single(fmt=fmt, **carrier)
+        double = case.double(fmt=fmt, **carrier)
+        assert_same_bins(single, double)
+        assert_accurate(channels(single), channels(double), fmt)
+
+
+@pytest.mark.parametrize("step", [-1000, 1000])
+def test_distant_carrier_override(step):
+    """A carrier a thousand bins from the source, in a band that still holds it.
+
+    The restored phase then runs through a thousand cycles.
+    """
+    case = source(4.0, 1e-2, 0.0, bandwidth=4096)
+    # f0*T is whole here; a fractional offset also exercises the residual.
+    params = case.params.copy()
+    params[0] = np.float32(0.3719)
+    case = dataclasses.replace(case, params=params)
+    q = case.carrier + step
+    single, double = case.single(q=q), case.double(q=float(q))
+    assert int(single["qmin"]) == q - case.bandwidth // 2
+    assert_same_bins(single, double)
+    assert_accurate(channels(single), channels(double))
 
 
 @pytest.mark.parametrize("step", [-5, -1, 1, 7])
