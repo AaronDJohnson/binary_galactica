@@ -52,7 +52,10 @@ quarter-year BW=128 and BW=512 single-source rows were slower in float32 in
 every round. Every other row was faster in float32 in every round, except
 the quarter-year BW=2048 outer-JIT row, which stayed within 1% of equal. An
 earlier record, before the per-sample phase sum used pairs, measured 0.56 to
-1.09 under heavier load. GPU and TPU timings have not been measured, and
+1.09 under heavier load. The pairs add little work: XLA's cost estimate for
+the compiled float32 quarter-year call grew by 0.5% at BW=128, 2% at BW=512
+and 7% at BW=2048, so the difference between the records is mostly within
+their round-to-round spread. GPU and TPU timings have not been measured, and
 neither Jacobians nor `template_on_window` were timed.
 
 Reproduce, serially and preferably on an idle machine, with:
