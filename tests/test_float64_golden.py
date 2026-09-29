@@ -6,9 +6,11 @@ and CPU. When the recorded jax, jaxlib, NumPy, machine and default backend
 match the running environment, every output must keep its recorded dtype,
 shape and exact bits. Elsewhere a different compiler or library may
 legitimately move the last bits, so outputs must instead agree to within a
-relative 1e-12 of each array's peak magnitude. Failure messages state which
-comparison applied. Double precision must already be enabled, by the test
-configuration, before these tests run.
+relative 1e-12 of each array's peak magnitude, or 1e-8 for the legacy Fourier
+backend, whose sines of full phases near 1e7 rad differ by about 5e-10 of
+peak between builds. Failure messages state which comparison applied. Double
+precision must already be enabled, by the test configuration, before these
+tests run.
 """
 
 from __future__ import annotations
@@ -26,6 +28,10 @@ GOLDEN = ROOT / "tests" / "data" / "float64_golden.npz"
 GENERATOR = ROOT / "tools" / "float64_golden.py"
 #: Allowed difference on another build, relative to each array's peak.
 RELATIVE_TOLERANCE = 1e-12
+#: The same for the legacy Fourier backend. It takes sines of full phases near
+#: 1e7 rad, where one rounding of the argument is about 1e-9 rad; on x86_64
+#: (JAX 0.4.38) its outputs moved by up to 5.4e-10 of peak with unchanged code.
+FOURIER_TOLERANCE = 1e-8
 #: Environment fields that fix the exact bits of a float64 result. NumPy is
 #: included because the interpolation coefficients are host NumPy constants.
 BUILD = ("jax", "jaxlib", "numpy", "machine", "backend")
@@ -102,16 +108,19 @@ def test_golden_cases_cover_the_float64_entry_points():
 
 @pytest.mark.parametrize("name", list(CASES))
 def test_float64_outputs_match_golden(generator, name):
-    """Exact bits on the recording build; relative 1e-12 of peak elsewhere."""
+    """Exact bits on the recording build; a fraction of peak elsewhere."""
     recorded, running = METADATA["environment"], generator.environment()
     exact = all(recorded[key] == running[key] for key in BUILD)
+    case = CASES[name]
+    tolerance = (
+        FOURIER_TOLERANCE if case.get("backend") == "fourier" else RELATIVE_TOLERANCE
+    )
     comparison = (
         f"bitwise, same build: {_build(running)}"
         if exact
-        else f"relative {RELATIVE_TOLERANCE:g} of peak, recorded on "
+        else f"relative {tolerance:g} of peak, recorded on "
         f"{_build(recorded)}; running {_build(running)}"
     )
-    case = CASES[name]
     actual = generator.evaluate(case)
     assert sorted(actual) == sorted(case["outputs"])
     for output, value in actual.items():
@@ -131,7 +140,7 @@ def test_float64_outputs_match_golden(generator, name):
             ), f"{label}: float64 output changed; max |difference| {difference:.3e}"
         else:
             peak = np.max(np.abs(expected), initial=0.0)
-            assert difference <= RELATIVE_TOLERANCE * peak, (
+            assert difference <= tolerance * peak, (
                 f"{label}: max |difference| {difference:.3e} exceeds "
-                f"{RELATIVE_TOLERANCE:g} of peak {peak:.3e}"
+                f"{tolerance:g} of peak {peak:.3e}"
             )
