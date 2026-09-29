@@ -39,14 +39,35 @@ For development, use an editable installation with the test and lint tools:
 python -m pip install -e ".[dev]"
 ```
 
-Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required. Importing the package
-enables `jax_enable_x64=True` process-wide. Long-duration millihertz phases
-require double precision.
+Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required.
+
+**Migrating to 0.4.0:** importing the package no longer enables
+`jax_enable_x64`. The float64 functions need it, because long-duration
+millihertz phases require double precision. Enable it yourself at startup,
+before creating JAX arrays:
+
+```python
+import jax
+
+jax.config.update("jax_enable_x64", True)
+```
+
+While it is disabled, `ucb_waveform`, `tdi_waveform`, `tdi_response`,
+`template_on_window`, `orbit_cache`, `phase`, `frequency`, `amplitudes`, and
+`polarizations` raise `RuntimeError` instead of computing in float32.
+Lower-level building blocks such as `analytic_orbits`, `slow_time_grid`, and
+`to_glass_vector` now follow their input dtype: float32 inputs give float32
+results even with x64 enabled. Processes that keep x64 disabled can use the
+float32 functions in [`binary_galactica.single`](#single-precision).
 
 ## Generate a GLASS waveform
 
 ```python
+import jax
+
 import binary_galactica as bg
+
+jax.config.update("jax_enable_x64", True)
 
 T, BW = 7_884_000.0, 512
 p = bg.params_from_native(
@@ -266,6 +287,92 @@ patterns and a reproducible benchmark of waveform, fixed-window, batch, and
 Jacobian workloads. The benchmark separates first-call compilation from warmed
 execution and waits for all returned arrays.
 
+## Single precision
+
+`binary_galactica.single` is a float32 implementation of the on-fly waveform
+for processes that keep `jax_enable_x64` disabled, such as float32 analysis
+pipelines or float32-only accelerators. Its `ucb_waveform`,
+`template_on_window`, `tdi_response`, and `tdi_waveform` mirror the float64
+functions, use only the on-fly response, and compute and return only float32,
+complex64, and int32 values, with x64 enabled or not. The float64 functions
+remain the reference implementation.
+
+Float32 cannot hold `f0*T`, which reaches millions of cycles. Each source is
+therefore an integer reference bin `q_ref` and float32 coordinates whose
+frequency entry is the offset from that bin: native `params[0]` is
+`f0*T - q_ref`, and the physical `tdi_waveform` frequency field is
+`f0 - q_ref/T` in hertz. The host NumPy helpers `split_native` and
+`split_physical` convert float64 priors, proposals, and catalogues, choosing
+`q_ref = floor(f0*T)`:
+
+```python
+import binary_galactica as bg
+from binary_galactica import single as bg32
+
+T, BW = 7_884_000.0, 512
+native = bg.params_from_native(  # float64 NumPy, as from a prior or catalogue
+    f0=1e-3,
+    fdot=1e-18,
+    amp=7.16e-22,
+    phi0=0.5,
+    colat=1.78,
+    lon=0.0,
+    psi=0.7,
+    cos_iota=0.3,
+    T=T,
+)
+q_ref, params = bg32.split_native(native, T)  # Python int, float32 array
+wave32 = bg32.ucb_waveform(params, q_ref=q_ref, T=T, BW=BW)
+A32, E32 = wave32["A"], wave32["E"]  # complex64, raw GLASS units
+bins32 = wave32["freq_bin_indices"]  # int32
+```
+
+`q_ref` is a Python integer or an int32 scalar. It may be traced, or batched
+with `jax.vmap` alongside the parameters; inside `jit`, pass `numpy.int32`
+values, because with x64 enabled a traced Python integer is int64 and is
+rejected rather than wrapped. The carrier defaults to
+`q_ref + floor(params[0])`. The float64 carrier reproduces GLASS rounding and
+can differ by one bin at an exact boundary, so pin it with `q=` when comparing
+the two. `qmin` and `freq_bin_indices` are exact int32; the other keys and the
+format conventions match the float64 results. Eager invalid inputs raise
+`ValueError`; traced invalid values give NaN channels and `INT32_MIN` bins.
+
+Against float64 at identical inputs, the
+[recorded diagnostic](tools/performance/single-precision.json) measures A/E
+relative L2 errors of at most 1.2e-5 and mismatches of at most 7.4e-11, for
+targets of 1e-4 and 1e-8. It covers the corners of the validated range: T of
+0.25 and 10 years, f0 of 0.1 and 30 mHz, and t0 of 0 and 10 years, with every
+sign combination of the frequency derivatives, all three formats, and runs
+with and without position caches. The physical adapter reaches 1.3e-5 and the
+arbitrary-time response 9.2e-6. By the end of each observation the sources
+drift four bins through `fdot` and one through `fddot`; sources drifting much
+further have not been measured. Rounding `f0*T` itself to float32 instead
+gives a relative L2 error of 1.9 at ten years and 30 mHz in the same record.
+These are measurements, not error bounds; `tools/diagnose_single.py`
+reproduces them.
+
+Raw channels near 1e-21 are representable in float32, but their squares, near
+1e-42, are below its smallest normal number, about 1.2e-38. So is a
+millihertz A/E noise PSD: `ae_noise` gives 5e-42 at 4 mHz. Form inner products
+from whitened channels, dividing by an amplitude spectral density computed on
+the host, or rescale: the waveform is linear in amplitude, so subtracting
+`log(s)` from native `params[3]`, or dividing physical `amp` by `s`, scales
+every channel by `1/s`. `tdi_response` values near 1e-24 need the same care.
+[`examples/single_precision.py`](examples/single_precision.py) shows both
+approaches with x64 disabled.
+
+Position caches keep the `(3, BW, 3)` layout on the `(T, t0, BW)` grid. Host
+float64 or float32 caches are rounded to float32, whose step near 1.5e11 m is
+about 5e-5 s of light time. `orbit_cache` is a float64 function and raises
+in an x64-disabled process, which can instead load a saved cache. Omitting
+`positions` evaluates the analytic orbit, with its phase reduced in paired
+float32 arithmetic.
+
+On the recorded CPU benchmark, float32 calls took 0.56 to 1.09 times as long
+as float64 ones: similar cost, not a large speedup. See the
+[performance guide](docs/performance.md#single-precision-timing--september-29-2026).
+Accelerator timings have not been measured.
+
 ## Supporting modules
 
 The modules under `binary_galactica.glass` provide constants, orbit, response,
@@ -318,7 +425,16 @@ steps. The example's fixed decomposition avoids state-dependent adaptation.
 pytest
 ruff check .
 python examples/quickstart.py
+python examples/single_precision.py
 ```
+
+The test configuration enables x64 for the session. A float64 golden archive,
+recorded before the float32 work, must reproduce bitwise on its recording
+JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. The
+float32 tests compare the `single` waveform, window, arbitrary-time response,
+and physical adapter with float64 at identical inputs, check that no float64
+value enters their compiled programs, and run every `single` function in a
+subprocess with x64 disabled.
 
 Legacy Fourier C reference tests cover varied sky positions, inclinations,
 amplitudes, phases, 7/8/9 parameters, all three formats, signed chirps,

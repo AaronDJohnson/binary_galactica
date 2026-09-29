@@ -6,6 +6,60 @@ those settings for response convergence before comparing workloads. The
 benchmark exercises native and physical APIs, fixed-window templates, catalogue
 batches, and waveform Jacobians. It does not measure a sampler or likelihood.
 
+## Single-precision timing — September 29, 2026
+
+The [recorded run](../tools/performance/single-precision-timing.json) times
+the float32 `binary_galactica.single.ucb_waveform` in a process with
+`jax_enable_x64` disabled and the float64 on-fly `ucb_waveform` in a process
+with it enabled, on a macOS arm64 CPU (Python 3.11.8, JAX/jaxlib 0.7.2,
+NumPy 2.3.5). Both evaluate the same 64-source catalogue
+near 3 mHz; float64 receives the exact values of the float32 inputs. Calls use
+the automatic response grid, analytic orbits and `t0` = 12,345 s, and return
+all seven outputs, which are synchronized before each timer stops. Outer-JIT
+functions are compiled ahead of time with `lower().compile()` and take the
+parameters, `q_ref`, `T` and `t0` as device arrays. The two processes
+alternated for three rounds; each entry is the median over rounds of a round's
+median of 200 warmed calls. Before timing, the first source's float32 A/E
+agreed with float64 to a relative L2 error of at most 3.7e-6.
+
+Milliseconds, **float64 / float32**:
+
+| Duration (response samples) | Workload | BW=128 | BW=512 | BW=2048 |
+| --- | --- | ---: | ---: | ---: |
+| 7,884,000 s (32) | Public call | 0.101 / 0.110 | 0.131 / 0.131 | 0.253 / 0.207 |
+|  | Outer JIT | 0.077 / 0.083 | 0.104 / 0.105 | 0.223 / 0.182 |
+|  | Batch of 32, outer JIT | 0.675 / 0.523 | 1.001 / 0.728 | 2.557 / 1.425 |
+| 126,000,000 s (512) | Public call | 0.327 / 0.268 | 0.346 / 0.293 | 0.487 / 0.376 |
+|  | Outer JIT | 0.294 / 0.238 | 0.320 / 0.268 | 0.462 / 0.352 |
+|  | Batch of 32, outer JIT | 4.668 / 3.945 | 5.034 / 4.258 | 6.254 / 5.075 |
+
+Float32 took between 0.56 and 1.09 times the float64 time. For single
+quarter-year sources, the smallest calls at about 0.1 ms, it was 9% slower at
+BW=128 and no faster at BW=512. It was 18% faster for those sources at
+BW=2048, 15–24% faster for four-year single sources, and 15–44% faster for
+batches of 32, most at a quarter year and BW=2048. The float32 path also does
+work that float64 does not: the orbital phase in paired float32 arithmetic at
+every FFT sample and the epoch re-expansion. On this CPU, float32 makes it
+possible to run without x64 at a similar cost; it is not a large speedup.
+Ahead-of-time compilation took 0.65–1.24 s per function in float64 and
+0.73–1.29 s in float32.
+
+Other work shared the machine during the run: the load average recorded by
+each worker process ranged from 3.5 to 13 on 16 logical CPUs. For the same
+workload, a round's median differed from another round's by up to 23%, and
+the per-round float32/float64 ratio varied across rounds by up to 0.18.
+The quarter-year BW=128 rows were slower in float32 in every round, the BW=512
+rows fell on both sides of equal, and every row with a median reduction of 15%
+or more was faster in float32 in every round. GPU
+and TPU timings have not been measured, and neither Jacobians nor
+`template_on_window` were timed.
+
+Reproduce, serially and preferably on an idle machine, with:
+
+```sh
+PYTHONPATH=src python tools/benchmark_single.py --output /tmp/single-timing.json
+```
+
 ## On-fly accuracy and timing — September 18, 2026
 
 The [recorded run](../tools/performance/onfly.json) uses macOS arm64, Python
@@ -284,7 +338,12 @@ waveform generation and placement together. The default analytic orbit is the
 most accurate option:
 
 ```python
+import jax
+
 import binary_galactica as bg
+
+# Since 0.4.0 the float64 functions raise unless double precision is enabled.
+jax.config.update("jax_enable_x64", True)
 
 duration, bandwidth = 7_884_000.0, 512
 
