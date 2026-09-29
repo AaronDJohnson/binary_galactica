@@ -90,7 +90,11 @@ helper module:
    `c0 = r*u0 + F*u0**2/2 + G*u0**3/6`, `c1 = r + F*u0 + G*u0**2/2`,
    `c2 = (F + G*u0)/2`, `c3 = G/6`, `F = params[7]` and `G = params[8]`.
    This is algebraically the float64 formula, including its convention for
-   `t0`, but keeps per-sample terms to a few cycles.
+   `t0`. The coefficients and the per-sample sum are two-float values reduced
+   modulo one cycle, because the terms reach thousands of cycles for strongly
+   chirping sources and distant carrier overrides. (Amended in review: rounding
+   the per-sample sum to float32 gave relative L2 errors near 3e-4 for such
+   sources.)
 3. **Orbital phase.** The full Doppler delay `k.x0/c` (about 500 s) needs the
    orbital phase to about 1e-7 cycles; plain float32 at times near 6e8 s costs
    about 6e-4 rad of source phase at 30 mHz. Split `analytic_orbits` into
@@ -111,7 +115,8 @@ test checks the reduction accuracy on the executing backend.
 The mitigations are adopted on evidence. `tools/diagnose_single.py` measures
 relative L2 against float64 with each mitigation on and off at the corners of
 the validated range (ten years, 30 mHz, `t0` of ten years, all formats, with
-and without caches). A mitigation that the 1e-4 target does not need is
+and without caches) and in stress cases with gravitational-radiation chirps
+and distant carriers. A mitigation that the 1e-4 target does not need is
 dropped. Results are recorded in `tools/performance/single-precision.json`.
 
 Eager invalid inputs raise `ValueError` as in float64. `q_ref` must be an
@@ -135,7 +140,11 @@ A subprocess with x64 disabled imports the package, confirms the flag is still
 false, runs every `single` function, checks float32/complex64/int32 outputs, and
 compares them with float64 references written by the parent process. It also
 checks that float64 entry points raise the x64 error. With x64 enabled, the
-jaxprs of `single` functions contain no f64 or c128 values.
+jaxprs of `single` functions contain no equation producing an f64 or c128
+value, and their compiled HLO contains none. (Amended in review: JAX passes
+Python-scalar arguments of its jitted `jnp` helpers, such as the `0.0` or
+`nan` given to `jnp.where`, as weakly typed f64 literals, which it converts
+to float32 before any arithmetic.)
 
 Float64 regression: golden outputs captured at `8363ec0` (all formats, window,
 arbitrary-time response, physical adapter, caches and a Jacobian) must be
