@@ -26,33 +26,34 @@ Milliseconds, **float64 / float32**:
 
 | Duration (response samples) | Workload | BW=128 | BW=512 | BW=2048 |
 | --- | --- | ---: | ---: | ---: |
-| 7,884,000 s (32) | Public call | 0.101 / 0.110 | 0.131 / 0.131 | 0.253 / 0.207 |
-|  | Outer JIT | 0.077 / 0.083 | 0.104 / 0.105 | 0.223 / 0.182 |
-|  | Batch of 32, outer JIT | 0.675 / 0.523 | 1.001 / 0.728 | 2.557 / 1.425 |
-| 126,000,000 s (512) | Public call | 0.327 / 0.268 | 0.346 / 0.293 | 0.487 / 0.376 |
-|  | Outer JIT | 0.294 / 0.238 | 0.320 / 0.268 | 0.462 / 0.352 |
-|  | Batch of 32, outer JIT | 4.668 / 3.945 | 5.034 / 4.258 | 6.254 / 5.075 |
+| 7,884,000 s (32) | Public call | 0.102 / 0.115 | 0.129 / 0.154 | 0.260 / 0.249 |
+|  | Outer JIT | 0.076 / 0.087 | 0.100 / 0.123 | 0.224 / 0.222 |
+|  | Batch of 32, outer JIT | 0.712 / 0.546 | 0.992 / 0.743 | 2.618 / 1.613 |
+| 126,000,000 s (512) | Public call | 0.343 / 0.307 | 0.369 / 0.320 | 0.434 / 0.402 |
+|  | Outer JIT | 0.305 / 0.261 | 0.331 / 0.300 | 0.448 / 0.306 |
+|  | Batch of 32, outer JIT | 4.495 / 3.561 | 4.935 / 3.940 | 6.177 / 4.864 |
 
-Float32 took between 0.56 and 1.09 times the float64 time. For single
-quarter-year sources, the smallest calls at about 0.1 ms, it was 9% slower at
-BW=128 and no faster at BW=512. It was 18% faster for those sources at
-BW=2048, 15–24% faster for four-year single sources, and 15–44% faster for
-batches of 32, most at a quarter year and BW=2048. The float32 path also does
-work that float64 does not: the orbital phase in paired float32 arithmetic at
-every FFT sample and the epoch re-expansion. On this CPU, float32 makes it
-possible to run without x64 at a similar cost; it is not a large speedup.
-Ahead-of-time compilation took 0.65–1.24 s per function in float64 and
-0.73–1.29 s in float32.
+Float32 took between 0.62 and 1.23 times the float64 time. For single
+quarter-year sources, the smallest calls at about 0.1 ms, it was 13–23%
+slower at BW=128 and BW=512 and within 4% at BW=2048. It was 7–32% faster for
+four-year single sources and 20–38% faster for batches of 32. The float32 path
+also does work that float64 does not: at every FFT sample it sums the orbital
+phase and the restored source phase in paired float32 arithmetic, which keeps
+strong chirps and distant carriers within the accuracy target. On this CPU,
+float32 makes it possible to run without x64 at a similar cost; it is not a
+large speedup. Ahead-of-time compilation took 0.63–1.12 s per function in
+float64 and 0.70–1.26 s in float32.
 
 Other work shared the machine during the run: the load average recorded by
-each worker process ranged from 3.5 to 13 on 16 logical CPUs. For the same
-workload, a round's median differed from another round's by up to 23%, and
-the per-round float32/float64 ratio varied across rounds by up to 0.18.
-The quarter-year BW=128 rows were slower in float32 in every round, the BW=512
-rows fell on both sides of equal, and every row with a median reduction of 15%
-or more was faster in float32 in every round. GPU
-and TPU timings have not been measured, and neither Jacobians nor
-`template_on_window` were timed.
+each worker process ranged from 3.3 to 6.2 on 16 logical CPUs. For the same
+workload, a round's median differed from another round's by up to 34%, and
+the per-round float32/float64 ratio varied across rounds by up to 0.17. The
+quarter-year BW=128 and BW=512 single-source rows were slower in float32 in
+every round. Every other row was faster in float32 in every round, except
+the quarter-year BW=2048 outer-JIT row, which stayed within 1% of equal. An
+earlier record, before the per-sample phase sum used pairs, measured 0.56 to
+1.09 under heavier load. GPU and TPU timings have not been measured, and
+neither Jacobians nor `template_on_window` were timed.
 
 Reproduce, serially and preferably on an idle machine, with:
 

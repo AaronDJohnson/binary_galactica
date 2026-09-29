@@ -340,17 +340,31 @@ format conventions match the float64 results. Eager invalid inputs raise
 
 Against float64 at identical inputs, the
 [recorded diagnostic](tools/performance/single-precision.json) measures A/E
-relative L2 errors of at most 1.2e-5 and mismatches of at most 7.4e-11, for
+relative L2 errors of at most 1.2e-5 and mismatches of at most 7.7e-11, for
 targets of 1e-4 and 1e-8. It covers the corners of the validated range: T of
-0.25 and 10 years, f0 of 0.1 and 30 mHz, and t0 of 0 and 10 years, with every
-sign combination of the frequency derivatives, all three formats, and runs
-with and without position caches. The physical adapter reaches 1.3e-5 and the
-arbitrary-time response 9.2e-6. By the end of each observation the sources
-drift four bins through `fdot` and one through `fddot`; sources drifting much
-further have not been measured. Rounding `f0*T` itself to float32 instead
-gives a relative L2 error of 1.9 at ten years and 30 mHz in the same record.
-These are measurements, not error bounds; `tools/diagnose_single.py`
+0.25 and 10 years, f0 of 0.1 and 30 mHz, and t0 of 0 and 10 years, with
+sources drifting four bins through `fdot` and one through `fddot` in every
+sign combination, all three formats, and runs with and without position
+caches. Stress cases add chirps driven by gravitational radiation, with chirp
+masses of 0.3 and 1 solar mass and `fdot*T**2` of 94 to 20,000 bins,
+carriers pinned mid-observation up to 30,525 bins from the default, and a
+carrier 1,000 bins from a steady source. The physical adapter reaches 1.1e-5
+and the arbitrary-time response 9.2e-6. Rounding `f0*T` itself to float32
+instead gives a relative L2 error of 1.9 at ten years and 30 mHz in the same
+record. These are measurements, not error bounds; `tools/diagnose_single.py`
 reproduces them.
+
+Only the frequency is split. The other float32 entries are inputs like any
+other, so converting a float64 source rounds them once, and for a strong chirp
+that input rounding can exceed the arithmetic error. Rounding `fdot*T**2`
+moves the phase by up to about 6e-8 of its value times `(t/T)**2/2` cycles,
+so the effect grows with the drift and at late epochs. The same record splits
+its stress chirps from unrounded float64 values and compares them with
+float64 at those values: `split_native` gave relative L2 errors of 4.7e-5 and
+6.2e-5 at `t0` = 0, and 2.9e-3 and 5.2e-3 at `t0` = 10 years;
+`split_physical`, run at `t0` = 0 only, gave up to 6.6e-5. Parameters
+referred to a time near the observation, with a small `t0`, avoid the
+late-epoch growth.
 
 Raw channels near 1e-21 are representable in float32, but their squares, near
 1e-42, are below its smallest normal number, about 1.2e-38. So is a
@@ -369,7 +383,7 @@ in an x64-disabled process, which can instead load a saved cache. Omitting
 `positions` evaluates the analytic orbit, with its phase reduced in paired
 float32 arithmetic.
 
-On the recorded CPU benchmark, float32 calls took 0.56 to 1.09 times as long
+On the recorded CPU benchmark, float32 calls took 0.62 to 1.23 times as long
 as float64 ones: similar cost, not a large speedup. See the
 [performance guide](docs/performance.md#single-precision-timing--september-29-2026).
 Accelerator timings have not been measured.
