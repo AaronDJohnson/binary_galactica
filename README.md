@@ -55,10 +55,11 @@ jax.config.update("jax_enable_x64", True)
 While it is disabled, `ucb_waveform`, `tdi_waveform`, `tdi_response`,
 `template_on_window`, `orbit_cache`, `phase`, `frequency`, `amplitudes`, and
 `polarizations` raise `RuntimeError` instead of computing in float32.
-Lower-level building blocks such as `analytic_orbits`, `slow_time_grid`, and
-`to_glass_vector` now follow their input dtype: float32 inputs give float32
-results even with x64 enabled. Processes that keep x64 disabled can use the
-float32 functions in [`binary_galactica.single`](#single-precision).
+Lower-level building blocks such as `analytic_orbits`, `slow_time_grid`,
+`to_glass_vector`, and `from_glass_vector` now follow their input dtype:
+float32 inputs give float32 results even with x64 enabled. Processes that keep
+x64 disabled can use the float32 functions in
+[`binary_galactica.single`](#single-precision).
 
 ## Generate a GLASS waveform
 

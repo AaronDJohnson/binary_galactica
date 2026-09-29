@@ -43,6 +43,7 @@ TIMES = (EPOCH + DURATION * np.linspace(-0.1, 1.1, 13)).astype(np.float32)
 POSITIONS = np.asarray(analytic_orbits(TIMES.astype(np.float64)), dtype=np.float32)
 CACHE = np.asarray(bg.orbit_cache(float(DURATION), float(EPOCH), BW), dtype=np.float32)
 THETA = np.array([1e-22, 1e-2, 1e-15, 0.7, 1.1, 0.4, 4.1, -0.3], dtype=np.float32)
+GLASS_VECTOR = np.asarray(bg.to_glass_vector(jnp.asarray(THETA), float(DURATION)))
 _RNG = np.random.default_rng(3)
 SAMPLES = (_RNG.normal(size=(17, 3)) + 1j * _RNG.normal(size=(17, 3))).astype(
     np.complex64
@@ -118,6 +119,11 @@ KERNELS = {
             bg.GBParams(amp, 1e-2, 1e-15, 0.7, 1.1, 0.4, 4.1, -0.3), duration
         ),
         (np.array([1e-22, 2e-22, 5e-23], dtype=np.float32), DURATION),
+    ),
+    "from_glass_vector": (bg.from_glass_vector, (GLASS_VECTOR, DURATION)),
+    "from_glass_vector, host float64 duration": (
+        lambda vector: bg.from_glass_vector(vector, HOST_DURATION),
+        (GLASS_VECTOR,),
     ),
     "_cached_positions": (
         glass_waveform._cached_positions,

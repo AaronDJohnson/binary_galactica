@@ -181,13 +181,15 @@ def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
             with the vector's leading dimensions.
 
     Returns:
-        Physical parameters, with canonical inclination and latitude.
+        Physical parameters, with canonical inclination and latitude, in the
+        floating dtype of ``vector``; ``duration`` is cast to it.
 
     Raises:
         ValueError: If the vector does not have trailing dimension 8.
 
     """
-    vector = jnp.asarray(vector, dtype=jnp.float64)
+    real = real_dtype(vector)
+    vector = jnp.asarray(vector, dtype=real)
     if vector.ndim == 0 or vector.shape[-1] != NUM_PARAMS:
         raise ValueError(
             f"expected GLASS trailing axis of length 8, got {vector.shape}"
@@ -195,7 +197,7 @@ def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
     freq, costheta, longitude, logamp, cosiota, psi, phi, chirp = jnp.moveaxis(
         vector, -1, 0
     )
-    duration = jnp.asarray(duration, dtype=jnp.float64)
+    duration = jnp.asarray(duration, dtype=real)
     return GBParams(
         amp=0.5 * jnp.exp(logamp),
         f0=freq / duration,
