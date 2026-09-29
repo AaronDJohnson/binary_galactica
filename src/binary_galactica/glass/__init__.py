@@ -23,6 +23,8 @@ link-response construction for legacy reference comparisons.
 
 Quick start
 -----------
+>>> import jax
+>>> jax.config.update("jax_enable_x64", True)
 >>> import binary_galactica.glass
 >>> T, BW = 7884000.0, 64
 >>> p = binary_galactica.glass.params_from_native(

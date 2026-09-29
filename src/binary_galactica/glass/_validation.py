@@ -5,6 +5,20 @@ import jax.numpy as jnp
 import numpy as np
 
 
+def require_x64():
+    """Refuse to run a float64 entry point while JAX would compute in float32."""
+    # read() gives the effective value, including jax.experimental.enable_x64
+    # scopes, on every supported JAX; it never changes the setting.
+    if not jax.config.read("jax_enable_x64"):
+        raise RuntimeError(
+            "binary_galactica's float64 functions need JAX double precision, "
+            "which is disabled. Call "
+            'jax.config.update("jax_enable_x64", True) at startup, before '
+            "creating JAX arrays, or use binary_galactica.single for float32 "
+            "waveforms."
+        )
+
+
 def integer(value, name, *, minimum=None):
     """Require a concrete integer index/count without truncating or accepting bools."""
     requirement = {

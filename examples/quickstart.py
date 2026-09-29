@@ -11,6 +11,10 @@ import jax.numpy as jnp
 
 import binary_galactica as bg
 
+# The float64 functions need JAX double precision. Importing
+# binary_galactica does not enable it, so do so before creating JAX arrays.
+jax.config.update("jax_enable_x64", True)
+
 duration, bandwidth, response_samples = 7_884_000.0, 512, None
 native = bg.params_from_native(
     f0=1e-3,

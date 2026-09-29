@@ -39,12 +39,9 @@ normalise it away.
 
 from __future__ import annotations
 
-import jax
 import jax.numpy as jnp
 
 from .constants import AU, LARM, PI2, RORB, SQ3, YEAR
-
-jax.config.update("jax_enable_x64", True)
 
 # sin/cos of beta_i = 2 pi i / 3, copied verbatim from glass_lisa.c.
 _SB = (0.0, 0.866025403784439, -0.866025403784438)

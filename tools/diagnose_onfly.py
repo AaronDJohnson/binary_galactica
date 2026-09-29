@@ -30,6 +30,10 @@ from binary_galactica.glass.onfly import reference_phase_shift, tdi_response
 from binary_galactica.glass.orbit import slow_time_grid
 from binary_galactica.glass.sparse import _coefficient_matrix, interpolate_uniform
 
+# The float64 waveform API requires JAX double precision; importing
+# binary_galactica does not enable it.
+jax.config.update("jax_enable_x64", True)
+
 SAMPLES = 32
 DURATION = 7_884_000.0
 EPOCH = 12_345.0

@@ -7,8 +7,8 @@ match the running environment, every output must keep its recorded dtype,
 shape and exact bits. Elsewhere a different compiler or library may
 legitimately move the last bits, so outputs must instead agree to within a
 relative 1e-12 of each array's peak magnitude. Failure messages state which
-comparison applied. Double precision must already be enabled, by the package
-or by the test configuration, before these tests run.
+comparison applied. Double precision must already be enabled, by the test
+configuration, before these tests run.
 """
 
 from __future__ import annotations

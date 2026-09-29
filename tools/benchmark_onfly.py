@@ -36,6 +36,10 @@ import numpy as np
 import binary_galactica as bg
 from binary_galactica.glass.constants import YEAR as RESPONSE_YEAR
 
+# The float64 waveform API requires JAX double precision; importing
+# binary_galactica does not enable it.
+jax.config.update("jax_enable_x64", True)
+
 BW = 2048
 EPOCH = 12_345.0
 EXPLICIT_SAMPLE_COUNTS = (32, 64, 128, 256, 512)

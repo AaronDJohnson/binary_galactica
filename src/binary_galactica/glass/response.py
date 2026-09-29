@@ -28,10 +28,7 @@ it can sit in the source unnoticed. We implement the LDC one and name it.
 
 from __future__ import annotations
 
-import jax
 import jax.numpy as jnp
-
-jax.config.update("jax_enable_x64", True)
 
 
 def polarization_tensor(costh, phi):

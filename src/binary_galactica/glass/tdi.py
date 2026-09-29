@@ -60,13 +60,10 @@ conditioned, so we do not reproduce the recursion.
 
 from __future__ import annotations
 
-import jax
 import jax.numpy as jnp
 
 from .constants import FSTAR, INV_SQ3, INV_SQ6, INV_SQRT2
 from .response import LINK_INDEX
-
-jax.config.update("jax_enable_x64", True)
 
 FORMATS = ("sangria", "frequency", "phase")
 

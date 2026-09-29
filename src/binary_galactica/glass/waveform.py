@@ -109,6 +109,7 @@ def tdi_response(
     it does not implement point-ahead or sequential moving-arm TDI-2 delays.
     Eager invalid domains raise ``ValueError``; invalid traced inputs yield NaN.
     """
+    _validation.require_x64()
     T = _validation.scalar(T, "T", positive=True)
     params = _native_parameters(params, T)
     times = _validation.finite_array(times, "times")
@@ -187,6 +188,7 @@ def ucb_waveform(
     count changes introduce small interpolation jumps at duration thresholds;
     use an explicit count when differentiating across those thresholds.
     """
+    _validation.require_x64()
     response_samples = _options(backend, response_samples)
     if backend == "fourier":
         return _fourier_waveform(

@@ -7,21 +7,19 @@ The original ``polarizations`` function remains a source-only interface.
 
 from __future__ import annotations
 
-import jax as _jax
-
-# Enable float64 before anything else touches JAX.
+# Importing the package leaves JAX's process-global configuration alone.
 #
 # Over a four-year observation the phase of a millihertz binary accumulates to
 # ~1e6 radians.  Held in float32 that carries ~0.06 rad of error -- more than
 # enough to destroy a matched filter, yet far too small to notice in a plot.
-# Double precision is therefore a correctness requirement of this model, not a
-# performance trade-off, and the package refuses to be importable without it.
-# This is a process-global setting; see the README.
-_jax.config.update("jax_enable_x64", True)
-
-from binary_galactica.constants import DAY, YEAR  # noqa: E402
-from binary_galactica.detector import tdi_waveform  # noqa: E402
-from binary_galactica.glass import (  # noqa: E402
+# The float64 functions therefore raise RuntimeError unless the application has
+# enabled double precision with jax.config.update("jax_enable_x64", True); they
+# never fall back to float32 silently.  binary_galactica.single provides float32
+# waveforms, with the frequency split into a reference bin and a small offset,
+# for processes that keep x64 disabled.
+from binary_galactica.constants import DAY, YEAR
+from binary_galactica.detector import tdi_waveform
+from binary_galactica.glass import (
     BACKENDS,
     DEFAULT_RESPONSE_SAMPLES,
     FORMATS,
@@ -65,21 +63,21 @@ from binary_galactica.glass import (  # noqa: E402
     xyz_to_ae,
     xyz_to_aet,
 )
-from binary_galactica.parameters import (  # noqa: E402
+from binary_galactica.parameters import (
     NUM_PARAMS,
     PARAMETER_NAMES,
     GBParams,
     from_glass_vector,
     to_glass_vector,
 )
-from binary_galactica.waveform import (  # noqa: E402
+from binary_galactica.waveform import (
     amplitudes,
     frequency,
     phase,
     polarizations,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "BACKENDS",

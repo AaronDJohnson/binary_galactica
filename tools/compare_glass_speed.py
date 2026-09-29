@@ -25,6 +25,10 @@ from benchmark_onfly import automatic_response_samples, provenance
 import binary_galactica as bg
 from binary_galactica.glass.onfly import tdi_response
 
+# The float64 waveform API requires JAX double precision; importing
+# binary_galactica does not enable it.
+jax.config.update("jax_enable_x64", True)
+
 CHANNELS = ("X", "Y", "Z", "A", "E")
 
 

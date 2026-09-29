@@ -37,8 +37,6 @@ from . import _validation
 from .convert import GLASS_TO_CONTINUOUS
 from .waveform import DEFAULT_RESPONSE_SAMPLES, _options, ucb_waveform
 
-jax.config.update("jax_enable_x64", True)
-
 
 def template_on_window(
     params,
@@ -88,6 +86,7 @@ def template_on_window(
         and changes the interpolation grid.
 
     """
+    _validation.require_x64()
     bin_lo = _validation.integer(bin_lo, "bin_lo")
     n_bins = _validation.integer(n_bins, "n_bins", minimum=0)
     response_samples = _options(backend, response_samples)

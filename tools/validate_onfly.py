@@ -17,12 +17,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 from benchmark_onfly import provenance
 
 import binary_galactica as bg
 from binary_galactica.glass.constants import YEAR as RESPONSE_YEAR
+
+# The float64 waveform API requires JAX double precision; importing
+# binary_galactica does not enable it.
+jax.config.update("jax_enable_x64", True)
 
 BW = 2048
 EPOCHS = (12_345.0, -0.2 * 31_557_600.0, 2.1 * 31_557_600.0)

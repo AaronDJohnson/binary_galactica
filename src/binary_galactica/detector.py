@@ -75,6 +75,7 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
         during tracing as well. See :func:`ucb_waveform` for grid validation.
 
     """
+    _validation.require_x64()
     response_samples = _options(backend, response_samples)
     duration, t0, positions = _validation.observation(T, BW, t0, positions)
     # Host scalar fields can be packed once by validation. Keep to_array's

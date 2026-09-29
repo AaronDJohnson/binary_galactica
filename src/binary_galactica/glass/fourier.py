@@ -63,8 +63,6 @@ from .response import LINKS, detector_tensor, polarization_tensor
 from .tdi import synthesize
 from .types import WaveformResult
 
-jax.config.update("jax_enable_x64", True)
-
 
 try:
     from jax.lax import optimization_barrier as _optimization_barrier
@@ -209,6 +207,7 @@ def ucb_waveform(
     Both cosine endpoints are valid; the sky-pole derivative is regularized.
 
     """
+    _validation.require_x64()
     T, t0, positions = _validation.observation(T, BW, t0, positions)
     params = _validation.finite_array(params, "params")
     if params.ndim != 1 or params.shape[0] not in (7, 8, 9):
@@ -367,6 +366,7 @@ def orbit_cache(T: ArrayLike, t0: ArrayLike, BW: int) -> Array:
 
     Hoist this out of a sampler loop: it depends on no source parameter.
     """
+    _validation.require_x64()
     return analytic_orbits(slow_time_grid(T, t0, BW))
 
 

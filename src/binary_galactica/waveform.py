@@ -80,6 +80,7 @@ from __future__ import annotations
 import jax.numpy as jnp
 from jax import Array
 
+from binary_galactica.glass import _validation
 from binary_galactica.parameters import GBParams
 
 __all__ = ["amplitudes", "frequency", "phase", "polarizations"]
@@ -97,6 +98,7 @@ def phase(theta: Array | GBParams, t: Array) -> Array:
         Phase in radians, with the shape of ``t``.
 
     """
+    _validation.require_x64()
     p = GBParams.from_array(theta)
     return p.phi0 + 2.0 * jnp.pi * p.f0 * t + jnp.pi * p.fdot * t**2
 
@@ -114,6 +116,7 @@ def frequency(theta: Array | GBParams, t: Array) -> Array:
         Frequency in Hz, with the shape of ``t``.
 
     """
+    _validation.require_x64()
     p = GBParams.from_array(theta)
     return p.f0 + p.fdot * t
 
@@ -129,6 +132,7 @@ def amplitudes(theta: Array | GBParams) -> tuple[Array, Array]:
         is circular and does not evolve appreciably over the observation.
 
     """
+    _validation.require_x64()
     p = GBParams.from_array(theta)
     cos_iota = jnp.cos(p.iota)
     return p.amp * (1.0 + cos_iota**2), -2.0 * p.amp * cos_iota
@@ -152,6 +156,8 @@ def polarizations(theta: Array | GBParams, t: Array) -> tuple[Array, Array]:
         ``(hp, hc)``, each with the shape of ``t``.
 
     Example:
+        >>> import jax
+        >>> jax.config.update("jax_enable_x64", True)
         >>> import jax.numpy as jnp
         >>> from binary_galactica import DAY, GBParams, polarizations
         >>> p = GBParams(amp=1e-22, f0=1e-3, fdot=1e-17, phi0=0.3,
@@ -168,6 +174,7 @@ def polarizations(theta: Array | GBParams, t: Array) -> tuple[Array, Array]:
             hp, hc = vmap(polarizations, in_axes=(0, None))(catalogue, t)
 
     """
+    _validation.require_x64()
     p = GBParams.from_array(theta)
     a_plus, a_cross = amplitudes(p)
     phi = phase(p, t)
