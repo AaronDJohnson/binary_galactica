@@ -18,7 +18,7 @@ from binary_galactica.glass.waveform import (
 from binary_galactica.parameters import GBParams, to_glass_vector
 
 
-def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
+def tdi_waveform(  # names follow the GLASS waveform API
     theta: ArrayLike | GBParams,
     *,
     T: ArrayLike,
