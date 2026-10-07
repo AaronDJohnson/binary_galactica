@@ -36,7 +36,7 @@ PARAMETER_NAMES: tuple[str, ...] = (
 #: Dimension of the parameter space.
 NUM_PARAMS: int = len(PARAMETER_NAMES)
 
-Scalar = Array | float
+ParameterField = Array | float
 
 
 class GBParams(NamedTuple):
@@ -73,14 +73,14 @@ class GBParams(NamedTuple):
 
     """
 
-    amp: Scalar
-    f0: Scalar
-    fdot: Scalar
-    phi0: Scalar
-    iota: Scalar
-    psi: Scalar
-    lam: Scalar
-    beta: Scalar
+    amp: ParameterField
+    f0: ParameterField
+    fdot: ParameterField
+    phi0: ParameterField
+    iota: ParameterField
+    psi: ParameterField
+    lam: ParameterField
+    beta: ParameterField
 
     @classmethod
     def from_array(cls, theta: Array | GBParams) -> GBParams:
@@ -194,19 +194,26 @@ def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
         raise ValueError(
             f"expected GLASS trailing axis of length 8, got {vector.shape}"
         )
-    freq, costheta, longitude, logamp, cosiota, psi, phi, chirp = jnp.moveaxis(
-        vector, -1, 0
-    )
+    (
+        f0_times_duration,
+        sin_beta,
+        lam,
+        log_glass_amplitude,
+        cos_iota,
+        psi,
+        phi0_glass,
+        fdot_times_duration_sq,
+    ) = jnp.moveaxis(vector, -1, 0)
     duration = jnp.asarray(duration, dtype=real)
     return GBParams(
-        amp=0.5 * jnp.exp(logamp),
-        f0=freq / duration,
-        fdot=chirp / duration**2,
-        phi0=-phi,
-        iota=jnp.arccos(cosiota),
+        amp=0.5 * jnp.exp(log_glass_amplitude),
+        f0=f0_times_duration / duration,
+        fdot=fdot_times_duration_sq / duration**2,
+        phi0=-phi0_glass,
+        iota=jnp.arccos(cos_iota),
         psi=psi,
-        lam=longitude,
-        beta=jnp.arcsin(costheta),
+        lam=lam,
+        beta=jnp.arcsin(sin_beta),
     )
 
 
