@@ -39,6 +39,12 @@ NUM_PARAMS: int = len(PARAMETER_NAMES)
 Scalar = Array | float
 
 
+def _require_trailing_axis(array: Array, message: str) -> None:
+    """Raise ``message`` unless the trailing axis has length :data:`NUM_PARAMS`."""
+    if array.ndim == 0 or array.shape[-1] != NUM_PARAMS:
+        raise ValueError(message)
+
+
 class GBParams(NamedTuple):
     r"""Parameters of a galactic binary.
 
@@ -104,11 +110,11 @@ class GBParams(NamedTuple):
         if isinstance(theta, cls):
             return theta
         theta = jnp.asarray(theta)
-        if theta.ndim == 0 or theta.shape[-1] != NUM_PARAMS:
-            raise ValueError(
-                f"expected trailing axis of length {NUM_PARAMS} "
-                f"({', '.join(PARAMETER_NAMES)}), got shape {theta.shape}"
-            )
+        _require_trailing_axis(
+            theta,
+            f"expected trailing axis of length {NUM_PARAMS} "
+            f"({', '.join(PARAMETER_NAMES)}), got shape {theta.shape}",
+        )
         return cls(*jnp.moveaxis(theta, -1, 0))
 
     def to_array(self) -> Array:
@@ -190,10 +196,10 @@ def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
     """
     real = real_dtype(vector)
     vector = jnp.asarray(vector, dtype=real)
-    if vector.ndim == 0 or vector.shape[-1] != NUM_PARAMS:
-        raise ValueError(
-            f"expected GLASS trailing axis of length 8, got {vector.shape}"
-        )
+    _require_trailing_axis(
+        vector,
+        f"expected GLASS trailing axis of length 8, got {vector.shape}",
+    )
     freq, costheta, longitude, logamp, cosiota, psi, phi, chirp = jnp.moveaxis(
         vector, -1, 0
     )

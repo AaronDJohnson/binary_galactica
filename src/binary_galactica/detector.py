@@ -18,6 +18,27 @@ from binary_galactica.glass.waveform import (
 from binary_galactica.parameters import GBParams, to_glass_vector
 
 
+def _physical_source(theta: ArrayLike | GBParams) -> Array:
+    """Pack one physical source and reject concrete values outside its domain."""
+    # Host scalar fields can be packed once by validation. Keep to_array's
+    # broadcasting and traced packing for array-valued fields.
+    if isinstance(theta, GBParams) and any(not np.isscalar(field) for field in theta):
+        theta = theta.to_array()
+    theta = _validation.finite_array(theta, "theta")
+    if theta.shape != (8,):
+        raise ValueError(f"theta must have shape (8,); got {theta.shape}")
+    if isinstance(theta, jax.core.Tracer):
+        return theta
+    p = np.asarray(theta)
+    if p[0] <= 0 or p[1] <= 0:
+        raise ValueError("amp and f0 must be positive")
+    if not 0 <= p[4] <= np.pi:
+        raise ValueError("iota must lie in [0, pi]")
+    if not -np.pi / 2 <= p[7] <= np.pi / 2:
+        raise ValueError("beta must lie in [-pi/2, pi/2]")
+    return theta
+
+
 def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
     theta: ArrayLike | GBParams,
     *,
@@ -78,23 +99,8 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
     _validation.require_x64()
     response_samples = _options(backend, response_samples)
     duration, t0, positions = _validation.observation(T, BW, t0, positions)
-    # Host scalar fields can be packed once by validation. Keep to_array's
-    # broadcasting and traced packing for array-valued fields.
-    if isinstance(theta, GBParams) and not all(np.isscalar(field) for field in theta):
-        theta = theta.to_array()
-    theta = _validation.finite_array(theta, "theta")
-    if theta.shape != (8,):
-        raise ValueError(f"theta must have shape (8,); got {theta.shape}")
-    if not isinstance(theta, jax.core.Tracer):
-        p = np.asarray(theta)
-        if p[0] <= 0 or p[1] <= 0:
-            raise ValueError("amp and f0 must be positive")
-        if not 0 <= p[4] <= np.pi:
-            raise ValueError("iota must lie in [0, pi]")
-        if not -np.pi / 2 <= p[7] <= np.pi / 2:
-            raise ValueError("beta must lie in [-pi/2, pi/2]")
     return _tdi_waveform(
-        theta,
+        _physical_source(theta),
         T=duration,
         BW=int(BW),
         t0=t0,

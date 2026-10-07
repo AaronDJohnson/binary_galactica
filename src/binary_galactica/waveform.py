@@ -86,6 +86,12 @@ from binary_galactica.parameters import GBParams
 __all__ = ["amplitudes", "frequency", "phase", "polarizations"]
 
 
+def _parameters(theta: Array | GBParams) -> GBParams:
+    """Require float64 and normalize ``theta`` to :class:`GBParams`."""
+    _validation.require_x64()
+    return GBParams.from_array(theta)
+
+
 def phase(theta: Array | GBParams, t: Array) -> Array:
     r"""Gravitational-wave phase :math:`\Phi(t)`.
 
@@ -98,8 +104,7 @@ def phase(theta: Array | GBParams, t: Array) -> Array:
         Phase in radians, with the shape of ``t``.
 
     """
-    _validation.require_x64()
-    p = GBParams.from_array(theta)
+    p = _parameters(theta)
     return p.phi0 + 2.0 * jnp.pi * p.f0 * t + jnp.pi * p.fdot * t**2
 
 
@@ -116,8 +121,7 @@ def frequency(theta: Array | GBParams, t: Array) -> Array:
         Frequency in Hz, with the shape of ``t``.
 
     """
-    _validation.require_x64()
-    p = GBParams.from_array(theta)
+    p = _parameters(theta)
     return p.f0 + p.fdot * t
 
 
@@ -132,8 +136,7 @@ def amplitudes(theta: Array | GBParams) -> tuple[Array, Array]:
         is circular and does not evolve appreciably over the observation.
 
     """
-    _validation.require_x64()
-    p = GBParams.from_array(theta)
+    p = _parameters(theta)
     cos_iota = jnp.cos(p.iota)
     return p.amp * (1.0 + cos_iota**2), -2.0 * p.amp * cos_iota
 
@@ -174,8 +177,7 @@ def polarizations(theta: Array | GBParams, t: Array) -> tuple[Array, Array]:
             hp, hc = vmap(polarizations, in_axes=(0, None))(catalogue, t)
 
     """
-    _validation.require_x64()
-    p = GBParams.from_array(theta)
+    p = _parameters(theta)
     a_plus, a_cross = amplitudes(p)
     phi = phase(p, t)
 
