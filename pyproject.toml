@@ -7,7 +7,7 @@ name = "binary-galactica"
 version = "0.4.0"
 description = "Differentiable LISA galactic-binary TDI waveforms in JAX"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT AND Apache-2.0 AND BSD-3-Clause"
 license-files = ["LICENSE", "LICENSES/*", "NOTICE", "tools/glass_reference/vendor/kissfft/COPYING", "tools/glass_reference/vendor/kissfft/LICENSES/*"]
 authors = [{ name = "Aaron" }]
@@ -19,7 +19,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-dependencies = ["jax>=0.4.30", "numpy>=1.24"]
+dependencies = [
+    "jax>=0.4.30",
+    "numpy>=2.1.2",
+    "lisaconstants>=2.0.2",
+]
 
 [project.urls]
 Source = "https://github.com/AaronDJohnson/binary_galactica"

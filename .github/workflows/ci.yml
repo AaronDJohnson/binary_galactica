@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {python: "3.10", dependencies: minimum, os: ubuntu-latest}
+          - {python: "3.11", dependencies: minimum, os: ubuntu-latest}
           - {python: "3.11", dependencies: current, os: ubuntu-latest}
           - {python: "3.12", dependencies: current, os: ubuntu-latest}
           - {python: "3.13", dependencies: current, os: ubuntu-latest}

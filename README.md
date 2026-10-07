@@ -39,7 +39,7 @@ For development, use an editable installation with the test and lint tools:
 python -m pip install -e ".[dev]"
 ```
 
-Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required.
+Python >=3.11, JAX >=0.4.30, NumPy >=2.1.2, and lisaconstants >=2.0.2 are required.
 
 **Migrating to 0.4.0:** importing the package no longer enables
 `jax_enable_x64`. The float64 functions need it, because long-duration
@@ -469,13 +469,13 @@ window placement, and donor helper behavior. These checks establish agreement
 with the pinned finite-band analytic-orbit calculation, not convergence for
 every source or a full GLASS pipeline.
 
-[CI](.github/workflows/ci.yml) runs the suite on Python 3.10 with the
+[CI](.github/workflows/ci.yml) runs the suite on Python 3.11 with the
 [minimum runtime dependencies](requirements/minimum.txt), Python 3.11–3.14
 with current compatible dependencies, and macOS with Python 3.12. It also
 checks lint, formatting, distribution metadata, and the installed wheel from
 outside the checkout. The workflow runs on pushes and pull requests.
 
-To reproduce the minimum-dependency check in a clean Python 3.10 environment:
+To reproduce the minimum-dependency check in a clean Python 3.11 environment:
 
 ```sh
 python -m pip install -c requirements/minimum.txt -e ".[dev]"

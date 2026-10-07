@@ -159,10 +159,10 @@ def polarizations(theta: Array | GBParams, t: Array) -> tuple[Array, Array]:
         >>> import jax
         >>> jax.config.update("jax_enable_x64", True)
         >>> import jax.numpy as jnp
-        >>> from binary_galactica import DAY, GBParams, polarizations
+        >>> from binary_galactica import GBParams, polarizations
         >>> p = GBParams(amp=1e-22, f0=1e-3, fdot=1e-17, phi0=0.3,
         ...              iota=0.7, psi=1.2, lam=4.1, beta=-0.3)
-        >>> t = jnp.arange(0.0, DAY, 15.0)
+        >>> t = jnp.arange(0.0, 86400.0, 15.0)
         >>> hp, hc = polarizations(p, t)
         >>> hp.shape == t.shape
         True
