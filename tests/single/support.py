@@ -14,13 +14,12 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-import lisaconstants
 import numpy as np
 
 import binary_galactica as bg
 from binary_galactica import single as bg32
 
-YEAR = lisaconstants.ASTRONOMICAL_YEAR
+YEAR = bg.YEAR
 #: The validated range: durations and epochs in years, frequencies in hertz.
 DURATIONS = (0.25, 1.0, 4.0, 10.0)
 FREQUENCIES = (1e-4, 1e-3, 1e-2, 3e-2)

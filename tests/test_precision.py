@@ -10,14 +10,11 @@ from decimal import Decimal, getcontext
 from pathlib import Path
 
 import jax.numpy as jnp
-import lisaconstants
 import numpy as np
 import pytest
 
 import binary_galactica
-from binary_galactica import phase, polarizations
-
-YEAR = lisaconstants.ASTRONOMICAL_YEAR
+from binary_galactica import YEAR, phase, polarizations
 
 #: pi to 50 significant figures, for a reference phase computed outside
 #: floating point entirely.

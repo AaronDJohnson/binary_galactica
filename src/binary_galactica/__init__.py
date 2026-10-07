@@ -18,6 +18,7 @@ from __future__ import annotations
 # waveforms, with the frequency split into a reference bin and a small offset,
 # for processes that keep x64 disabled.
 from binary_galactica import single
+from binary_galactica.constants import DAY, YEAR
 from binary_galactica.detector import tdi_waveform
 from binary_galactica.glass import (
     BACKENDS,
@@ -83,8 +84,10 @@ __all__ = [
     "BACKENDS",
     "DEFAULT_RESPONSE_SAMPLES",
     "tdi_response",
+    "DAY",
     "NUM_PARAMS",
     "PARAMETER_NAMES",
+    "YEAR",
     "GBParams",
     "amplitudes",
     "frequency",
