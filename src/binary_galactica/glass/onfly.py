@@ -12,15 +12,19 @@ not a solution for moving spacecraft along each light path.
 By default the response is exactly GLASS's ``(M-i*Mf)*exp(-i*phi(t))``.
 An internal option instead removes the reference-spacecraft phase, keeping
 the orbital Doppler phase outside sparse response interpolation. Neither
-response has the single-link factor 1/2 or Fourier normalization applied.
+response has Fourier normalization applied. Both are already the physical
+Sangria response for the strain amplitude ``exp(params[3])`` (LDC
+``Amplitude``); the public ``tdi_response`` returns them without rescaling.
 Pairing source differences before dividing by ``1 +/- k.n`` makes aligned-arm
 limits finite and differentiable without clipping a physical denominator.
 
 The pinned spline response and fast-slow response place directed links
 differently in the Michelson combination. For static equal arms and a
-monochromatic source this raw response equals twice the fast-slow Sangria
-combination *after reversing each directed link*. Without that reversal the
-two responses converge only in the long-wavelength limit.
+monochromatic source this raw response equals the package's fast-slow
+Sangria combination, which uses full polarization factors, *after reversing
+each directed link*; it is twice the pinned 079c6a3 fast-slow combination,
+whose factors GLASS b0751bd halved. Without that reversal the two responses
+converge only in the long-wavelength limit.
 """
 
 from __future__ import annotations

@@ -155,7 +155,7 @@ def make_catalogue(size: int) -> tuple[np.ndarray, list[bg.GBParams]]:
     native[:, 7] = rng.uniform(-0.05, 0.2, size)
     physical = [
         bg.GBParams(
-            amp=float(0.5 * np.exp(p[3])),
+            amp=float(np.exp(p[3])),
             f0=float(p[0] / DURATION),
             fdot=float(p[7] / DURATION**2),
             phi0=float(-p[6]),

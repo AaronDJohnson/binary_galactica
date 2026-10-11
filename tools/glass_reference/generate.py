@@ -189,7 +189,9 @@ def generate(output, compiler):
         "channels": list(CHANNELS),
         "dtype": "complex128",
         "units": (
-            "raw GLASS Fourier coefficients; continuous coefficients = raw * sqrt(T)"
+            "raw GLASS Fourier coefficients with the b0751bd half polarization "
+            "factors, i.e. half the physical response for A_G = LDC Amplitude; "
+            "continuous coefficients = raw * sqrt(T)"
         ),
         "normalization": "unchanged upstream invBW2 = 1/(2*BW)",
         "native_parameters": [

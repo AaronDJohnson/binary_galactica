@@ -313,7 +313,7 @@ def _waveform(
     )
     envelope = envelope * jnp.exp(1j * phase)
     xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
-    xyz = xyz * (jnp.sqrt(T) / (4 * BW))
+    xyz = xyz * (jnp.sqrt(T) / (2 * BW))
     qmin = carrier - BW // 2
     bins = qmin + jnp.arange(BW, dtype=jnp.int32)
     if fmt == "frequency":
@@ -438,7 +438,7 @@ def _tdi_response(params, q_ref, times, T, positions, disabled):
         valid = valid & jnp.all(jnp.isfinite(positions))
     elif "orbit" not in disabled:
         positions = positions_from_phase(orbital_phase(times))
-    response = 0.5 * _raw_response(native, times, T, positions)
+    response = _raw_response(native, times, T, positions)
     return jnp.where(valid, response, jnp.nan)
 
 

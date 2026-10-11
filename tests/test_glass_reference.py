@@ -11,6 +11,12 @@ import pytest
 
 DATA = Path(__file__).parent / "data" / "glass"
 CHANNELS = ("X", "Y", "Z", "A", "E")
+#: The Fourier backend relative to the unscaled 079c6a3 C spectra. GLASS
+#: b0751bd halved Aplus and Across in the fast-slow ``ucb_waveform`` while
+#: keeping ``invBW2 = 1/(2*BW)``, so the pinned C output is half the physical
+#: response for the amplitude GLASS's ``amplitude()`` returns. The backend
+#: restores the full factors (GLASS <= 95184e1, LDC); everything else matches.
+GLASS_079C6A3_FAST_SLOW_SCALE = 2.0
 
 
 def load_reference_cases():
@@ -75,7 +81,7 @@ def test_native_waveform_matches_glass_c(case, reference):
     assert int(actual["qmin"]) + case["BW"] // 2 == case["q"]
     np.testing.assert_array_equal(actual["freq_bin_indices"], reference["bins"])
     for channel in CHANNELS:
-        expected = reference[channel]
+        expected = GLASS_079C6A3_FAST_SLOW_SCALE * reference[channel]
         result = np.asarray(actual[channel])
         assert result.shape == expected.shape == (case["BW"],)
         assert np.all(np.isfinite(result))

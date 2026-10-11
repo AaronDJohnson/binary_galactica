@@ -38,11 +38,19 @@ Deliberate deviations from the C, all documented at the point of use:
 * ``c1, s1`` are computed directly rather than by GLASS's per-bin trig
   recursion, which is a scalar-loop optimisation with no effect on the
   result (see :mod:`binary_galactica.glass.tdi`);
-* everything is float64 and pure, so ``jit``/``vmap``/``grad`` compose.
+* everything is float64 and pure, so ``jit``/``vmap``/``grad`` compose;
+* the polarization factors are the full ``Aplus = amp*(1+cos^2(i))`` and
+  ``Across = -2*amp*cos(i)`` of GLASS up to commit ``95184e1`` and of LDC,
+  not the halves of the pinned revision below. GLASS ``b0751bd`` halved both
+  factors but kept ``invBW2 = 1/(2*BW)``, so its fast-slow spectrum is half
+  the physical response for the amplitude GLASS's ``amplitude()`` returns.
+  With the full factors ``exp(params[3])`` is the physical (LDC
+  ``Amplitude``) strain amplitude.
 
-The transcription targets GLASS commit
-``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. Its reduced FFT uses the
-literal ``1/(2*BW)`` normalization from that revision.
+The transcription otherwise targets GLASS commit
+``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. Its reduced FFT keeps that
+revision's literal ``1/(2*BW)`` normalization, so each output channel is the
+079c6a3 C spectrum times exactly two.
 """
 
 from __future__ import annotations
@@ -297,10 +305,13 @@ def _ucb_waveform(
     d_plus, d_cross, kdotr = detector_tensor(arms, k, e_plus, e_cross)
 
     # --- polarization amplitudes ----------------------------------------
-    # Current GLASS keeps the explicit halves in both inclination factors:
-    # Aplus = amp*(1+cos^2(i))/2 and Across = -amp*cos(i).
-    Aplus = amp * (1.0 + cosi * cosi) * 0.5
-    Across = -amp * cosi
+    # Full inclination factors, as in GLASS up to 95184e1 and in LDC:
+    # Aplus = amp*(1+cos^2(i)) and Across = -2*amp*cos(i), so amp is the
+    # physical (LDC "Amplitude") strain amplitude that GLASS's amplitude()
+    # returns. GLASS b0751bd halved both factors while keeping invBW2 below;
+    # that makes the pinned 079c6a3 fast-slow spectrum half the physical one.
+    Aplus = amp * (1.0 + cosi * cosi)
+    Across = -amp * (2.0 * cosi)
     cosps = jnp.cos(2.0 * psi)
     sinps = jnp.sin(2.0 * psi)
     DP = Aplus * cosps - 1j * Across * sinps
@@ -341,8 +352,8 @@ def _ucb_waveform(
     # then swaps the two halves of the output. The half-swap is an fftshift:
     # it puts the carrier bin at index BW/2.
     #
-    # Current GLASS scales the unnormalised complex FFT by invBW2=1/(2*BW).
-    # The half-polarization factors above are retained independently.
+    # GLASS scales the unnormalised complex FFT by invBW2=1/(2*BW); that is
+    # kept. Only the polarization factors above deviate from 079c6a3.
     d = jnp.fft.fftshift(jnp.fft.fft(env, axis=-1), axes=-1) / (2 * BW)
 
     # --- TDI --------------------------------------------------------------

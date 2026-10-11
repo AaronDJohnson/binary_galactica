@@ -42,7 +42,7 @@ def test_source_jacobian_matches_dense_response_without_sparse_phase_reference()
         response = raw_response(p, times, duration)
         xyz = jnp.fft.fftshift(
             jnp.fft.fft(response * jnp.exp(1j * phase), axis=-1), axes=-1
-        ) * (jnp.sqrt(duration) / (4 * bandwidth))
+        ) * (jnp.sqrt(duration) / (2 * bandwidth))
         a, e = bg.xyz_to_ae(*xyz)
         return _quadratures(a, e)
 

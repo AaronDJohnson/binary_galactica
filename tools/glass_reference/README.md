@@ -15,8 +15,13 @@ The only local C code is `preamble.h` (minimal declarations) and `driver.c` (inp
 and output). The driver supplies the upstream analytic orbit with `NI=3`, and
 allocates a leading padding element so the upstream `X-1` pointer remains within
 its allocation. The generated spectra retain the upstream half polarization
-factors and `invBW2 = 1/(2*BW)` normalization. KissFFT uses its upstream default
-`double` scalar; no installed library or architecture-specific object is needed.
+factors and `invBW2 = 1/(2*BW)` normalization. GLASS `b0751bd` introduced those
+halves without changing `invBW2`, so the fixtures are half the physical response
+for `A_G` = the LDC amplitude that GLASS's `amplitude()` returns. Since 0.5.0
+the Fourier backend uses full factors and the tests compare it with exactly twice
+the stored spectra; the fixtures themselves are unchanged. KissFFT uses its
+upstream default `double` scalar; no installed library or architecture-specific
+object is needed.
 
 ## Regenerate offline
 
@@ -95,6 +100,13 @@ channels found errors from 0.9999999999921567 to 1.0000000000072011. Halving the
 donor solely as a diagnostic gave a maximum relative error of
 1.1213450704883488e-10. This diagnostic scaling is not part of fixture generation
 or the regression tests.
+
+Version 0.5.0 reverses that correction. The donor's factor of two was the physical
+amplitude: Sangria data and gbonfly agree with full polarization factors, and the
+halved fixtures reflect GLASS `b0751bd`, not the physical response. The mandatory
+tests now compare the backend with `GLASS_079C6A3_FAST_SLOW_SCALE = 2.0` times each
+stored spectrum, still at relative L2 error `1e-9`; see the
+[physical-amplitude spec](../../docs/superpowers/specs/2026-10-11-physical-amplitude.md).
 
 Separate normalized finite-difference tests compare every Jacobian column for
 7-parameter `phase`, 8-parameter `sangria`, and 9-parameter `frequency` sources.
