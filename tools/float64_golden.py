@@ -5,8 +5,9 @@ Run from the repository root::
     PYTHONPATH=src python tools/float64_golden.py
 
 The committed baseline ``tests/data/float64_golden.npz`` was captured with the
-sources of commit 8363ec0, before the single-precision refactor, and
-``tests/test_float64_golden.py`` requires later float64 outputs to match it.
+sources of commit 2171a87, which restored the physical native amplitude
+(0.5.0; every native-API output doubled), and ``tests/test_float64_golden.py``
+requires later float64 outputs to match it.
 Every case is a fixed input definition and nothing is random, so rerunning the
 script on the same JAX build, CPU and sources reproduces the archive byte for
 byte. Regenerate it only for an intended float64 change, and say so in the
