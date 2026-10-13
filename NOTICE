@@ -1,19 +1,22 @@
 binary-galactica
-Copyright (c) 2026 Aaron
+Copyright 2026 Aaron D. Johnson, Tyson B. Littenberg, Neil J. Cornish, and Robert Rosati
 
-The source-only model and original package code are provided under the MIT
-license in LICENSE.
+Licensed under the Apache License, Version 2.0; see LICENSE.
 
-The binary_galactica.glass backend is adapted from the gbonfly implementation
-in wdm_test/wdm_paper_2/gbonfly, a JAX transcription of GLASS's fast-slow UCB
-waveform and supporting routines. The comparison target is:
-https://github.com/nsgs-analysis-center/glass
-commit 079c6a3a6fcf380a7c107f39640fff7fc720d0f1.
+This product includes software adapted from GLASS, the Global LISA Analysis
+Software Suite (https://github.com/nsgs-analysis-center/glass, commit
+079c6a3a6fcf380a7c107f39640fff7fc720d0f1):
 
-GLASS portions are Copyright 2019 Tyson B. Littenberg and Neil J. Cornish,
-licensed under Apache License 2.0, reproduced in LICENSES/Apache-2.0.txt.
-The reference math routines are Copyright 2023 Tyson B. Littenberg and
-Robert Rosati, under the same license.
+  GLASS routines: Copyright 2019 Tyson B. Littenberg and Neil J. Cornish.
+  GLASS math routines (glass_math.c): Copyright 2023 Tyson B. Littenberg and
+  Robert Rosati.
+  GLASS constants (glass_constants.h): Copyright 2019 Tyson B. Littenberg.
+
+These portions are licensed under the Apache License, Version 2.0. Please cite
+GLASS and the papers listed in CITATION.cff when using this package.
+
+The binary_galactica.glass backend is adapted from gbonfly, an earlier JAX
+transcription of GLASS's fast-slow UCB waveform and supporting routines.
 This distribution modifies the JAX transcription's FFT normalization, adds
 parameter adapters and validation, preserves documented waveform numerical
 guards, and rejects invalid Fisher proposals as whole-vector self-proposals.
@@ -26,10 +29,14 @@ complex polynomials; a Hermite utility with local complex-minimum refinement
 remains available for numerical comparisons. The original
 fast-slow engine remains available explicitly as the Fourier backend.
 
+Version 0.5 restores the physical amplitude of the GLASS-native parameter
+vector on both backends (see README, "Migrating to 0.5.0").
+
 The optional C reference regeneration tool contains extracted GLASS routines
-and vendored Kiss FFT source. Their source provenance and individual license
-notices are included under tools/glass_reference. Kiss FFT is not a runtime
-dependency of the Python package.
+and vendored Kiss FFT source (Copyright 2003-2010 Mark Borgerding,
+BSD-3-Clause). Their source provenance and individual license notices are
+included under tools/glass_reference. Kiss FFT is not a runtime dependency of
+the Python package.
 The independent on-the-fly response reference and its provenance are in
 tools/onfly_reference; it uses extracted GLASS spline-response routines with
 analytic source and orbit evaluators in place of spline storage.
