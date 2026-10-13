@@ -72,7 +72,6 @@ from .response import LINKS, detector_tensor, polarization_tensor
 from .tdi import synthesize
 from .types import WaveformResult
 
-
 try:
     from jax.lax import optimization_barrier as _optimization_barrier
 except ImportError:  # JAX 0.4.30 predates the public spelling.

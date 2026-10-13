@@ -108,9 +108,7 @@ def bin_index(value, name, *, margin=0, integral_floats=False):
         array = np.asarray(value)
         if array.shape != ():
             raise ValueError(f"{name} must be a scalar; got shape {array.shape}")
-        if array.dtype.kind in "iu":
-            number = int(array)
-        elif (
+        if array.dtype.kind in "iu" or (
             integral_floats
             and array.dtype.kind == "f"
             and np.isfinite(array)

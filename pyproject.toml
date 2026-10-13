@@ -27,7 +27,7 @@ Documentation = "https://github.com/AaronDJohnson/binary_galactica#readme"
 Issues = "https://github.com/AaronDJohnson/binary_galactica/issues"
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]
+dev = ["pytest>=7", "ruff==0.17.0", "mypy>=1.10"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
