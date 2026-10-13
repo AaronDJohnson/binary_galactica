@@ -101,9 +101,9 @@ def tdi_response(
 
     Multiply by ``exp(1j * Phi(times))`` to restore the analytic source phase,
     where ``Phi(t) = 2*pi*(f0*t + fdot*t**2/2 + fddot*t**3/6) - phi0``.
-    The real part is the Sangria time signal in the package's normalization.
-    This is half GLASS's raw complex spline response. A positive-frequency
-    Fourier coefficient contributes another factor of one half.
+    The real part is the Sangria time signal for the physical amplitude
+    ``exp(params[3])``. This is GLASS's raw complex spline response. A
+    positive-frequency Fourier coefficient contributes a factor of one half.
 
     The constellation is frozen at each reception time, using actual arm
     lengths and delayed source samples. This follows GLASS's spline response;
@@ -129,7 +129,7 @@ def _tdi_response(params, times, T, positions):
     valid = _source_valid(params, T) & jnp.all(jnp.isfinite(times))
     if positions is not None:
         valid = valid & jnp.all(jnp.isfinite(positions))
-    return jnp.where(valid, 0.5 * _raw_response(params, times, T, positions), jnp.nan)
+    return jnp.where(valid, _raw_response(params, times, T, positions), jnp.nan)
 
 
 def ucb_waveform(
@@ -148,7 +148,10 @@ def ucb_waveform(
 
     ``params`` is ``[f0*T, sin(beta), longitude, log(A_G), cos(iota), psi,
     phi0_G, fdot*T**2, fddot*T**3]`` with the last two entries optional.
-    ``BW`` is the positive even FFT length and number of returned bins.
+    ``A_G`` is the physical strain amplitude (LDC ``Amplitude``), the value
+    GLASS's ``amplitude()`` returns: on both backends ``h+ = A_G*(1+cos^2(i))``
+    and ``hx = 2*A_G*cos(i)``. ``BW`` is the positive even FFT length and number
+    of returned bins.
     ``response_samples`` controls the sparse response grid independently.
     The default ``None`` chooses a power of two from 32 through 2048, at least
     128 samples per observation year until the cap: quarter-year observations
@@ -323,7 +326,7 @@ def _ucb_waveform(
     )
     envelope = envelope * jnp.exp(1j * phase)
     xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
-    xyz = xyz * (jnp.sqrt(T) / (4 * BW))
+    xyz = xyz * (jnp.sqrt(T) / (2 * BW))
     qmin = q - BW // 2
     bins = qmin + jnp.arange(BW, dtype=jnp.float64)
     if fmt == "frequency":

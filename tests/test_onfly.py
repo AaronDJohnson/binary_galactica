@@ -28,7 +28,7 @@ def _dense_sangria(params, duration, bandwidth, epoch=0.0, carrier=None):
     phase = PI2 * cycles - params[6]
     response = np.asarray(tdi_response(jnp.asarray(params), times, duration))
     return np.fft.fftshift(np.fft.fft(response * np.exp(1j * phase)), axes=-1) * (
-        np.sqrt(duration) / (4 * bandwidth)
+        np.sqrt(duration) / (2 * bandwidth)
     )
 
 
@@ -226,7 +226,7 @@ def test_arbitrary_time_positions_and_source_phase_conventions():
     from binary_galactica.glass.onfly import tdi_response as raw_response
 
     raw = raw_response(SOURCE, times, DURATION)
-    np.testing.assert_allclose(response, raw / 2, rtol=1e-12, atol=0)
+    np.testing.assert_allclose(response, raw, rtol=1e-12, atol=0)
 
 
 @pytest.mark.parametrize("times", [0.0, [], [[1.0]], [np.inf]])

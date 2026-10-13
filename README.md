@@ -41,6 +41,21 @@ python -m pip install -e ".[dev]"
 
 Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required.
 
+**Migrating to 0.5.0:** the GLASS-native amplitude `exp(params[3])` is now the
+physical strain amplitude, the LDC/Sangria catalogue `Amplitude`. Through 0.4.0
+every native output was half the physical signal: `ucb_waveform`,
+`template_on_window`, and `tdi_response`, on both backends and in
+`binary_galactica.single`. For the same vector they now return exactly twice
+their 0.4.0 values and match Sangria data. A 0.4.0 native vector `v` gives the
+same signal in 0.5.0 with `v[3] - ln(2)`. The physical `GBParams` API is
+unchanged: `tdi_waveform` returns the same signal, while `to_glass_vector` now
+writes `ln(amp)` rather than `ln(2*amp)` and `from_glass_vector` reads
+`amp = exp(v[3])`. Native callers change meaning by that factor of two, for
+example `petra_catalogs` (`petra/binary_galactica.py`) with
+`parameterization="glass"`. Saved native templates, SNRs, and amplitude
+posteriors need an explicit decision. See the
+[physical-amplitude spec](docs/superpowers/specs/2026-10-11-physical-amplitude.md).
+
 **Migrating to 0.4.0:** importing the package no longer enables
 `jax_enable_x64`. The float64 functions need it, because long-duration
 millihertz phases require double precision. Enable it yourself at startup,
@@ -124,6 +139,10 @@ The waveform entry points use the **GLASS-native** vector:
  fdot*T**2, fddot*T**3]
 ```
 
+`A_G` is the physical strain amplitude: the LDC/Sangria catalogue
+`Amplitude`, and the value GLASS's `amplitude()` returns. On both backends the
+polarizations are `h+ = A_G*(1 + cos(iota)**2)` and `hx = 2*A_G*cos(iota)`.
+
 `ucb_waveform` and `template_on_window` accept 7, 8, or 9 entries; the
 eighth and ninth chirp terms are optional. `ucb_alignment` requires at least
 eight entries because it reads `fdot`. `UCBPrior` and the standard
@@ -152,8 +171,9 @@ xyz = bg.tdi_response(p, times, T=T)  # complex array, shape (3, 4)
 ```
 
 It is in Sangria analytic-response units: it is the raw internal GLASS spline
-response divided by two, before FFT normalization. The waveform restores the
-full analytic source phase before transforming, and its raw spectrum retains
+response, before FFT normalization. After the source phase is restored, its
+real part is the Sangria fractional-frequency TDI signal. The waveform restores
+the full analytic source phase before transforming, and its raw spectrum retains
 the usual `sqrt(T)` conversion described below. `times` is one-dimensional.
 An optional position array has shape `(3, n_times, 3)`; use analytic positions
 unless an existing cache must be reused.
@@ -171,13 +191,14 @@ With a compatible one-sided PSD, continuous coefficients use the inner product
 For a bare NumPy/JAX `rfft` convention, also divide continuous coefficients by
 the time-domain sample interval.
 
-The on-fly Fourier prefactor is `sqrt(T) / (4*BW)` for the internal raw GLASS
-spline response. The public `tdi_response` is half that raw response; its
-Fourier prefactor is therefore `sqrt(T) / (2*BW)`. This second factor of two
-selects the positive-frequency contribution of the real time signal.
-`to_continuous_ft` remains `sqrt(T)`. No conversion factor or SNR target
-compensates for a convention change; reusing saved templates requires an
-explicit convention decision.
+The on-fly Fourier prefactor is `sqrt(T) / (2*BW)` for the raw GLASS spline
+response, which the public `tdi_response` returns unscaled. The factor of one
+half selects the positive-frequency contribution of the real time signal.
+`to_continuous_ft` remains `sqrt(T)`. With these conventions, continuous
+coefficients divided by the sample interval match the in-band `rfft` of
+Sangria/LDC time-domain TDI generated from the same catalogue `Amplitude`. No
+conversion factor or SNR target compensates for a convention change; reusing
+saved templates requires an explicit convention decision.
 
 ## Physical parameters and source polarizations
 
@@ -206,7 +227,7 @@ The adapter makes their differences explicit:
 
 | Quantity | Physical `GBParams` | GLASS-native |
 |---|---|---|
-| Amplitude | Full inclination factors times `amp` | `A_G = 2*amp`, with half factors |
+| Amplitude | Full inclination factors times `amp` | `A_G = amp` (LDC `Amplitude`), same full factors |
 | Initial phase | `+phi0` in the phase function | `phi0_G = -phi0` |
 | Sky latitude | `beta` | `cos(colat) = sin(beta)` |
 | Inclination | `iota` | `cos(iota)` |
@@ -444,7 +465,7 @@ python examples/single_precision.py
 ```
 
 The test configuration enables x64 for the session. A float64 golden archive,
-recorded before the float32 work, must reproduce bitwise on its recording
+recorded after the 0.5.0 physical-amplitude fix, must reproduce bitwise on its recording
 JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
@@ -454,7 +475,10 @@ subprocess with x64 disabled.
 Legacy Fourier C reference tests cover varied sky positions, inclinations,
 amplitudes, phases, 7/8/9 parameters, all three formats, signed chirps,
 quarter-year through four-year observations, and carrier boundaries.
-Each of the five channels must agree to relative L2 error `1e-9`. Normal tests
+Each of the five channels must agree to relative L2 error `1e-9` with twice the
+stored spectra, whose pinned polarization factors are halved. Independently of
+those fixtures, `tests/test_physical_amplitude.py` pins the physical amplitude
+through the physical API and a long-wavelength TDI limit. Normal tests
 need no C compiler, network, or sibling repository, and missing references fail.
 
 Separate pinned-spline fixtures cover the arbitrary-time on-fly XYZ response;

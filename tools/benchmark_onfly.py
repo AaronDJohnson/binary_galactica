@@ -6,10 +6,9 @@ Run from the repository root::
 
 The dense calculation is an internal numerical comparison: it evaluates the
 public arbitrary-time response at every FFT time and applies the heterodyne and
-``sqrt(T) / (2*BW)`` normalization explicitly. The public response is already
-the raw GLASS spline response divided by two; production multiplies the raw
-internal response by ``sqrt(T) / (4*BW)``, so the equivalent public-response
-prefactor is twice as large. It is not a physical C-reference test; pinned
+``sqrt(T) / (2*BW)`` normalization explicitly. The public response is the raw
+GLASS spline response, in physical Sangria units; production multiplies it by
+the same ``sqrt(T) / (2*BW)``. It is not a physical C-reference test; pinned
 spline fixtures cover that separately.
 """
 
@@ -95,9 +94,8 @@ def public_response_fft(
 ) -> np.ndarray:
     """Transform a public ``tdi_response`` envelope into raw spectrum units.
 
-    ``tdi_response`` is raw GLASS spline response divided by two. Production
-    transforms the raw internal response with ``sqrt(T)/(4*BW)``; multiplying
-    this public response therefore requires ``sqrt(T)/(2*BW)``.
+    ``tdi_response`` is the raw GLASS spline response. Production transforms
+    it with ``sqrt(T)/(2*BW)``, the factor applied here.
     """
     return np.fft.fftshift(np.fft.fft(response * phase[None, :], axis=-1), axes=-1) * (
         np.sqrt(duration) / (2.0 * BW)

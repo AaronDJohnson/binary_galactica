@@ -24,8 +24,11 @@ Fourier convention uses :math:`\rho^2 = 4\,\delta f\sum_j
 the template yields exactly :math:`\sqrt{T}`.
 
 The raw waveform follows the ``1/(2*BW)`` reduced-FFT normalization at
-GLASS commit ``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. That response
-normalization does not alter this separate unit conversion.
+GLASS commit ``079c6a3a6fcf380a7c107f39640fff7fc720d0f1`` with full
+polarization factors, so ``exp(params[3])`` is the physical strain amplitude.
+Neither the response normalization nor that amplitude convention alters this
+separate unit conversion: ``sqrt(T)`` times the raw spectrum, divided by the
+sample interval, matches the in-band ``rfft`` of Sangria/LDC time-domain TDI.
 """
 
 from __future__ import annotations

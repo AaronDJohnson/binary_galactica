@@ -23,7 +23,10 @@ def test_physical_response_matches_independent_glass_case(case):
     v = case["params"]
     duration = case["T"]
     # Independent inverse of GLASS's source conventions, without calling the
-    # production converter to construct the inputs for its own test.
+    # production converter to construct the inputs for its own test. The
+    # adapter maps amp to A_G = amp; the /2 instead absorbs the fixture: GLASS
+    # b0751bd halved the 079c6a3 fast-slow polarization factors, so its spectra
+    # are the physical response of a source with amplitude exp(v[3])/2.
     p = bg.GBParams(
         amp=np.exp(v[3]) / 2,
         f0=v[0] / duration,

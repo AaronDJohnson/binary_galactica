@@ -21,6 +21,11 @@ the user requested adopting gbonfly; do not invent a likelihood or sampler.
 
 ## Reference and conventions
 
+**Superseded on 2026-10-11** by the
+[physical-amplitude spec](2026-10-11-physical-amplitude.md): the donor's factor of
+two was physical (the pinned C is halved by GLASS `b0751bd`), so 0.5.0 uses full
+polarization factors with `1/(2*BW)` and `A_G = amp`.
+
 Target nsgs-analysis-center/glass commit
 `079c6a3a6fcf380a7c107f39640fff7fc720d0f1`. The diagnostic comparison found the
 donor twice this reference on all five TDI channels. Keep the donor's half

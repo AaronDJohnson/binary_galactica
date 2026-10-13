@@ -25,6 +25,11 @@ and epoch. Complex zeros, tangent zeros and near misses have no singular polar
 representation or artificial sign changes. The original derivative-based
 Hermite/refinement utility remains tested as an internal reference.
 
+**Normalization superseded on 2026-10-11** by the
+[physical-amplitude spec](2026-10-11-physical-amplitude.md): the raw spline
+response is the physical Sangria response, `tdi_response` returns it unscaled,
+and the Fourier prefactor is `sqrt(T)/(2*BW)`.
+
 Restore the retarded reference phase minus the integer carrier at the FFT sample
 times, then transform the three channel envelopes. The public spectrum keeps
 the existing carrier-bin layout, raw-GLASS units and format conventions. The

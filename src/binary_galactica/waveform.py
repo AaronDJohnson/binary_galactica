@@ -58,12 +58,15 @@ multiplying the plus (cross) detector tensor is ``DPr cos(Phi) - DPi sin(Phi)``
 by :func:`polarizations`; ``tests/test_conventions.py`` checks this algebra.
 
 These source helpers use full inclination factors and a positive initial
-phase. Current GLASS uses half inclination factors, the opposite initial-phase
-parameter, and first-order amplitude evolution. Use
+phase. The GLASS-native detector waveforms produce the same polarization
+amplitudes, so the native amplitude equals ``amp``, but use the opposite
+initial-phase parameter and first-order amplitude evolution. Use
 :func:`binary_galactica.to_glass_vector` to translate parameters, or
 :func:`binary_galactica.tdi_waveform` for the full detector signal. Numerical
 agreement of the backend with GLASS is checked separately against C-generated
-reference spectra.
+reference spectra. The pinned GLASS fast-slow generator halves both
+inclination factors (since ``b0751bd``), so those spectra are half the
+physical response.
 
 References
 ----------

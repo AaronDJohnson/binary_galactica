@@ -129,10 +129,12 @@ def to_glass_vector(theta: Array | GBParams, duration: Array | float) -> Array:
     """Convert physical parameters to the eight-parameter GLASS convention.
 
     The last axis is ``(f0*T, sin(beta), lam, log(A_G), cos(iota), psi,
-    phi0_G, fdot*T**2)``. GLASS's half inclination factors require
-    ``A_G = 2*amp`` to match this package's source polarization amplitudes
-    at the reference epoch. Its phase function uses ``-phi0_G``, so
-    ``phi0_G = -phi0``. Both models define their parameters at time zero.
+    phi0_G, fdot*T**2)``. ``A_G = amp``: the native amplitude is the
+    physical (LDC ``Amplitude``) strain amplitude that GLASS's
+    ``amplitude()`` returns, with polarization amplitudes
+    ``amp*(1 + cos(iota)**2)`` and ``2*amp*cos(iota)`` as in this package.
+    GLASS's phase function uses ``-phi0_G``, so ``phi0_G = -phi0``. Both
+    models define their parameters at time zero.
 
     GLASS additionally evolves the amplitude with frequency; converting
     parameters does not add that evolution to :func:`polarizations`.
@@ -156,7 +158,7 @@ def to_glass_vector(theta: Array | GBParams, duration: Array | float) -> Array:
         p.f0 * duration,
         jnp.sin(p.beta),
         p.lam,
-        jnp.log(2.0 * p.amp),
+        jnp.log(p.amp),
         jnp.cos(p.iota),
         p.psi,
         -p.phi0,
@@ -199,7 +201,7 @@ def from_glass_vector(vector: Array, duration: Array | float) -> GBParams:
     )
     duration = jnp.asarray(duration, dtype=real)
     return GBParams(
-        amp=0.5 * jnp.exp(logamp),
+        amp=jnp.exp(logamp),
         f0=freq / duration,
         fdot=chirp / duration**2,
         phi0=-phi,

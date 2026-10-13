@@ -20,13 +20,14 @@ def test_physical_vector_has_explicit_glass_conventions():
         lam=1.2,
         beta=np.pi / 6,
     )
-    expected = [0.5, 0.5, 1.2, np.log(0.25), 0.5, 0.2, -0.75, 0.5]
+    # The native amplitude is the physical one: ln(A_G) = ln(amp).
+    expected = [0.5, 0.5, 1.2, np.log(0.125), 0.5, 0.2, -0.75, 0.5]
     got = parameter_module.to_glass_vector(p, 4.0)
     np.testing.assert_allclose(got, expected, rtol=1e-14, atol=1e-15)
 
 
 def test_native_vector_has_explicit_physical_conventions():
-    native = jnp.array([0.5, 0.5, 1.2, np.log(0.25), 0.5, 0.2, -0.75, 0.5])
+    native = jnp.array([0.5, 0.5, 1.2, np.log(0.125), 0.5, 0.2, -0.75, 0.5])
     got = parameter_module.from_glass_vector(native, 4.0)
     expected = [0.125, 0.125, 0.03125, 0.75, np.pi / 3, 0.2, 1.2, np.pi / 6]
     np.testing.assert_allclose(got.to_array(), expected, rtol=1e-14, atol=1e-15)
