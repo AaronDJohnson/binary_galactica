@@ -1,0 +1,78 @@
+cff-version: 1.2.0
+message: >-
+  If you use binary-galactica, please cite it using the metadata below, and
+  also cite GLASS and the papers listed under references, from which its
+  waveform and response models are adapted.
+title: "binary-galactica: differentiable LISA galactic-binary TDI waveforms in JAX"
+type: software
+authors:
+  - family-names: Johnson
+    given-names: Aaron D.
+  - family-names: Littenberg
+    given-names: Tyson B.
+  - family-names: Cornish
+    given-names: Neil J.
+  - family-names: Rosati
+    given-names: Robert
+version: 0.5.0
+license: Apache-2.0
+repository-code: "https://github.com/AaronDJohnson/binary_galactica"
+keywords:
+  - gravitational waves
+  - LISA
+  - galactic binaries
+  - JAX
+references:
+  - type: software
+    title: "GLASS: Global LISA Analysis Software Suite"
+    authors:
+      - family-names: Littenberg
+        given-names: Tyson B.
+      - family-names: Cornish
+        given-names: Neil J.
+    repository-code: "https://github.com/nsgs-analysis-center/glass"
+    commit: 079c6a3a6fcf380a7c107f39640fff7fc720d0f1
+    doi: 10.5281/zenodo.2026177
+    license: Apache-2.0
+    year: 2025
+  - type: article
+    title: "TDI on the fly"
+    authors:
+      - family-names: Cornish
+        given-names: Neil J.
+      - family-names: Littenberg
+        given-names: Tyson B.
+    year: 2025
+    doi: 10.48550/arXiv.2506.08093
+    url: "https://arxiv.org/abs/2506.08093"
+    notes: "arXiv:2506.08093 (preprint)"
+  - type: article
+    title: "Prototype Global Analysis of LISA Data with Multiple Source Types"
+    authors:
+      - family-names: Littenberg
+        given-names: Tyson B.
+      - family-names: Cornish
+        given-names: Neil J.
+    journal: Physical Review D
+    volume: 107
+    start: "063004"
+    year: 2023
+    doi: 10.1103/PhysRevD.107.063004
+    identifiers:
+      - type: other
+        value: "arXiv:2301.03673"
+  - type: article
+    title: "Tests of Bayesian Model Selection Techniques for Gravitational Wave Astronomy"
+    authors:
+      - family-names: Cornish
+        given-names: Neil J.
+      - family-names: Littenberg
+        given-names: Tyson B.
+    journal: Physical Review D
+    volume: 76
+    start: "083006"
+    year: 2007
+    doi: 10.1103/PhysRevD.76.083006
+    identifiers:
+      - type: other
+        value: "arXiv:0704.1808"

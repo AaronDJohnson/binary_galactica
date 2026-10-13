@@ -39,7 +39,7 @@ For development, use an editable installation with the test and lint tools:
 python -m pip install -e ".[dev]"
 ```
 
-Python >=3.10, JAX >=0.4.30, and NumPy >=1.24 are required.
+Python >=3.10, JAX >=0.4.33, and NumPy >=1.24 are required.
 
 **Migrating to 0.5.0:** the GLASS-native amplitude `exp(params[3])` is now the
 physical strain amplitude, the LDC/Sangria catalogue `Amplitude`. Through 0.4.0
@@ -522,5 +522,61 @@ JAX implementation and local complex-polynomial interpolation. The legacy Fourie
 calculation follows Cornish & Littenberg,
 [Phys. Rev. D 76, 083006 (2007)](https://doi.org/10.1103/PhysRevD.76.083006).
 GLASS is by Tyson B. Littenberg, Neil J. Cornish, and contributors.
-See [NOTICE](NOTICE) and the included MIT, Apache-2.0, and vendored KissFFT
-license notices.
+
+## Citing
+
+If you use binary-galactica, please cite it with the metadata in
+[CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button exports
+BibTeX and APA), and also cite GLASS and the papers its methods come from:
+
+```bibtex
+@misc{glass,
+  author       = "Tyson B. Littenberg, Neil J. Cornish",
+  title        = "GLASS",
+  howpublished = "free software (Apache 2.0)",
+  doi          = "10.5281/zenodo.2026177",
+  year         = "2025"
+}
+
+@article{LittenbergCornish2023,
+  author  = "Littenberg, Tyson B. and Cornish, Neil J.",
+  title   = "Prototype global analysis of LISA data with multiple source types",
+  journal = "Phys. Rev. D",
+  volume  = "107",
+  pages   = "063004",
+  year    = "2023",
+  doi     = "10.1103/PhysRevD.107.063004",
+  eprint  = "2301.03673",
+  archivePrefix = "arXiv"
+}
+
+@article{CornishLittenberg2025,
+  author  = "Cornish, Neil J. and Littenberg, Tyson B.",
+  title   = "TDI on the fly",
+  year    = "2025",
+  eprint  = "2506.08093",
+  archivePrefix = "arXiv"
+}
+
+@article{CornishLittenberg2007,
+  author  = "Cornish, Neil J. and Littenberg, Tyson B.",
+  title   = "Tests of Bayesian model selection techniques for gravitational
+             wave astronomy",
+  journal = "Phys. Rev. D",
+  volume  = "76",
+  pages   = "083006",
+  year    = "2007",
+  doi     = "10.1103/PhysRevD.76.083006",
+  eprint  = "0704.1808",
+  archivePrefix = "arXiv"
+}
+```
+
+## License
+
+binary-galactica is licensed under the [Apache License, Version 2.0](LICENSE),
+Copyright 2026 Aaron D. Johnson, Tyson B. Littenberg, Neil J. Cornish, and
+Robert Rosati. Portions adapted from GLASS keep their upstream Apache-2.0
+copyright notices; see [NOTICE](NOTICE). The optional C reference tool under
+`tools/glass_reference` vendors KissFFT (BSD-3-Clause), which is not a runtime
+dependency.

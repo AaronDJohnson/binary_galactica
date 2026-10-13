@@ -450,19 +450,25 @@ def summarize(cases: list[dict[str, Any]]) -> dict[str, Any]:
             inputs = entry["inputs"]
             where = {key: inputs[key] for key in WHERE if key in inputs}
             for row in entry["waveform"]:
-                yield row[configuration], {
-                    **where,
-                    "entry": "ucb_waveform",
-                    "fmt": row["fmt"],
-                    "cache": row["cache"],
-                }
+                yield (
+                    row[configuration],
+                    {
+                        **where,
+                        "entry": "ucb_waveform",
+                        "fmt": row["fmt"],
+                        "cache": row["cache"],
+                    },
+                )
             if configuration in ("all", "without_orbit"):
                 for row in entry["response"]:
-                    yield row[configuration], {
-                        **where,
-                        "entry": "tdi_response",
-                        "positions": row["positions"],
-                    }
+                    yield (
+                        row[configuration],
+                        {
+                            **where,
+                            "entry": "tdi_response",
+                            "positions": row["positions"],
+                        },
+                    )
 
     def largest(configuration, metric):
         value, where = max(rows(configuration), key=lambda row: row[0][metric])

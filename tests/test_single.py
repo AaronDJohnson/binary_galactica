@@ -498,10 +498,10 @@ def test_epoch_expansion_reproduces_the_float64_phase():
 
 
 def test_reformulation_switch_is_scoped():
-    assert single_impl._DISABLED == frozenset()
+    assert frozenset() == single_impl._DISABLED
     with single_impl._without("orbit", "epoch"):
-        assert single_impl._DISABLED == {"orbit", "epoch"}
-    assert single_impl._DISABLED == frozenset()
+        assert {"orbit", "epoch"} == single_impl._DISABLED
+    assert frozenset() == single_impl._DISABLED
     with pytest.raises(ValueError, match="unknown"), single_impl._without("bogus"):
         pass
 

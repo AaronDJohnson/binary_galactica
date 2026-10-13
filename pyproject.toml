@@ -8,9 +8,14 @@ version = "0.5.0"
 description = "Differentiable LISA galactic-binary TDI waveforms in JAX"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT AND Apache-2.0 AND BSD-3-Clause"
-license-files = ["LICENSE", "LICENSES/*", "NOTICE", "tools/glass_reference/vendor/kissfft/COPYING", "tools/glass_reference/vendor/kissfft/LICENSES/*"]
-authors = [{ name = "Aaron" }]
+license = "Apache-2.0 AND BSD-3-Clause"
+license-files = ["LICENSE", "NOTICE", "tools/glass_reference/LICENSE-GLASS", "tools/glass_reference/vendor/kissfft/COPYING", "tools/glass_reference/vendor/kissfft/LICENSES/*"]
+authors = [
+    { name = "Aaron D. Johnson", email = "aaron9035@gmail.com" },
+    { name = "Tyson B. Littenberg" },
+    { name = "Neil J. Cornish" },
+    { name = "Robert Rosati" },
+]
 keywords = ["gravitational-waves", "LISA", "galactic-binaries", "jax"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -19,15 +24,16 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-dependencies = ["jax>=0.4.30", "numpy>=1.24"]
+dependencies = ["jax>=0.4.33", "numpy>=1.24"]
 
 [project.urls]
 Source = "https://github.com/AaronDJohnson/binary_galactica"
 Documentation = "https://github.com/AaronDJohnson/binary_galactica#readme"
 Issues = "https://github.com/AaronDJohnson/binary_galactica/issues"
+GLASS = "https://github.com/nsgs-analysis-center/glass"
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]
+dev = ["pytest>=7", "ruff==0.17.0", "mypy>=1.10"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
