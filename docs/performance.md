@@ -80,7 +80,7 @@ count directly. The response removes the reference-spacecraft phase before
 interpolation, following GLASS's phase choice. Local polynomials through up to
 eight complex values replace exact response time derivatives and iterative
 zero refinement in the waveform path. The interpolation remains linear in
-complex values through zeros; the Hermite helper is retained for comparisons.
+complex values through zeros. (The Hermite comparison helper has been removed.)
 
 | Source | Automatic samples | Automatic relative L2 error | Explicit 512 error |
 | --- | ---: | ---: | ---: |
