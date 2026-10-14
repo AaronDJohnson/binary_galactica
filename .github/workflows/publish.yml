@@ -16,8 +16,15 @@ env:
   TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
 
 jobs:
+  full-suite:
+    name: Full test suite
+    uses: ./.github/workflows/full.yml
+    with:
+      ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}
+
   build:
     name: Build distributions
+    needs: full-suite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

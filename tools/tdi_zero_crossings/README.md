@@ -11,8 +11,8 @@ it does not change amplitude signs or construct phase jumps.
 The production package exposes a native arbitrary-time, demodulated complex
 TDI callback. Its mainline removes the reference-spacecraft phase and uses
 local complex-polynomial interpolation, which avoids singular polar
-coordinates at zeros. The derivative-based Hermite/Gauss--Newton utility is
-retained for numerical comparisons. This SciPy prototype remains a separate
+coordinates at zeros. (The derivative-based Hermite/Gauss--Newton utility was
+removed from the package.) This SciPy prototype remains a separate
 experimental comparator for isolated scalar candidates; its synthetic results
 do not validate the mainline interpolation policy.
 
@@ -24,9 +24,10 @@ python -m pytest -q tools/tdi_zero_crossings/test_solver.py tools/tdi_zero_cross
 python -m tools.tdi_zero_crossings.benchmark --output /tmp/tdi_zero_crossings.json --repeats 3
 ```
 
-CI runs the solver and synthetic benchmark regression tests alongside the
-existing Python/dependency matrix. Optional LAT checks require an explicit
-local checkout and run separately.
+CI runs the solver and synthetic benchmark regression tests in their own
+workflow (`.github/workflows/zero-crossings.yml`) whenever this directory
+changes; they need only NumPy, SciPy, and pytest. Optional LAT checks require
+an explicit local checkout and run separately.
 
 The benchmark needs no LAT checkout, compiled extension, JAX, or GPU. It writes
 the environment and package versions, complete case definitions, per-run
