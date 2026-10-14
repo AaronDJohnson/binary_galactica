@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from binary_galactica.glass import constants
 
@@ -23,9 +22,14 @@ GLASS_HEADER = {
 }
 
 
-@pytest.mark.parametrize("name,value", sorted(GLASS_HEADER.items()))
-def test_constant_matches_the_glass_header_literal(name, value):
-    assert getattr(constants, name) == value
+def test_constant_matches_the_glass_header_literal():
+    """Digit-for-digit drift detector for the pinned header literals."""
+    mismatched = {
+        name: (getattr(constants, name), value)
+        for name, value in GLASS_HEADER.items()
+        if getattr(constants, name) != value
+    }
+    assert not mismatched, f"(package, GLASS header): {mismatched}"
 
 
 def test_derived_constants_follow_the_pinned_literals():

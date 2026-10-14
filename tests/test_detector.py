@@ -11,11 +11,24 @@ import pytest
 import binary_galactica as bg
 
 DATA = Path(__file__).parent / "data" / "glass"
+#: Eight-parameter GLASS cases that between them pass every format, a zero and
+#: a nonzero epoch, and all three bandwidths through tdi_waveform: (phase,
+#: t0 = 0, BW 32), (sangria, t0 > 0, BW 96, falling chirp) and (frequency,
+#: t0 > 0, BW 512, rising chirp). test_glass_reference.py compares the native
+#: waveform with a wider selection of the C corpus.
+PHYSICAL_CASES = (
+    "1mhz_8p_bw32_phase",
+    "varied_north_8p_negative_chirp_year_bw96_sangria",
+    "varied_south_8p_positive_chirp_quarter_year_bw512_frequency",
+)
 
 
 def _physical_cases():
     cases = json.loads((DATA / "reference.json").read_text())["cases"]
-    return [case for case in cases if len(case["params"]) == 8]
+    selected = [case for case in cases if case["id"] in PHYSICAL_CASES]
+    assert sorted(case["id"] for case in selected) == sorted(PHYSICAL_CASES)
+    assert all(len(case["params"]) == 8 for case in selected)
+    return selected
 
 
 @pytest.mark.parametrize("case", _physical_cases(), ids=lambda case: case["id"])

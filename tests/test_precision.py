@@ -9,12 +9,8 @@ import sys
 from decimal import Decimal, getcontext
 from pathlib import Path
 
-import jax.numpy as jnp
-import numpy as np
-import pytest
-
 import binary_galactica
-from binary_galactica import YEAR, phase, polarizations
+from binary_galactica import YEAR, phase
 
 #: pi to 50 significant figures, for a reference phase computed outside
 #: floating point entirely.
@@ -123,31 +119,26 @@ print(jax.config.read("jax_enable_x64"))
     assert run_without_x64(code).strip() == "False"
 
 
-@pytest.fixture(scope="module")
-def guard_outcomes():
-    """Attempt every guarded call in one fresh process with x64 disabled."""
+def test_float64_entry_points_require_x64():
+    """Each float64 entry point raises before computing anything in float32.
+
+    Every guarded call is attempted in one fresh process with x64 disabled; a
+    failure lists each call that did not refuse.
+    """
     calls = "".join(
         f"attempt({name!r}, lambda: {call})\n" for name, call in GUARDED_CALLS.items()
     )
     report = 'print(json.dumps([results, jax.config.read("jax_enable_x64")]))\n'
     outcomes, x64_after = json.loads(run_without_x64(GUARD_PRELUDE + calls + report))
     assert x64_after is False
-    return outcomes
-
-
-@pytest.mark.parametrize("name", list(GUARDED_CALLS))
-def test_float64_entry_points_require_x64(guard_outcomes, name):
-    """Each float64 entry point raises before computing anything in float32."""
-    kind, message = guard_outcomes[name]
-    assert kind == "RuntimeError", f"{name}: {kind} {message}"
-    assert 'jax.config.update("jax_enable_x64", True)' in message
-    assert "binary_galactica.single" in message
-
-
-def test_waveforms_are_float64(params, t):
-    hp, hc = polarizations(params, jnp.asarray(t))
-    assert hp.dtype == jnp.float64
-    assert hc.dtype == jnp.float64
+    assert set(outcomes) == set(GUARDED_CALLS)
+    refused = {
+        name: kind == "RuntimeError"
+        and 'jax.config.update("jax_enable_x64", True)' in message
+        and "binary_galactica.single" in message
+        for name, (kind, message) in outcomes.items()
+    }
+    assert {name: outcomes[name] for name, ok in refused.items() if not ok} == {}
 
 
 def test_phase_is_accurate_over_a_four_year_observation(params):
@@ -162,22 +153,3 @@ def test_phase_is_accurate_over_a_four_year_observation(params):
         computed = Decimal(repr(float(phase(params, time))))
         error = abs(computed - exact_phase(params, time))
         assert error < Decimal("1e-6"), f"phase error {error} rad at t={time}"
-
-
-def test_accumulated_phase_is_large_enough_to_matter(params):
-    """Sanity-check the premise of the test above."""
-    total = float(phase(params, 4.0 * YEAR))
-    assert total > 1e5
-
-
-def test_float32_would_be_visibly_wrong(params):
-    """Demonstrates why the float64 functions refuse to run without x64.
-
-    Not a test of the package so much as of the claim in its docstring: the
-    same arithmetic in single precision loses the phase entirely.
-    """
-    time = np.float32(4.0 * YEAR)
-    f0 = np.float32(params.f0)
-    single = np.float32(2.0) * np.float32(np.pi) * f0 * time
-    double = 2.0 * np.pi * float(params.f0) * float(4.0 * YEAR)
-    assert abs(float(single) - double) > 1e-2

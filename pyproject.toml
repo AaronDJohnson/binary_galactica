@@ -33,7 +33,7 @@ Issues = "https://github.com/AaronDJohnson/binary_galactica/issues"
 GLASS = "https://github.com/nsgs-analysis-center/glass"
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff==0.17.0", "mypy>=1.10"]
+dev = ["pytest>=7", "pytest-xdist>=3", "ruff==0.17.0", "mypy>=1.10"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
@@ -41,6 +41,9 @@ packages = ["src/binary_galactica"]
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
 addopts = "--doctest-modules --strict-markers"
+markers = [
+    "slow: validation tests (accuracy sweeps, convergence, stress, long compiles); deselect with -m 'not slow'",
+]
 
 [tool.ruff]
 line-length = 88

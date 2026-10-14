@@ -8,19 +8,19 @@ import pytest
 import binary_galactica.glass as glass
 
 
-@pytest.mark.parametrize("bin_lo", [7868.1, np.nan, np.inf, True])
-def test_window_origin_rejects_noninteger_indices(glass_params, bin_lo):
+# The shared integer check's conditions are covered on ucb_bandwidth's N;
+# these cases cover each argument's wiring and n_bins's zero minimum.
+def test_window_origin_rejects_noninteger_indices(glass_params):
     with pytest.raises(ValueError, match="bin_lo must be an integer"):
         glass.template_on_window(
-            glass_params, T=7_884_000.0, BW=32, bin_lo=bin_lo, n_bins=32
+            glass_params, T=7_884_000.0, BW=32, bin_lo=7868.1, n_bins=32
         )
 
 
-@pytest.mark.parametrize("n_bins", [2.5, np.nan, np.inf, True, -1])
-def test_window_length_rejects_invalid_counts(glass_params, n_bins):
+def test_window_length_rejects_invalid_counts(glass_params):
     with pytest.raises(ValueError, match="n_bins must be a non-negative integer"):
         glass.template_on_window(
-            glass_params, T=7_884_000.0, BW=32, bin_lo=7868, n_bins=n_bins
+            glass_params, T=7_884_000.0, BW=32, bin_lo=7868, n_bins=-1
         )
 
 
