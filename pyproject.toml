@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-dependencies = ["jax>=0.4.33", "numpy>=1.24"]
+dependencies = ["jax>=0.6.0", "numpy>=1.25"]
 
 [project.urls]
 Source = "https://github.com/AaronDJohnson/binary_galactica"

@@ -39,7 +39,7 @@ For development, use an editable installation with the test and lint tools:
 python -m pip install -e ".[dev]"
 ```
 
-Python >=3.10, JAX >=0.4.33, and NumPy >=1.24 are required.
+Python >=3.10, JAX >=0.6.0, and NumPy >=1.25 are required.
 
 **Migrating to 0.5.0:** the GLASS-native amplitude `exp(params[3])` is now the
 physical strain amplitude, the LDC/Sangria catalogue `Amplitude`. Through 0.4.0

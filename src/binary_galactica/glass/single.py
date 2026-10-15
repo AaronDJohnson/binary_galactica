@@ -273,7 +273,10 @@ def grid_cycles(residual, params, T, t0, BW, disabled=(), first=None):
     cycles = tf.add(c2, tf.multiply(v, c3))
     cycles = tf.add(c1, tf.multiply(v, cycles))
     cycles = tf.add(c0, tf.multiply(v, cycles))
-    return tf.value(tf.fraction(cycles))
+    # The pair arithmetic above is ~600 dependent float32 operations. Without
+    # the barrier XLA fuses a copy into each downstream channel kernel, and
+    # LLVM then takes 4-9 s per program instead of ~0.3 s. Values unchanged.
+    return jax.lax.optimization_barrier(tf.value(tf.fraction(cycles)))
 
 
 def _waveform(

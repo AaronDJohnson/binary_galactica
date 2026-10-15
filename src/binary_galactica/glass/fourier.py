@@ -62,6 +62,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import Array
 from jax.custom_batching import custom_vmap
+from jax.lax import optimization_barrier as _optimization_barrier
 from jax.typing import ArrayLike
 
 from . import _validation
@@ -71,11 +72,6 @@ from .orbit import analytic_orbits, arm_vectors, slow_time_grid
 from .response import LINKS, detector_tensor, polarization_tensor
 from .tdi import synthesize
 from .types import WaveformResult
-
-try:
-    from jax.lax import optimization_barrier as _optimization_barrier
-except ImportError:  # JAX 0.4.30 predates the public spelling.
-    from jax._src.ad_checkpoint import _optimization_barrier
 
 
 @custom_vmap
