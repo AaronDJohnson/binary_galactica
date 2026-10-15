@@ -23,9 +23,23 @@ response, while legacy reference tests remain under explicit
 `backend="fourier"`. See the [on-fly reference provenance and regeneration
 guide](tools/onfly_reference/README.md).
 
+**Credit.** binary-galactica is a JAX translation of the galactic-binary
+waveform and TDI response code in [GLASS](https://github.com/nsgs-analysis-center/glass),
+originally written by Neil J. Cornish and Tyson B. Littenberg. The default
+`onfly` backend implements their method from N. J. Cornish and T. B. Littenberg,
+["TDI on the fly," arXiv:2506.08093 (2025)](https://arxiv.org/abs/2506.08093);
+the legacy `fourier` backend implements their fast–slow decomposition,
+[Phys. Rev. D 76, 083006 (2007)](https://doi.org/10.1103/PhysRevD.76.083006).
+If you use this package, please cite their paper and GLASS as well (see
+[Citing](#citing)).
+
 ## Install
 
-Install from a source checkout:
+```sh
+python -m pip install binary-galactica
+```
+
+Or from a source checkout:
 
 ```sh
 git clone https://github.com/AaronDJohnson/binary_galactica.git
@@ -40,6 +54,11 @@ python -m pip install -e ".[dev]"
 ```
 
 Python >=3.10, JAX >=0.6.0, and NumPy >=1.25 are required.
+
+**Migrating to 0.6.0:** JAX >=0.6.0 and NumPy >=1.25 are now required. The
+unused `binary_galactica.glass.interpolation` module (a Hermite comparison
+utility) is removed. Float32 waveforms whose parameters include `fddot` now
+compile in about 0.3 s instead of 4–9 s; outputs are unchanged bit for bit.
 
 **Migrating to 0.5.0:** the GLASS-native amplitude `exp(params[3])` is now the
 physical strain amplitude, the LDC/Sangria catalogue `Amplitude`. Through 0.4.0
@@ -521,12 +540,13 @@ separate reproducible experiment.
 
 ## Attribution
 
-The mainline method follows Cornish & Littenberg,
+The original C implementation of both waveforms is GLASS, by Tyson B.
+Littenberg, Neil J. Cornish, and contributors; this package translates it to
+JAX. The mainline method follows Cornish & Littenberg,
 [TDI on the fly (2025)](https://arxiv.org/abs/2506.08093), with this package's
 JAX implementation and local complex-polynomial interpolation. The legacy Fourier
 calculation follows Cornish & Littenberg,
 [Phys. Rev. D 76, 083006 (2007)](https://doi.org/10.1103/PhysRevD.76.083006).
-GLASS is by Tyson B. Littenberg, Neil J. Cornish, and contributors.
 
 ## Citing
 
