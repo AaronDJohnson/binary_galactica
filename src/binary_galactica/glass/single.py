@@ -39,7 +39,6 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.custom_batching import custom_vmap
 
 from binary_galactica.parameters import to_glass_vector
 
@@ -252,33 +251,6 @@ def epoch_coefficients(residual, params, T, t0, first=None):
     return tf.fraction(c0), c1, c2, sixth_G
 
 
-@custom_vmap
-def _unfused(x):
-    """Return ``x`` from a barrier, so XLA computes it in its own kernel."""
-    return jax.lax.optimization_barrier(x)
-
-
-@_unfused.def_vmap
-def _unfused_vmap(axis_size, in_batched, x):
-    """Apply the barrier to the whole batch (JAX < 0.4.38 has no batching rule)."""
-    return _unfused(x), in_batched[0]
-
-
-@jax.custom_jvp
-def _fence(x):
-    """Keep ``x`` out of its consumers' kernels; differentiate as the identity.
-
-    JAX < 0.6 has no differentiation rule for ``optimization_barrier``.
-    """
-    return _unfused(x)
-
-
-@_fence.defjvp
-def _fence_jvp(primals, tangents):
-    (x,), (t,) = primals, tangents
-    return _fence(x), t
-
-
 def grid_cycles(residual, params, T, t0, BW, disabled=(), first=None):
     """Return the restored cycles less the carrier on the FFT grid, modulo one.
 
@@ -302,9 +274,9 @@ def grid_cycles(residual, params, T, t0, BW, disabled=(), first=None):
     cycles = tf.add(c1, tf.multiply(v, cycles))
     cycles = tf.add(c0, tf.multiply(v, cycles))
     # The pair arithmetic above is ~600 dependent float32 operations. Without
-    # the fence XLA fuses a copy into each downstream channel kernel, and
+    # the barrier XLA fuses a copy into each downstream channel kernel, and
     # LLVM then takes 4-9 s per program instead of ~0.3 s. Values unchanged.
-    return _fence(tf.value(tf.fraction(cycles)))
+    return jax.lax.optimization_barrier(tf.value(tf.fraction(cycles)))
 
 
 def _waveform(
