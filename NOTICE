@@ -25,9 +25,9 @@ Version 0.3 adds a JAX implementation of GLASS's sparse-time spline TDI
 response, using analytic paired differences and removable-limit guards.
 It adds differentiable response interpolation and makes this path the default
 waveform engine. The mainline uses reference-spacecraft phase removal and local
-complex polynomials; a Hermite utility with local complex-minimum refinement
-remains available for numerical comparisons. The original
-fast-slow engine remains available explicitly as the Fourier backend.
+complex polynomials. (The unused Hermite comparison utility has been
+removed.) The original fast-slow engine remains available explicitly as the
+Fourier backend.
 
 Version 0.5 restores the physical amplitude of the GLASS-native parameter
 vector on both backends (see README, "Migrating to 0.5.0").

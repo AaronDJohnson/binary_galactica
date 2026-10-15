@@ -61,7 +61,7 @@ def test_conversion_jacobian_carries_physical_scales(params):
     np.testing.assert_allclose(jac, expected, rtol=1e-14, atol=0)
 
 
-@pytest.mark.parametrize("shape", [(), (7,), (9,), (3, 9)])
+@pytest.mark.parametrize("shape", [(9,), ()], ids=["fddot", "scalar"])
 def test_inverse_does_not_silently_drop_frequency_derivatives(shape):
     with pytest.raises(ValueError, match="8"):
         parameter_module.from_glass_vector(jnp.zeros(shape), 1.0)

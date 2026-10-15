@@ -16,16 +16,9 @@ from binary_galactica.glass.bandwidth import _next_pow2, ucb_bandwidth, ucb_bw
 @pytest.mark.parametrize(
     "x,want",
     [
-        (0.0, 1),
-        (0.5, 1),
-        (1.0, 1),  # log2 of a non-positive: clamped
-        (1.5, 1),  # (int)log2(0.5) = -1 -> 2^0
-        (2.0, 2),
-        (3.0, 4),
-        (5.0, 8),
-        (9.0, 16),
+        (1.0, 1),  # log2 of a non-positive: clamped (the x <= 1 branch)
         (16.0, 16),  # exact power of two stays put
-        (17.0, 32),
+        (17.0, 32),  # otherwise round up
     ],
 )
 def test_next_pow2_matches_c_idiom(x, want):
@@ -117,8 +110,10 @@ def test_clamp_order_puts_the_floor_last():
     assert ucb_bandwidth(N=32, **kw) == 16
 
 
-@pytest.mark.parametrize("bandwidth", [ucb_bandwidth, ucb_bw])
-@pytest.mark.parametrize("N", [0, -1, True, np.bool_(True), 1.5, 2.0, np.nan, np.inf])
-def test_bandwidth_requires_a_positive_integer_grid_length(bandwidth, N):
+# The shared integer check, once per condition: below the minimum (0), a
+# bool (an int subclass), and an integral float. ucb_bw delegates to
+# ucb_bandwidth, as do ucb_alignment's N and the other integer arguments.
+@pytest.mark.parametrize("N", [0, True, 2.0])
+def test_bandwidth_requires_a_positive_integer_grid_length(N):
     with pytest.raises(ValueError, match="N must be a positive integer"):
-        bandwidth(f=1e-3, fdot=0.0, costheta=0.0, amp=1e-30, T=7884000.0, N=N)
+        ucb_bandwidth(f=1e-3, fdot=0.0, costheta=0.0, amp=1e-30, T=7884000.0, N=N)

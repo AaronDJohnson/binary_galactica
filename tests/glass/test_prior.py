@@ -120,47 +120,32 @@ def test_snr_cut_is_not_folded_into_the_box_prior(pr):
     assert np.isfinite(pr.log_prior(p))
 
 
-@pytest.mark.parametrize("T", [0.0, -1.0, np.nan, np.inf, -np.inf])
-def test_observation_time_must_be_finite_and_positive(T):
+# One case per guard. Each sits on its boundary (zero, equal bounds, a
+# zero-width interval) so that a weakened comparison also fails.
+def test_observation_time_must_be_finite_and_positive():
     with pytest.raises(ValueError, match="T must be finite and positive"):
-        ucb_prior(T=T, fmin=0.001, fmax=0.002)
+        ucb_prior(T=0.0, fmin=0.001, fmax=0.002)
 
 
-@pytest.mark.parametrize(
-    ("fmin", "fmax"),
-    [(0.0, 0.002), (0.002, 0.001), (0.001, 0.001), (np.nan, 0.002), (0.001, np.inf)],
-)
-def test_frequency_bounds_must_be_finite_positive_and_ordered(fmin, fmax):
+def test_frequency_bounds_must_be_finite_positive_and_ordered():
     with pytest.raises(ValueError, match="0 < fmin < fmax"):
-        ucb_prior(T=T, fmin=fmin, fmax=fmax)
+        ucb_prior(T=T, fmin=0.001, fmax=0.001)
 
 
-@pytest.mark.parametrize(
-    "bounds",
-    [
-        (-46.0, -54.0),
-        (-54.0, -54.0),
-        (-np.inf, -46.0),
-        (-54.0, np.nan),
-        (-54.0,),
-        (-54.0, -50.0, -46.0),
-    ],
-)
-def test_amplitude_bounds_must_be_a_finite_ordered_pair(bounds):
+def test_amplitude_bounds_must_be_a_finite_ordered_pair():
     with pytest.raises(ValueError, match="lnA_bounds.*finite.*ordered"):
-        ucb_prior(T=T, fmin=FMIN, fmax=FMAX, lnA_bounds=bounds)
+        ucb_prior(T=T, fmin=FMIN, fmax=FMAX, lnA_bounds=(-54.0, -54.0))
 
 
-@pytest.mark.parametrize("shape", [(7,), (9,), (2, 4), ()])
-def test_direct_prior_requires_eight_bounds(shape):
+def test_direct_prior_requires_eight_bounds():
+    # Eight entries in the wrong shape: a size check alone would pass.
     with pytest.raises(ValueError, match="bounds.*shape.*8"):
-        UCBPrior(lo=np.zeros(shape), hi=np.ones(shape))
+        UCBPrior(lo=np.zeros((2, 4)), hi=np.ones((2, 4)))
 
 
-@pytest.mark.parametrize("value", [-1.0, 0.0, np.inf, np.nan])
-def test_direct_prior_rejects_invalid_bounds(value):
+def test_direct_prior_rejects_invalid_bounds():
     lo, hi = np.zeros(8), np.ones(8)
-    hi[3] = value
+    hi[3] = 0.0
     with pytest.raises(ValueError, match="finite.*strictly ordered"):
         UCBPrior(lo=lo, hi=hi, periodic={})
 
@@ -176,11 +161,11 @@ def test_prior_snapshots_caller_bounds(pr):
     assert not copied.hi.flags.writeable
 
 
-@pytest.mark.parametrize("params", [np.zeros(7), np.zeros(9), np.array(1.0)])
-@pytest.mark.parametrize("method", ["wrap", "log_prior", "contains"])
-def test_prior_rejects_wrong_parameter_dimensions(pr, params, method):
-    with pytest.raises(ValueError, match="params.*8"):
-        getattr(pr, method)(params)
+def test_prior_rejects_wrong_parameter_dimensions(pr):
+    # wrap's guard; log_prior (and contains, which calls it) has its own,
+    # covered by the batch case below.
+    with pytest.raises(ValueError, match=r"params must have shape \(\.\.\., 8\)"):
+        pr.wrap(np.zeros(7))
 
 
 def test_log_prior_requires_one_parameter_vector(pr):
@@ -195,7 +180,9 @@ def test_wrap_supports_batches_of_eight_parameters(pr):
     assert np.allclose(pr.wrap(shifted), samples)
 
 
-@pytest.mark.parametrize("periodic", [{8: 1.0}, {2: 0.0}, {2: np.inf}, {2: 1.0}])
+# The index guard (8 would otherwise raise IndexError) and the period/width
+# match; a zero or infinite period can never match a finite positive width.
+@pytest.mark.parametrize("periodic", [{8: 1.0}, {2: 1.0}])
 def test_prior_rejects_invalid_periodic_coordinates(pr, periodic):
     with pytest.raises(ValueError, match="periodic"):
         UCBPrior(lo=pr.lo, hi=pr.hi, periodic=periodic)

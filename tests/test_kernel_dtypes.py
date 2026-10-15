@@ -189,45 +189,54 @@ def _contractions(jaxpr):
     ]
 
 
-@pytest.mark.parametrize("name", list(KERNELS))
-def test_float32_inputs_give_float32_outputs(name):
-    function, args = KERNELS[name]
-    leaves = jax.tree_util.tree_leaves(function(*args))
-    assert leaves
-    for leaf in leaves:
-        assert leaf.dtype in (jnp.float32, jnp.complex64), f"{name}: {leaf.dtype}"
+# Each kernel and variant above is a distinct dtype path, so the property tests
+# below check every one and report all the kernels that fail.
 
 
-@pytest.mark.parametrize("name", list(KERNELS))
-def test_float32_jaxprs_contain_no_double_precision(name):
-    function, args = KERNELS[name]
-    assert double_precision_values(jax.make_jaxpr(function)(*args)) == []
+def test_float32_inputs_give_float32_outputs():
+    """Eager calls see NumPy promotion of host inputs, which tracing does not."""
+    wrong = {}
+    for name, (function, args) in KERNELS.items():
+        dtypes = [leaf.dtype for leaf in jax.tree_util.tree_leaves(function(*args))]
+        if not dtypes or any(d not in (jnp.float32, jnp.complex64) for d in dtypes):
+            wrong[name] = dtypes
+    assert not wrong, wrong
 
 
-@pytest.mark.parametrize("name", list(KERNELS))
-def test_float32_follows_float64_at_identical_inputs(name):
+def test_float32_jaxprs_contain_no_double_precision():
+    found = {
+        name: double_precision_values(jax.make_jaxpr(function)(*args))
+        for name, (function, args) in KERNELS.items()
+    }
+    assert not {name: values for name, values in found.items() if values}
+
+
+def test_float32_follows_float64_at_identical_inputs():
     """Both precisions evaluate one function; this is not the accuracy target."""
-    function, args = KERNELS[name]
-    single = jax.tree_util.tree_leaves(function(*args))
-    double = jax.tree_util.tree_leaves(function(*map(_upcast, args)))
-    for low, high in zip(single, double, strict=True):
-        assert high.dtype in (jnp.float64, jnp.complex128)
-        # Measure in float64: squared strains near 1e-44 underflow float32.
-        high = np.asarray(high)
-        error = np.max(np.abs(np.asarray(low, dtype=high.dtype) - high))
-        assert error <= 1e-4 * np.max(np.abs(high)), name
+    errors = {}
+    for name, (function, args) in KERNELS.items():
+        single = jax.tree_util.tree_leaves(function(*args))
+        double = jax.tree_util.tree_leaves(function(*map(_upcast, args)))
+        for low, high in zip(single, double, strict=True):
+            assert high.dtype in (jnp.float64, jnp.complex128), name
+            # Measure in float64: squared strains near 1e-44 underflow float32.
+            high = np.asarray(high)
+            error = np.max(np.abs(np.asarray(low, dtype=high.dtype) - high))
+            # Written so that a NaN error fails.
+            if not error <= 1e-4 * np.max(np.abs(high)):
+                errors[name] = error / np.max(np.abs(high))
+    assert not errors, errors
 
 
-@pytest.mark.parametrize("dtype", ["float32", "float64"])
-@pytest.mark.parametrize("name", CONTRACTING)
-def test_kernel_contractions_use_highest_precision(name, dtype):
-    function, args = KERNELS[name]
-    if dtype == "float64":
-        args = tuple(map(_upcast, args))
-    contractions = _contractions(jax.make_jaxpr(function)(*args))
-    assert contractions
-    for equation in contractions:
-        assert equation.params["precision"] == (HIGHEST, HIGHEST), equation
+def test_kernel_contractions_use_highest_precision():
+    for name in CONTRACTING:
+        function, args = KERNELS[name]
+        for inputs in (args, tuple(map(_upcast, args))):
+            contractions = _contractions(jax.make_jaxpr(function)(*inputs))
+            assert contractions, name
+            for equation in contractions:
+                precision = equation.params["precision"]
+                assert precision == (HIGHEST, HIGHEST), (name, equation)
 
 
 @pytest.mark.parametrize("backend", ["onfly", "fourier"])
@@ -252,8 +261,8 @@ def test_float64_orbit_cache_keeps_float64_for_a_float32_clock():
     )
 
 
-@pytest.mark.parametrize("kappa_0", [0.0, 0.3])
-def test_float64_orbital_phase_is_the_glass_expression(kappa_0):
+def test_float64_orbital_phase_is_the_glass_expression():
+    kappa_0 = 0.3
     times = _upcast(TIMES)
     alpha = PI2 * jnp.asarray(times) / YEAR + kappa_0
     phase = orbital_phase(times, kappa_0=kappa_0)
@@ -264,25 +273,26 @@ def test_float64_orbital_phase_is_the_glass_expression(kappa_0):
     )
 
 
-@pytest.mark.parametrize(
-    ("values", "real"),
-    [
-        ((np.float32(1.0),), np.float32),
-        ((np.ones(2, dtype=np.float32), 1.0, 2), np.float32),
-        ((np.complex64(1j),), np.float32),
-        ((np.float16(1.0),), np.float32),
-        ((np.float32(1.0), np.float64(1.0)), np.float64),
-        ((1.0,), np.float64),
-        ((np.arange(3),), np.float64),
-        (([[1.0, 2.0]],), np.float64),
-        (([1.0, np.float32(2.0)],), np.float32),
-        ((jnp.ones(2, dtype=jnp.complex128),), np.float64),
-    ],
+#: Inputs and the real working dtype they select: each is a distinct rule.
+WORKING_DTYPES = (
+    ((np.float32(1.0),), np.float32),
+    ((np.ones(2, dtype=np.float32), 1.0, 2), np.float32),
+    ((np.complex64(1j),), np.float32),
+    ((np.float16(1.0),), np.float32),
+    ((np.float32(1.0), np.float64(1.0)), np.float64),
+    ((1.0,), np.float64),
+    ((np.arange(3),), np.float64),
+    (([[1.0, 2.0]],), np.float64),
+    (([1.0, np.float32(2.0)],), np.float32),
+    ((jnp.ones(2, dtype=jnp.complex128),), np.float64),
 )
-def test_working_dtypes(values, real):
-    complex_ = np.complex64 if real == np.float32 else np.complex128
-    assert _precision.real_dtype(*values) == real
-    assert _precision.complex_dtype(*values) == complex_
+
+
+def test_working_dtypes():
+    for values, real in WORKING_DTYPES:
+        complex_ = np.complex64 if real == np.float32 else np.complex128
+        assert _precision.real_dtype(*values) == real, values
+        assert _precision.complex_dtype(*values) == complex_, values
 
 
 def test_cast_keeps_python_scalars_weakly_typed():

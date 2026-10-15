@@ -121,8 +121,7 @@ The sparse response removes the phase at spacecraft 0's retarded source time,
 including the common orbital Doppler phase. Local polynomials through up to
 eight complex samples interpolate the remaining smooth response. This avoids
 time-derivative evaluations and singular amplitude/phase coordinates at zeros.
-The reference phase is restored at the FFT times. The Hermite interpolation
-utility remains available internally for numerical comparisons.
+The reference phase is restored at the FFT times.
 
 For correctness, omit `positions` and use the analytic orbit. Legacy position
 caches with shape `(3, BW, 3)` remain accepted and are interpolated cubically
@@ -458,7 +457,8 @@ steps. The example's fixed decomposition avoids state-dependent adaptation.
 ## Validation
 
 ```sh
-pytest
+pytest -m "not slow" -n auto   # fast tier, run on every push (~40 s)
+pytest -n auto                 # full suite, adds the slow validation tier
 ruff check .
 python examples/quickstart.py
 python examples/single_precision.py
@@ -469,8 +469,11 @@ recorded after the 0.5.0 physical-amplitude fix, must reproduce bitwise on its r
 JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
-value enters their compiled programs, and run every `single` function in a
-subprocess with x64 disabled.
+value enters their compiled programs, and require a subprocess with x64
+disabled to reproduce the x64-enabled float32 outputs bit for bit. The slow
+tier checks float32 accuracy at the corners of the supported range (0.25–10
+years, 0.1–30 mHz, epochs 0 and 10 years), float32 Jacobians, the automatic
+response grid, and a chirp drifting thousands of bins.
 
 Legacy Fourier C reference tests cover varied sky positions, inclinations,
 amplitudes, phases, 7/8/9 parameters, all three formats, signed chirps,
@@ -493,11 +496,13 @@ window placement, and donor helper behavior. These checks establish agreement
 with the pinned finite-band analytic-orbit calculation, not convergence for
 every source or a full GLASS pipeline.
 
-[CI](.github/workflows/ci.yml) runs the suite on Python 3.10 with the
+[CI](.github/workflows/ci.yml) runs the fast tier on every pull request and
+push to `main`, on Python 3.10 with the
 [minimum runtime dependencies](requirements/minimum.txt), Python 3.11–3.14
 with current compatible dependencies, and macOS with Python 3.12. It also
 checks lint, formatting, distribution metadata, and the installed wheel from
-outside the checkout. The workflow runs on pushes and pull requests.
+outside the checkout. The [full suite](.github/workflows/full.yml) runs on
+`main`, nightly, and before every PyPI upload.
 
 To reproduce the minimum-dependency check in a clean Python 3.10 environment:
 

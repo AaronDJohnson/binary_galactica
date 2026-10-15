@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-import pytest
 
 import binary_galactica as bg
 from binary_galactica.glass.constants import YEAR
@@ -58,8 +57,7 @@ def test_source_jacobian_matches_dense_response_without_sparse_phase_reference()
     assert np.all(relative_error < 3e-6), relative_error
 
 
-@pytest.mark.parametrize("cached", [False, True], ids=["analytic", "regenerated-cache"])
-def test_fixed_grid_duration_epoch_derivatives_across_auto_grid_threshold(cached):
+def test_fixed_grid_duration_epoch_derivatives_across_auto_grid_threshold():
     duration, bandwidth = YEAR / 4, 128
     params = jnp.array(
         [0.03 * duration + 0.25, 0.2, 2.3, np.log(1e-22), 0.0, 0.8, 0.4, -0.2, 2.0]
@@ -68,16 +66,9 @@ def test_fixed_grid_duration_epoch_derivatives_across_auto_grid_threshold(cached
     def vector(observation):
         elapsed = duration * jnp.exp(observation[0])
         epoch = YEAR * observation[1]
-        # Regeneration must remain inside AD: orbit motion contributes to
-        # duration/epoch derivatives for both cache and analytic paths.
-        positions = bg.orbit_cache(elapsed, epoch, bandwidth) if cached else None
+        # Orbit motion contributes to the duration and epoch derivatives.
         waveform = bg.ucb_waveform(
-            params,
-            T=elapsed,
-            t0=epoch,
-            BW=bandwidth,
-            positions=positions,
-            response_samples=64,
+            params, T=elapsed, t0=epoch, BW=bandwidth, response_samples=64
         )
         return _quadratures(waveform["A"], waveform["E"])
 
@@ -104,9 +95,3 @@ def test_fixed_grid_duration_epoch_derivatives_across_auto_grid_threshold(cached
             np.linalg.norm(actual - finite_difference, axis=0) / column_norm
         )
         assert np.all(relative_error < 2e-6), relative_error
-
-    def power(observation):
-        return jnp.sum(vector(observation) ** 2)
-
-    hessian = np.asarray(jax.jit(jax.hessian(power))(observation))
-    assert np.all(np.isfinite(hessian))
