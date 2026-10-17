@@ -61,7 +61,7 @@ from binary_galactica.glass import _validation
 from binary_galactica.glass import single as _single
 from binary_galactica.glass.tdi import FORMATS
 from binary_galactica.glass.types import WaveformResult
-from binary_galactica.glass.waveform import _options
+from binary_galactica.glass.waveform import _options, _resolve_samples
 from binary_galactica.parameters import GBParams
 
 #: The largest float32 below one, for offsets that round up to a whole bin.
@@ -108,6 +108,10 @@ def ucb_waveform(
     seconds and cast to float32; source parameters are referenced to time
     zero. ``BW`` (positive even FFT length and number of bins), ``fmt`` and
     ``response_samples`` are static and behave as in the float64 function.
+    The automatic response count is chosen from the float32 duration: on the
+    host before compiling when ``T`` is concrete, while a traced ``T``
+    compiles every automatic grid and emits
+    :class:`binary_galactica.ResponseSamplesWarning`.
     Channels use raw GLASS Fourier units; multiply by ``sqrt(T)`` for
     continuous-Fourier units.
 
@@ -134,13 +138,15 @@ def ucb_waveform(
     if q is not None:
         q = _single.bin_index(q, "q", margin=BW // 2, integral_floats=True)
     _single.check_frequency(source[0], q_ref, duration, BW=BW, q=q)
+    fmt = _format(fmt)
+    response_samples = _resolve_samples(response_samples, T, np.float32)
     return _single._ucb_waveform(
         source,
         q_ref,
         T=duration,
         BW=int(BW),
         t0=t0,
-        fmt=_format(fmt),
+        fmt=fmt,
         positions=positions,
         q=q,
         response_samples=response_samples,
@@ -189,6 +195,8 @@ def template_on_window(
     source = _single.offset_parameters(params)
     q_ref = _single.bin_index(q_ref, "q_ref", margin=BW)
     _single.check_frequency(source[0], q_ref, duration, BW=BW)
+    fmt = _format(fmt)
+    response_samples = _resolve_samples(response_samples, T, np.float32)
     return _single._template_on_window(
         source,
         q_ref,
@@ -197,7 +205,7 @@ def template_on_window(
         n_bins=n_bins,
         BW=int(BW),
         t0=t0,
-        fmt=_format(fmt),
+        fmt=fmt,
         positions=positions,
         response_samples=response_samples,
         disabled=_single._DISABLED,
@@ -306,13 +314,15 @@ def tdi_waveform(
                     f"(f0 - q_ref/T)*T must have magnitude below 2**24; got {offset}"
                 )
             _single.check_frequency(offset, q_ref, duration, BW=BW)
+    fmt = _format(fmt)
+    response_samples = _resolve_samples(response_samples, T, np.float32)
     return _single._tdi_waveform(
         physical,
         q_ref,
         T=duration,
         BW=int(BW),
         t0=t0,
-        fmt=_format(fmt),
+        fmt=fmt,
         positions=positions,
         response_samples=response_samples,
         disabled=_single._DISABLED,

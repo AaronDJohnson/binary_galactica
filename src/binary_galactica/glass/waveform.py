@@ -6,6 +6,7 @@ The explicit ``fourier`` backend keeps
 the original GLASS single-link FFT implementation for reproducibility.
 """
 
+import warnings
 from functools import partial
 
 import jax
@@ -34,6 +35,29 @@ from .types import WaveformResult
 BACKENDS = ("onfly", "fourier")
 DEFAULT_RESPONSE_SAMPLES = None
 _AUTO_RESPONSE_SAMPLES = (32, 64, 128, 256, 512, 1024, 2048)
+
+
+class ResponseSamplesWarning(UserWarning):
+    """The automatic response grid could not be chosen before compiling.
+
+    Emitted once by a public waveform call that receives a traced duration
+    ``T`` with ``response_samples=None``. The compiled program then holds
+    every automatic grid behind ``jax.lax.switch``, and under differentiation
+    JAX keeps the intermediate values of all of them, which multiplies memory
+    and run time. Pass an explicit static ``response_samples``, or close over
+    a concrete ``T`` so that the count is chosen on the host.
+    """
+
+
+_TRACED_DURATION = (
+    "response_samples=None with a traced duration T: the automatic response "
+    f"grid depends on the value of T, so all {len(_AUTO_RESPONSE_SAMPLES)} of its "
+    f"grids ({_AUTO_RESPONSE_SAMPLES[0]} to {_AUTO_RESPONSE_SAMPLES[-1]} samples) "
+    "are compiled behind jax.lax.switch, and under differentiation JAX keeps "
+    "the intermediate values of every one, multiplying memory and run time. "
+    "Pass an explicit static response_samples, or close over a concrete T (a "
+    "Python or NumPy scalar) so that the count is chosen before compiling."
+)
 
 
 def _native_parameters(params, T):
@@ -82,6 +106,30 @@ def _options(backend, response_samples):
     if response_samples < 4:
         raise ValueError("response_samples must be an integer at least 4")
     return response_samples
+
+
+def _resolve_samples(response_samples, T, real):
+    """Choose the automatic response count on the host, before compiling.
+
+    Call directly from a public entry, after its validation, with the
+    caller's own ``T``: validation repacks a concrete JAX array with ``jnp``,
+    which inside an enclosing trace makes it a tracer. A concrete ``T`` gives
+    exactly the count the compiled switch would select for the same value in
+    the working dtype ``real``. A traced ``T`` keeps ``None``, and the
+    switch, and warns once at the caller's line. Compiled callers below a
+    public entry pass its result on, so they neither resolve nor warn again.
+    """
+    if response_samples is not None:
+        return response_samples
+    if not isinstance(T, jax.Array) and _validation._contains_jax(T):
+        T = jnp.asarray(T)  # A sequence holding JAX values, packed as validation does.
+    if isinstance(T, jax.core.Tracer):
+        warnings.warn(_TRACED_DURATION, ResponseSamplesWarning, stacklevel=3)
+        return None
+    duration = np.asarray(T, dtype=real)
+    if duration.shape != ():
+        return None  # The entry's own validation rejects it.
+    return _automatic_samples(duration, real)
 
 
 def tdi_response(
@@ -159,6 +207,13 @@ def ucb_waveform(
     at least four to choose the count explicitly. Increase both grid controls
     separately to check convergence for the source and observation duration;
     the automatic policy is not an error bound, especially beyond 16 years.
+    A concrete ``T`` (a Python or NumPy scalar, or a concrete JAX array, also
+    when captured by an enclosing ``jax.jit``) fixes the automatic count on
+    the host before compiling. A traced ``T`` cannot: every automatic grid is
+    then compiled behind ``jax.lax.switch``, reverse-mode derivatives keep the
+    intermediates of all of them, and the call emits
+    :class:`ResponseSamplesWarning`. Close over a fixed duration, and pass an
+    explicit count when ``T`` must be a ``jit``, ``grad`` or ``vmap`` argument.
 
     The sparse envelope removes the source phase at spacecraft 0's retarded
     time. Local polynomials through up to eight complex response samples
@@ -198,7 +253,23 @@ def ucb_waveform(
         return _fourier_waveform(
             params, T=T, BW=BW, t0=t0, fmt=fmt, positions=positions, q=q
         )
-    T, t0, positions = _validation.observation(T, BW, t0, positions)
+    duration, t0, positions = _validation.observation(T, BW, t0, positions)
+    params, q = _onfly_inputs(params, duration, fmt, q)
+    response_samples = _resolve_samples(response_samples, T, np.float64)
+    return _ucb_waveform(
+        params,
+        T=duration,
+        BW=int(BW),
+        t0=t0,
+        fmt=fmt,
+        positions=positions,
+        q=q,
+        response_samples=response_samples,
+    )
+
+
+def _onfly_inputs(params, T, fmt, q):
+    """Validate the on-fly source, format and carrier override."""
     params = _native_parameters(params, T)
     if fmt not in FORMATS:
         raise ValueError(f"format must be one of {FORMATS}; got {fmt!r}")
@@ -206,6 +277,23 @@ def ucb_waveform(
         q = _validation.scalar(q, "q")
         if not isinstance(q, jax.core.Tracer) and np.asarray(q) != np.trunc(q):
             raise ValueError("q must be an integral Fourier-bin index")
+    return params, q
+
+
+def _waveform(params, *, T, BW, t0, fmt, positions, backend, response_samples):
+    """Validate and generate like :func:`ucb_waveform`, without resolving.
+
+    For compiled callers below a public entry, which has already resolved
+    ``response_samples`` with :func:`_resolve_samples`, or warned and kept
+    ``None``, so that one public call warns at most once.
+    """
+    response_samples = _options(backend, response_samples)
+    if backend == "fourier":
+        return _fourier_waveform(
+            params, T=T, BW=BW, t0=t0, fmt=fmt, positions=positions
+        )
+    T, t0, positions = _validation.observation(T, BW, t0, positions)
+    params, q = _onfly_inputs(params, T, fmt, None)
     return _ucb_waveform(
         params,
         T=T,
@@ -244,17 +332,36 @@ def _cached_positions(positions, times, T, t0):
 def _duration_boundaries(real):
     """Durations above which the automatic grid takes its next count.
 
-    Lower precisions round the float64 thresholds down. A duration then
-    exceeds one exactly when its float64 value exceeds the float64 threshold,
-    so both precisions choose the same grid at identical inputs.
+    A host NumPy array of dtype ``real``, shared by the compiled selection
+    and :func:`_automatic_samples`. Lower precisions round the float64
+    thresholds down. A duration then exceeds one exactly when its float64
+    value exceeds the float64 threshold, so both precisions choose the same
+    grid at identical inputs.
     """
-    if real == jnp.float64:
-        return YEAR * jnp.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=real) / 128
     exact = YEAR * np.asarray(_AUTO_RESPONSE_SAMPLES[:-1], dtype=np.float64) / 128
+    if real == jnp.float64:
+        return exact
     rounded = exact.astype(real)
     return np.where(
         rounded > exact, np.nextafter(rounded, rounded.dtype.type(0)), rounded
     )
+
+
+def _automatic_index(T, real):
+    """Select the automatic grid inside a compiled function, as an int32 index.
+
+    ``T`` must already have the working dtype ``real``.
+    """
+    return jnp.sum(_duration_boundaries(real) < T, dtype=jnp.int32)
+
+
+def _automatic_samples(T, real):
+    """Return the count :func:`_automatic_index` selects, for a host duration.
+
+    The same comparison in NumPy, after casting ``T`` to the working dtype.
+    """
+    duration = np.asarray(T, dtype=real)
+    return _AUTO_RESPONSE_SAMPLES[int(np.sum(_duration_boundaries(real) < duration))]
 
 
 def _response_envelope(params, T, BW, t0, positions, response_samples):
@@ -281,10 +388,11 @@ def _response_envelope(params, T, BW, t0, positions, response_samples):
 
     if response_samples is not None:
         return sample(response_samples, params, T, t0, positions)
-    # Every branch returns the same FFT-grid shape. Only the selected sparse
-    # response is evaluated for a scalar T; JAX can still trace T and its AD.
-    boundaries = _duration_boundaries(real)
-    index = jnp.sum(boundaries < T, dtype=jnp.int32)
+    # Public entries resolve a concrete T on the host, so only a traced T
+    # reaches the switch. Every branch returns the same FFT-grid shape and only
+    # the selected one runs for a scalar T, but every branch is compiled and
+    # reverse-mode AD keeps the residuals of all of them.
+    index = _automatic_index(T, real)
     branches = tuple(partial(sample, count) for count in _AUTO_RESPONSE_SAMPLES)
     return jax.lax.switch(index, branches, params, T, t0, positions)
 
@@ -353,6 +461,7 @@ def _ucb_waveform(
 __all__ = [
     "BACKENDS",
     "DEFAULT_RESPONSE_SAMPLES",
+    "ResponseSamplesWarning",
     "orbit_cache",
     "params_from_native",
     "tdi_response",

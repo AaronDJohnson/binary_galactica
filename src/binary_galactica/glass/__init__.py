@@ -66,6 +66,7 @@ from .types import WaveformResult
 from .waveform import (
     BACKENDS,
     DEFAULT_RESPONSE_SAMPLES,
+    ResponseSamplesWarning,
     orbit_cache,
     params_from_native,
     tdi_response,
@@ -75,6 +76,7 @@ from .waveform import (
 __all__ = [
     "BACKENDS",
     "DEFAULT_RESPONSE_SAMPLES",
+    "ResponseSamplesWarning",
     "tdi_response",
     "Alignment",
     "FORMATS",

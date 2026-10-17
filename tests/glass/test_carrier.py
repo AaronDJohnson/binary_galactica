@@ -2,6 +2,7 @@
 
 import jax
 import numpy as np
+import pytest
 
 import binary_galactica as bg
 
@@ -44,9 +45,11 @@ def test_constant_duration_jit_matches_direct_and_dynamic_spectra(glass_params):
     params[0] = 15616.0
     direct = bg.ucb_waveform(params, T=duration, BW=32, fmt=fmt)
     constant = jax.jit(lambda p: bg.ucb_waveform(p, T=duration, BW=32, fmt=fmt))(params)
-    dynamic = jax.jit(lambda p, t: bg.ucb_waveform(p, T=t, BW=32, fmt=fmt))(
-        params, duration
-    )
+    # A traced duration keeps the automatic grid's switch, and says so.
+    with pytest.warns(bg.ResponseSamplesWarning):
+        dynamic = jax.jit(lambda p, t: bg.ucb_waveform(p, T=t, BW=32, fmt=fmt))(
+            params, duration
+        )
     # Also cover an outer function whose source and duration are both constants.
     closed = jax.jit(lambda: bg.ucb_waveform(params, T=duration, BW=32, fmt=fmt))()
     assert float(direct["qmin"]) == 15599.0
@@ -73,4 +76,7 @@ def test_carrier_handles_nested_source_and_duration_batches(glass_params):
         jax.vmap(jax.vmap(carrier, in_axes=(0, None)), in_axes=(None, 0))
     )
     expected = np.trunc((sources[:, 0] / durations[:, None]) * durations[:, None])
-    np.testing.assert_array_equal(evaluate(sources, durations), expected)
+    # Batched durations take different automatic grids, so the switch remains.
+    with pytest.warns(bg.ResponseSamplesWarning):
+        actual = evaluate(sources, durations)
+    np.testing.assert_array_equal(actual, expected)

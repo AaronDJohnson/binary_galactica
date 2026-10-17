@@ -155,12 +155,18 @@ first calls were roughly 1 second for native on-fly calls and 3 seconds for
 Jacobians, versus roughly 0.1–0.3 seconds for Fourier. Reuse compiled functions
 for repeated inference. The original four-source table uses a different
 fiducial source and captures duration as a constant in its outer-JIT case.
+The workload runs passed duration as a traced argument, so these first calls
+compiled every automatic grid. Public calls now choose the automatic count on
+the host whenever the duration is concrete, and compile only that grid.
 
 Automatic grid changes introduce small interpolation jumps at duration
 thresholds. AD follows the selected branch. Use an explicit sample count when
-differentiating across a threshold. A fixed-duration source catalogue shares
-one branch; batching different durations can evaluate multiple branches, so
-group by duration or fix the count for that workload.
+differentiating across a threshold. A traced duration with the automatic grid
+compiles all seven grids behind a switch, and reverse-mode derivatives keep the
+intermediate values of every one, so memory and time grow with the batch; such
+calls emit `ResponseSamplesWarning`. Batching different durations also
+evaluates multiple branches. Close over a fixed duration, group by duration,
+or fix the count for that workload.
 
 Reproduce convergence, timing and the broader accuracy validation with:
 
@@ -336,9 +342,10 @@ answer different performance questions.
 ## Repeated on-fly calculations
 
 For repeated single-source inference, use `template_on_window` with a fixed
-analysis window. A fixed duration uses one automatic response count; an explicit
-`response_samples` also keeps the grid fixed when varying duration. It compiles
-waveform generation and placement together. The default analytic orbit is the
+analysis window. A concrete duration uses one automatic response count, chosen
+on the host before compiling; an explicit `response_samples` also keeps the
+grid fixed when the duration is traced or varies. It compiles waveform
+generation and placement together. The default analytic orbit is the
 most accurate option:
 
 ```python
@@ -362,8 +369,12 @@ template = bg.template_on_window(
 ```
 
 When integrating with a likelihood, compile the surrounding array calculation
-too. Pass duration as an argument when varying it between calls. Keep its data
-and noise arrays on the device across proposals. A legacy `(3, BW, 3)` orbit
+too. Close over a fixed duration, so that the automatic response count is
+chosen on the host. Pass duration as an argument only when varying it between
+calls, and then pass an explicit `response_samples` as well: with a traced
+duration and the automatic grid, every grid is compiled and differentiated
+(see above), and the call emits `ResponseSamplesWarning`. Keep the data and
+noise arrays on the device across proposals. A legacy `(3, BW, 3)` orbit
 cache is accepted and cubically interpolated to response times, but its coarse
 grid constrains orbit accuracy; prefer the analytic orbit unless reuse is
 required. The benchmark does not include likelihood integration.
@@ -376,9 +387,13 @@ required. The benchmark does not include likelihood integration.
   Choose a batch size that fits the device's memory; a larger batch also makes
   derivative arrays larger.
 - `T` may be dynamic or captured as a constant: the carrier calculation
-  preserves GLASS's rounding in both cases. Bandwidth, response sample count,
-  backend, and format are static and changing them can require compilation.
-  Derivatives hold the discrete carrier and interpolation choices fixed.
+  preserves GLASS's rounding in both cases. A captured `T`, a Python or NumPy
+  scalar or a concrete JAX array, lets public calls choose the automatic
+  response count on the host. A dynamic `T` needs an explicit
+  `response_samples` to avoid compiling every automatic grid. Bandwidth,
+  response sample count, backend, and format are static and changing them can
+  require compilation. Derivatives hold the discrete carrier and interpolation
+  choices fixed.
 - Keep NumPy inputs on the host for ordinary validated calls; use device arrays
   when composing a compiled calculation. Packing each host scalar with JAX
   before every call adds dispatch work.
@@ -395,17 +410,24 @@ import jax.numpy as jnp
 import binary_galactica as bg
 
 
-@partial(jax.jit, static_argnames=("bandwidth",))
-def catalogue_channels(sources, duration, epoch, *, bandwidth):
+@partial(jax.jit, static_argnames=("bandwidth", "samples"))
+def catalogue_channels(sources, duration, epoch, *, bandwidth, samples):
     def one(source):
-        wave = bg.ucb_waveform(source, T=duration, t0=epoch, BW=bandwidth)
+        wave = bg.ucb_waveform(
+            source, T=duration, t0=epoch, BW=bandwidth, response_samples=samples
+        )
         return jnp.stack((wave["A"], wave["E"]))
 
     return jax.vmap(one)(sources)
 ```
 
 Here `sources` holds native vectors and the result has shape
-`(number_of_sources, 2, bandwidth)` in raw GLASS units. An A/E-only calculation
-can discard unused outputs during compilation. Ordinary public calls still
+`(number_of_sources, 2, bandwidth)` in raw GLASS units. `duration` is a traced
+argument, so the static `samples` fixes the response grid: the automatic policy
+would choose 32 for a quarter year, 128 for a year and 512 for four years, but
+check convergence for the intended sources. Without it, every automatic grid
+would be compiled. If the duration never changes, close over it instead and
+omit `response_samples`; the count is then chosen on the host. An A/E-only
+calculation can discard unused outputs during compilation. Ordinary public calls still
 perform eager input validation; traced invalid values retain the documented
 NaN behavior.

@@ -127,6 +127,9 @@ FFT band, while `response_samples` independently controls the sparse response.
 The default `None` selects a power of two from 32 through 2048, targeting at
 least 128 samples per observation year: 32 for a quarter year, 128 for a year,
 and 512 for four years. Set an integer of at least four to fix the grid.
+With a concrete `T`, public calls choose the automatic count on the host
+before compiling; see [JAX and fixed analysis windows](#jax-and-fixed-analysis-windows)
+for a traced `T`.
 The automatic policy is a starting point, not an error bound; observations
 beyond 16 years particularly need an explicit convergence check.
 Choose both grids by convergence for the
@@ -284,7 +287,7 @@ def channels(native, duration):
 
 jacobian = jax.jacfwd(channels, argnums=0)(jnp.asarray(p), T)
 catalogue = jnp.stack([jnp.asarray(p), jnp.asarray(p)])
-batch = jax.jit(jax.vmap(channels, in_axes=(0, None)))(catalogue, T)
+batch = jax.jit(jax.vmap(lambda native: channels(native, T)))(catalogue)
 ```
 
 The fixed-window helper zero-fills missing bins and drops bins outside the
@@ -299,10 +302,16 @@ Pass `T` as an argument when varying or differentiating the duration without
 recompiling. `BW`, `response_samples`, `backend`, `fmt`, `bin_lo`, and `n_bins`
 are static.
 `ucb_waveform(..., q=...)` can explicitly pin the carrier.
-Automatic response counts change discretely with duration. AD follows the
-selected grid; use an explicit `response_samples` when differentiating across
-a duration threshold. For batches with different durations, grouping by duration
-or using an explicit count avoids evaluating multiple automatic grid branches.
+Automatic response counts change discretely with duration. A captured `T`, a
+Python or NumPy scalar or a concrete JAX array, lets each public call choose
+the count on the host and compile one grid. A traced `T` cannot: all seven
+automatic grids are compiled behind `jax.lax.switch`, reverse-mode derivatives
+keep the intermediate values of every one, and the call emits
+`ResponseSamplesWarning`. Pass an explicit `response_samples` whenever `T`
+itself is a `jit`, `grad` or `vmap` argument. AD follows the selected grid;
+use an explicit `response_samples` when differentiating across a duration
+threshold. For batches with different durations, grouping by duration or using
+an explicit count avoids evaluating multiple automatic grid branches.
 
 Ordinary `ucb_waveform` and `tdi_waveform` calls validate inputs and raise
 `ValueError` for invalid durations, frequencies, angles, carrier overrides,
@@ -485,7 +494,10 @@ python examples/single_precision.py
 
 The test configuration enables x64 for the session. A float64 golden archive,
 recorded after the 0.5.0 physical-amplitude fix, must reproduce bitwise on its recording
-JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. The
+JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. Its
+automatic response-grid cases, recorded through a switch over every grid that
+public calls no longer compile for a concrete duration, must agree to 1e-13 of
+peak on the recording build. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
 value enters their compiled programs, and require a subprocess with x64

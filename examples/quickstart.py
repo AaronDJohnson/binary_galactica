@@ -51,7 +51,7 @@ print(f"Fixed A/E analysis window: {window.shape}")
 
 
 def channels(params, observation_time):
-    """Keep duration traced in JIT and differentiation wrappers."""
+    """Return A/E; pass an explicit response count if duration is traced."""
     result = bg.ucb_waveform(
         params,
         T=observation_time,
@@ -64,7 +64,9 @@ def channels(params, observation_time):
 jacobian = jax.jacfwd(channels, argnums=0)(jnp.asarray(native), duration)
 print(f"Native-parameter Jacobian: {jacobian.shape} (channel, bin, parameter)")
 catalogue = jnp.stack([native, native])
-batch = jax.jit(jax.vmap(channels, in_axes=(0, None)))(catalogue, duration)
+# Closing over the duration lets the automatic response count be chosen before
+# compiling; a traced duration would compile every automatic grid.
+batch = jax.jit(jax.vmap(lambda params: channels(params, duration)))(catalogue)
 print(f"Batched channels: {batch.shape}")
 physical = bg.from_glass_vector(native, duration)
 physical_wave = bg.tdi_waveform(

@@ -4,13 +4,15 @@
 commit 8363ec0. Bitwise equality is only meaningful on the same JAX/XLA build
 and CPU. When the recorded jax, jaxlib, NumPy, machine and default backend
 match the running environment, every output must keep its recorded dtype,
-shape and exact bits. Elsewhere a different compiler or library may
-legitimately move the last bits, so outputs must instead agree to within a
-relative 1e-12 of each array's peak magnitude, or 1e-8 for the legacy Fourier
-backend, whose sines of full phases near 1e7 rad differ by about 5e-10 of
-peak between builds. Failure messages state which comparison applied. Double
-precision must already be enabled, by the test configuration, before these
-tests run.
+shape and exact bits, except in the automatic response-grid cases, which must
+agree to 1e-13 of peak: public calls now choose that grid on the host and
+compile only it, not the recorded switch over every grid. Elsewhere a
+different compiler or library may legitimately move the last bits, so outputs
+must instead agree to within a relative 1e-12 of each array's peak magnitude,
+or 1e-8 for the legacy Fourier backend, whose sines of full phases near
+1e7 rad differ by about 5e-10 of peak between builds. Failure messages state
+which comparison applied. Double precision must already be enabled, by the
+test configuration, before these tests run.
 """
 
 from __future__ import annotations
@@ -32,6 +34,12 @@ RELATIVE_TOLERANCE = 1e-12
 #: 1e7 rad, where one rounding of the argument is about 1e-9 rad; on x86_64
 #: (JAX 0.4.38) its outputs moved by up to 5.4e-10 of peak with unchanged code.
 FOURIER_TOLERANCE = 1e-8
+#: The same on the recording build for automatic-grid cases. Their bits were
+#: recorded through a ``lax.switch`` over every automatic grid; host
+#: resolution compiles the selected grid alone, which XLA fuses differently.
+#: On that build they moved by at most 2.2e-15 of peak, while choosing a
+#: neighbouring grid moves an output by about 1e-10 of its norm.
+AUTOMATIC_GRID_TOLERANCE = 1e-13
 #: Environment fields that fix the exact bits of a float64 result. NumPy is
 #: included because the interpolation coefficients are host NumPy constants.
 BUILD = ("jax", "jaxlib", "numpy", "machine", "backend")
@@ -110,17 +118,28 @@ def test_golden_cases_cover_the_float64_entry_points():
 def test_float64_outputs_match_golden(generator, name):
     """Exact bits on the recording build; a fraction of peak elsewhere."""
     recorded, running = METADATA["environment"], generator.environment()
-    exact = all(recorded[key] == running[key] for key in BUILD)
+    same_build = all(recorded[key] == running[key] for key in BUILD)
     case = CASES[name]
-    tolerance = (
-        FOURIER_TOLERANCE if case.get("backend") == "fourier" else RELATIVE_TOLERANCE
-    )
-    comparison = (
-        f"bitwise, same build: {_build(running)}"
-        if exact
-        else f"relative {tolerance:g} of peak, recorded on "
-        f"{_build(recorded)}; running {_build(running)}"
-    )
+    automatic = "response_samples" in case and case["response_samples"] is None
+    exact = same_build and not automatic
+    if case.get("backend") == "fourier":
+        tolerance = FOURIER_TOLERANCE
+    elif same_build:
+        tolerance = AUTOMATIC_GRID_TOLERANCE
+    else:
+        tolerance = RELATIVE_TOLERANCE
+    if exact:
+        comparison = f"bitwise, same build: {_build(running)}"
+    elif same_build:
+        comparison = (
+            f"relative {tolerance:g} of peak, automatic grid resolved on the "
+            f"host, same build: {_build(running)}"
+        )
+    else:
+        comparison = (
+            f"relative {tolerance:g} of peak, recorded on "
+            f"{_build(recorded)}; running {_build(running)}"
+        )
     actual = generator.evaluate(case)
     assert sorted(actual) == sorted(case["outputs"])
     for output, value in actual.items():

@@ -32,10 +32,16 @@ from functools import partial
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from . import _validation
 from .convert import GLASS_TO_CONTINUOUS
-from .waveform import DEFAULT_RESPONSE_SAMPLES, _options, ucb_waveform
+from .waveform import (
+    DEFAULT_RESPONSE_SAMPLES,
+    _options,
+    _resolve_samples,
+    _waveform,
+)
 
 
 def template_on_window(
@@ -83,13 +89,19 @@ def template_on_window(
         of at least four fixes the count independently of ``BW``. Unused by
         the legacy backend. Pass an explicit count when differentiating ``T``
         across automatic grid thresholds: automatic selection is piecewise
-        and changes the interpolation grid.
+        and changes the interpolation grid. A concrete ``T`` fixes the
+        automatic count on the host before compiling; a traced ``T``
+        compiles every automatic grid and emits
+        :class:`~binary_galactica.glass.waveform.ResponseSamplesWarning`, as
+        for :func:`binary_galactica.glass.ucb_waveform`.
 
     """
     _validation.require_x64()
     bin_lo = _validation.integer(bin_lo, "bin_lo")
     n_bins = _validation.integer(n_bins, "n_bins", minimum=0)
     response_samples = _options(backend, response_samples)
+    if backend == "onfly":
+        response_samples = _resolve_samples(response_samples, T, np.float64)
     return _template_on_window(
         params,
         T=T,
@@ -112,7 +124,7 @@ def _template_on_window(
     params, *, T, bin_lo, n_bins, BW, t0, fmt, positions, backend, response_samples
 ):
     """Compile waveform generation and placement after validating static indices."""
-    w = ucb_waveform(
+    w = _waveform(
         params,
         T=T,
         BW=BW,

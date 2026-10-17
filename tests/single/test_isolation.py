@@ -14,6 +14,7 @@ from typing import Any
 
 import jax
 import numpy as np
+import pytest
 
 import binary_galactica as bg
 from binary_galactica import single as bg32
@@ -190,6 +191,14 @@ def waveform(fmt="sangria", length=9, **options):
     return evaluate, tuple(options.values())
 
 
+def automatic_grid(params, q_ref, duration, epoch):
+    """Trace the automatic grid's switch, which a traced duration keeps."""
+    with pytest.warns(bg.ResponseSamplesWarning):
+        return bg32.ucb_waveform(
+            params, q_ref=q_ref, T=duration, t0=epoch, BW=CASE.bandwidth
+        )
+
+
 #: Each float32 function as ``(function, extra traced arguments)``; the
 #: first four arguments are always ``params, q_ref, T, t0``. Each entry takes
 #: a distinct traced path: the three formats, the 7-, 8- and 9-entry phase
@@ -204,12 +213,7 @@ TRACED = {
     "ucb_waveform, 8 entries": waveform(length=8),
     "ucb_waveform, cache": waveform(positions=CACHE),
     "ucb_waveform, override": waveform(q=np.int32(CASE.carrier + 2)),
-    "ucb_waveform, automatic grid": (
-        lambda p, q, duration, epoch: bg32.ucb_waveform(
-            p, q_ref=q, T=duration, t0=epoch, BW=CASE.bandwidth
-        ),
-        (),
-    ),
+    "ucb_waveform, automatic grid": (automatic_grid, ()),
     "template_on_window": (
         lambda p, q, duration, epoch, positions: bg32.template_on_window(
             p,

@@ -67,24 +67,29 @@ def test_orbital_phase_removal_allows_sparse_high_frequency_response():
 
 
 def test_automatic_response_grid_tracks_traced_observation_duration():
-    """Short and long observations resolve the response with one compiled API."""
+    """Short and long observations resolve the response with one compiled API.
+
+    A traced duration keeps the switch over every automatic grid, and warns
+    about its cost when the function is traced.
+    """
     generate = jax.jit(
         lambda p, duration: bg.ucb_waveform(
             p, T=duration, BW=1024, t0=12_345.0, response_samples=None
         )
     )
-    for years in (0.25, 1.0, 4.0):
-        duration = years * 31_557_600.0
-        source = np.array(
-            [0.1 * duration + 0.25, 0.38, 3.7, np.log(1e-22), -0.8, 1.5, 1.1, 0.05]
-        )
-        expected = _dense_sangria(source, duration, 1024, epoch=12_345.0)
-        actual = generate(source, duration)
-        for index, channel in enumerate(("X", "Y", "Z")):
-            relative_error = np.linalg.norm(
-                actual[channel] - expected[index]
-            ) / np.linalg.norm(expected[index])
-            assert relative_error < 2e-6
+    with pytest.warns(bg.ResponseSamplesWarning):
+        for years in (0.25, 1.0, 4.0):
+            duration = years * 31_557_600.0
+            source = np.array(
+                [0.1 * duration + 0.25, 0.38, 3.7, np.log(1e-22), -0.8, 1.5, 1.1, 0.05]
+            )
+            expected = _dense_sangria(source, duration, 1024, epoch=12_345.0)
+            actual = generate(source, duration)
+            for index, channel in enumerate(("X", "Y", "Z")):
+                relative_error = np.linalg.norm(
+                    actual[channel] - expected[index]
+                ) / np.linalg.norm(expected[index])
+                assert relative_error < 2e-6
 
 
 def test_onfly_formats_preserve_existing_unit_relationships():

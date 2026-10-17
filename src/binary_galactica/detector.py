@@ -13,7 +13,8 @@ from binary_galactica.glass.types import WaveformResult
 from binary_galactica.glass.waveform import (
     DEFAULT_RESPONSE_SAMPLES,
     _options,
-    ucb_waveform,
+    _resolve_samples,
+    _waveform,
 )
 from binary_galactica.parameters import GBParams, to_glass_vector
 
@@ -59,7 +60,10 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
             static integer of at least four fixes the count independently of
             ``BW``. Unused by the legacy backend. Pass an explicit count when
             differentiating ``T`` across automatic grid thresholds: automatic
-            selection is piecewise and changes the interpolation grid.
+            selection is piecewise and changes the interpolation grid. A
+            concrete ``T`` fixes the automatic count on the host before
+            compiling; a traced ``T`` compiles every automatic grid and emits
+            ``ResponseSamplesWarning``, as for :func:`ucb_waveform`.
 
     Returns:
         A dictionary with complex ``X/Y/Z/A/E`` arrays, ``qmin``, and absolute
@@ -93,6 +97,8 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
             raise ValueError("iota must lie in [0, pi]")
         if not -np.pi / 2 <= p[7] <= np.pi / 2:
             raise ValueError("beta must lie in [-pi/2, pi/2]")
+    if backend == "onfly":
+        response_samples = _resolve_samples(response_samples, T, np.float64)
     return _tdi_waveform(
         theta,
         T=duration,
@@ -127,7 +133,7 @@ def _tdi_waveform(
         & (jnp.abs(theta[7]) <= jnp.pi / 2)
     )
     native = jnp.where(valid, to_glass_vector(theta, T), jnp.nan)
-    return ucb_waveform(
+    return _waveform(
         native,
         T=T,
         BW=BW,

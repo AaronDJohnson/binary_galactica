@@ -105,9 +105,11 @@ def test_traced_invalid_native_sources_return_nan(glass_params):
 @pytest.mark.parametrize("kwargs", [{"T": -1.0}, {"t0": np.inf}, {"q": 7884.5}])
 def test_traced_invalid_grid_values_return_nan(glass_params, kwargs):
     arguments = {"T": 7_884_000.0, "t0": 0.0, "q": 7884.0, **kwargs}
+    # A fixed grid: with a traced duration the automatic one compiles every
+    # branch of its switch, which test_onfly covers.
     evaluate = jax.jit(
         lambda duration, epoch, carrier: bg.ucb_waveform(
-            glass_params, T=duration, BW=32, t0=epoch, q=carrier
+            glass_params, T=duration, BW=32, t0=epoch, q=carrier, response_samples=32
         )
     )
     result = evaluate(arguments["T"], arguments["t0"], arguments["q"])
