@@ -14,8 +14,9 @@
 """GLASS-compatible galactic-binary TDI waveforms in JAX.
 
 The default waveform constructs first-generation frozen-geometry XYZ directly
-at sparse reception times, interpolates its demodulated analytic response, and
-then Fourier transforms it. It follows the pinned GLASS
+at sparse reception times, interpolates its demodulated analytic response onto
+the FFT times (or evaluates it there, when the sparse grid has at least as many
+samples), and then Fourier transforms it. It follows the pinned GLASS
 ``LISA_spline_response`` / ``LISA_TDI_spline`` path from commit
 ``079c6a3a6fcf380a7c107f39640fff7fc720d0f1``. The explicit
 ``backend="fourier"`` option retains GLASS's earlier fast-slow / reduced-DFT

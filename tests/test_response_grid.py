@@ -1,11 +1,14 @@
 """Public entries choose the automatic response grid before compiling.
 
 With ``response_samples=None`` the compiled kernel can select one of seven
-response grids from the duration with ``jax.lax.switch``. When ``T`` is
-traced, every branch is compiled and, under differentiation, JAX keeps the
-intermediate values of all of them. Each public entry therefore chooses the
-count on the host whenever ``T`` is concrete, exactly as the compiled
-selection would, and warns once when it cannot.
+response counts from the duration with ``jax.lax.switch``. Counts below
+``BW`` interpolate, each in its own branch; every count of at least ``BW``
+evaluates the response directly and shares one. When ``T`` is traced, every
+branch is compiled and, under differentiation, JAX keeps the intermediate
+values of all of them. Each public entry therefore chooses the count on the
+host whenever ``T`` is concrete, exactly as the compiled selection would, and
+warns once when it cannot, unless ``BW`` is at most the smallest count and
+there is nothing to select.
 """
 
 from __future__ import annotations
@@ -28,7 +31,9 @@ from binary_galactica.glass.constants import YEAR
 from tests.conftest import nested_jaxprs
 
 DURATION = 7_884_000.0
-BW = 8
+#: Above the smallest automatic count, so that a traced duration keeps a
+#: switch: 32 samples interpolate and larger counts evaluate directly.
+BW = 64
 NATIVE = bg.params_from_native(
     f0=1e-3,
     fdot=1e-18,
@@ -45,25 +50,28 @@ Q_REF, NATIVE32 = bg32.split_native(NATIVE, DURATION)
 Q_PHYSICAL, PHYSICAL32 = bg32.split_physical(PHYSICAL, DURATION)
 WINDOW = {"bin_lo": Q_REF - BW // 2, "n_bins": BW}
 
-#: Every public function taking ``response_samples``, as a function of ``T``.
+#: Every public function taking ``response_samples``, as a function of ``T``
+#: and, optionally, the bandwidth.
 ENTRIES = {
-    "ucb_waveform": lambda duration, **kw: bg.ucb_waveform(
-        NATIVE, T=duration, BW=BW, **kw
+    "ucb_waveform": lambda duration, bandwidth=BW, **kw: bg.ucb_waveform(
+        NATIVE, T=duration, BW=bandwidth, **kw
     ),
-    "template_on_window": lambda duration, **kw: bg.template_on_window(
-        NATIVE, T=duration, BW=BW, **WINDOW, **kw
+    "template_on_window": lambda duration, bandwidth=BW, **kw: bg.template_on_window(
+        NATIVE, T=duration, BW=bandwidth, **WINDOW, **kw
     ),
-    "tdi_waveform": lambda duration, **kw: bg.tdi_waveform(
-        PHYSICAL, T=duration, BW=BW, **kw
+    "tdi_waveform": lambda duration, bandwidth=BW, **kw: bg.tdi_waveform(
+        PHYSICAL, T=duration, BW=bandwidth, **kw
     ),
-    "single.ucb_waveform": lambda duration, **kw: bg32.ucb_waveform(
-        NATIVE32, q_ref=Q_REF, T=duration, BW=BW, **kw
+    "single.ucb_waveform": lambda duration, bandwidth=BW, **kw: bg32.ucb_waveform(
+        NATIVE32, q_ref=Q_REF, T=duration, BW=bandwidth, **kw
     ),
-    "single.template_on_window": lambda duration, **kw: bg32.template_on_window(
-        NATIVE32, q_ref=Q_REF, T=duration, BW=BW, **WINDOW, **kw
+    "single.template_on_window": lambda duration, bandwidth=BW, **kw: (
+        bg32.template_on_window(
+            NATIVE32, q_ref=Q_REF, T=duration, BW=bandwidth, **WINDOW, **kw
+        )
     ),
-    "single.tdi_waveform": lambda duration, **kw: bg32.tdi_waveform(
-        PHYSICAL32, q_ref=Q_PHYSICAL, T=duration, BW=BW, **kw
+    "single.tdi_waveform": lambda duration, bandwidth=BW, **kw: bg32.tdi_waveform(
+        PHYSICAL32, q_ref=Q_PHYSICAL, T=duration, BW=bandwidth, **kw
     ),
 }
 #: Each entry's compiled function, which receives the resolved count, and the
@@ -190,6 +198,24 @@ def test_traced_duration_warns_once_and_keeps_the_switch(name):
     # stacklevel points at the caller's line, here the lambda in ENTRIES.
     assert found[0].filename == __file__
     assert "cond" in primitives(jaxpr)
+
+
+@pytest.mark.parametrize("bandwidth", [2, 32])
+@pytest.mark.parametrize("name", list(ENTRIES))
+def test_traced_duration_is_silent_when_every_count_is_direct(name, bandwidth):
+    """With ``BW`` at most 32, every automatic count evaluates directly.
+
+    The grid then does not depend on ``T``: no switch is compiled, and there
+    is no cost to warn about.
+    """
+    entry = ENTRIES[name]
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        jaxpr = jax.make_jaxpr(lambda duration: entry(duration, bandwidth=bandwidth))(
+            DURATION
+        )
+    assert not grid_warnings(record), name
+    assert "cond" not in primitives(jaxpr), name
 
 
 @pytest.mark.parametrize("name", list(ENTRIES))

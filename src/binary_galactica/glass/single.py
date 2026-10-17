@@ -5,8 +5,8 @@ only to 0.06-0.5 cycles, and the waveform error reaches order one. Callers
 therefore pass an integer ``q_ref`` and a float32 offset
 ``params[0] = f0*T - q_ref``. The response envelope is the float64 path's
 dtype-generic kernel run in float32: there ``f0`` enters only through
-relative quantities, and the reference phase is removed before sparse
-interpolation, so rounding a knot time merely resamples a smooth envelope.
+relative quantities, and the reference phase is removed before the envelope
+is sampled, so rounding a knot or FFT time merely resamples a smooth envelope.
 
 Three reformulations keep the remaining large quantities out of float32:
 
@@ -296,7 +296,7 @@ def _waveform(
     """Return unmasked float32 channels, int32 bins and their validity.
 
     ``first`` optionally gives ``params[7]`` as a more precise pair.
-    ``channels="ae"`` forms A and E from the sparse response and returns only
+    ``channels="ae"`` forms A and E from the response rows and returns only
     those with the bins, as in the float64 ``_ucb_waveform``.
     """
     carrier, residual, scaled_frequency, valid = _carrier(params[0], q_ref, q)
@@ -427,7 +427,7 @@ def _template_on_window(
 ):
     """Place continuous-Fourier A and E on a window, NaN throughout if invalid.
 
-    Only A and E are formed, from the sparse response, and transformed.
+    Only A and E are formed, from the response rows, and transformed.
     """
     result, valid = _waveform(
         params,

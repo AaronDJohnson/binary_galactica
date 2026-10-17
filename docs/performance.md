@@ -76,7 +76,9 @@ convergence; the independent C fixtures test the response separately.
 The default `response_samples=None` selects a power-of-two count from 32 to
 2048, targeting at least 128 samples per GLASS orbital year
 (31,558,149.7632 seconds), until the cap. Explicit integers still choose the
-count directly. The response removes the reference-spacecraft phase before
+count directly. Counts at or above `BW` evaluate the response directly at the
+`BW` FFT times, without interpolation; every count in this run is below its
+2048 FFT samples. The response removes the reference-spacecraft phase before
 interpolation, following GLASS's phase choice. Local polynomials through up to
 eight complex values replace exact response time derivatives and iterative
 zero refinement in the waveform path. The interpolation remains linear in
@@ -159,12 +161,14 @@ The workload runs passed duration as a traced argument, so these first calls
 compiled every automatic grid. Public calls now choose the automatic count on
 the host whenever the duration is concrete, and compile only that grid.
 
-Automatic grid changes introduce small interpolation jumps at duration
-thresholds. AD follows the selected branch. Use an explicit sample count when
-differentiating across a threshold. A traced duration with the automatic grid
-compiles all seven grids behind a switch, and reverse-mode derivatives keep the
+Automatic grid changes below `BW` introduce small interpolation jumps at
+duration thresholds. AD follows the selected branch. Use an explicit sample
+count when differentiating across a threshold. A traced duration with the
+automatic grid compiles every automatic count below `BW`, and one direct
+evaluation for the rest, behind a switch, and reverse-mode derivatives keep the
 intermediate values of every one, so memory and time grow with the batch; such
-calls emit `ResponseSamplesWarning`. Batching different durations also
+calls emit `ResponseSamplesWarning` unless `BW` is at most 32, when every count
+is direct and there is nothing to select. Batching different durations also
 evaluates multiple branches. Close over a fixed duration, group by duration,
 or fix the count for that workload.
 
@@ -345,9 +349,13 @@ For repeated single-source inference, use `template_on_window` with a fixed
 analysis window. A concrete duration uses one automatic response count, chosen
 on the host before compiling; an explicit `response_samples` also keeps the
 grid fixed when the duration is traced or varies. It compiles waveform
-generation and placement together. It forms A and E from the sparse response
-before interpolation, so it interpolates and transforms two channels where
-`ucb_waveform` transforms X, Y and Z. The default analytic orbit is the most
+generation and placement together. It forms A and E from the response rows
+before any interpolation, so it interpolates and transforms two channels where
+`ucb_waveform` transforms X, Y and Z. A response count at or above `BW`, such
+as the automatic 512 of a four-year observation in a 128-bin band, evaluates
+the response directly at the `BW` FFT times rather than interpolating more
+samples onto fewer points, so long observations in narrow bands cost what
+`BW` response evaluations cost. The default analytic orbit is the most
 accurate option:
 
 ```python
@@ -374,10 +382,11 @@ When integrating with a likelihood, compile the surrounding array calculation
 too. Close over a fixed duration, so that the automatic response count is
 chosen on the host. Pass duration as an argument only when varying it between
 calls, and then pass an explicit `response_samples` as well: with a traced
-duration and the automatic grid, every grid is compiled and differentiated
-(see above), and the call emits `ResponseSamplesWarning`. Keep the data and
-noise arrays on the device across proposals. A legacy `(3, BW, 3)` orbit
-cache is accepted and cubically interpolated to response times, but its coarse
+duration and the automatic grid, every automatic count below `BW`, and one
+direct evaluation, is compiled and differentiated (see above), and the call
+emits `ResponseSamplesWarning`. Keep the data and noise arrays on the device
+across proposals. A legacy `(3, BW, 3)` orbit cache is accepted and, for
+counts below `BW`, cubically interpolated to response times, where its coarse
 grid constrains orbit accuracy; prefer the analytic orbit unless reuse is
 required. The benchmark does not include likelihood integration.
 
@@ -392,7 +401,8 @@ required. The benchmark does not include likelihood integration.
   preserves GLASS's rounding in both cases. A captured `T`, a Python or NumPy
   scalar or a concrete JAX array, lets public calls choose the automatic
   response count on the host. A dynamic `T` needs an explicit
-  `response_samples` to avoid compiling every automatic grid. Bandwidth,
+  `response_samples` to avoid compiling every automatic count below `BW`
+  and one direct evaluation. Bandwidth,
   response sample count, backend, and format are static and changing them can
   require compilation. Derivatives hold the discrete carrier and interpolation
   choices fixed.
@@ -427,9 +437,12 @@ Here `sources` holds native vectors and the result has shape
 `(number_of_sources, 2, bandwidth)` in raw GLASS units. `duration` is a traced
 argument, so the static `samples` fixes the response grid: the automatic policy
 would choose 32 for a quarter year, 128 for a year and 512 for four years, but
-check convergence for the intended sources. Without it, every automatic grid
-would be compiled. If the duration never changes, close over it instead and
-omit `response_samples`; the count is then chosen on the host. An A/E-only
+check convergence for the intended sources. A count at or above `bandwidth`
+evaluates the response directly at the `bandwidth` FFT times, so any such
+count gives the same result. Without it, every automatic count below
+`bandwidth`, and one direct evaluation, would be compiled. If the duration
+never changes, close over it instead and omit `response_samples`; the count is
+then chosen on the host. An A/E-only
 calculation can discard unused outputs during compilation. Ordinary public calls still
 perform eager input validation; traced invalid values retain the documented
 NaN behavior.

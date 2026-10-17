@@ -1,8 +1,9 @@
 """Carrier bins retain GLASS's float64 round trip inside outer JIT calls."""
 
+import warnings
+
 import jax
 import numpy as np
-import pytest
 
 import binary_galactica as bg
 
@@ -45,8 +46,10 @@ def test_constant_duration_jit_matches_direct_and_dynamic_spectra(glass_params):
     params[0] = 15616.0
     direct = bg.ucb_waveform(params, T=duration, BW=32, fmt=fmt)
     constant = jax.jit(lambda p: bg.ucb_waveform(p, T=duration, BW=32, fmt=fmt))(params)
-    # A traced duration keeps the automatic grid's switch, and says so.
-    with pytest.warns(bg.ResponseSamplesWarning):
+    # Every automatic count is at least BW=32 and evaluates the response
+    # directly, so a traced duration selects no grid and has nothing to warn.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", bg.ResponseSamplesWarning)
         dynamic = jax.jit(lambda p, t: bg.ucb_waveform(p, T=t, BW=32, fmt=fmt))(
             params, duration
         )
@@ -76,7 +79,9 @@ def test_carrier_handles_nested_source_and_duration_batches(glass_params):
         jax.vmap(jax.vmap(carrier, in_axes=(0, None)), in_axes=(None, 0))
     )
     expected = np.trunc((sources[:, 0] / durations[:, None]) * durations[:, None])
-    # Batched durations take different automatic grids, so the switch remains.
-    with pytest.warns(bg.ResponseSamplesWarning):
+    # Both durations' automatic counts are at least BW=32, so they share the
+    # direct evaluation and the traced durations compile no switch.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", bg.ResponseSamplesWarning)
         actual = evaluate(sources, durations)
     np.testing.assert_array_equal(actual, expected)

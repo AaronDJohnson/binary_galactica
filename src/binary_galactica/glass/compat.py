@@ -61,7 +61,7 @@ def template_on_window(
 
     In the continuous-Fourier convention, i.e. already through
     :func:`binary_galactica.glass.convert.to_continuous_ft`. The on-fly
-    backend forms A and E from the sparse response before interpolation and
+    backend forms A and E from the response rows before any interpolation and
     transforms only those two channels, so they equal
     :func:`binary_galactica.glass.ucb_waveform`'s A and E to rounding, not
     bitwise.
@@ -83,21 +83,25 @@ def template_on_window(
     fmt
         TDI convention.
     positions
-        Optional cached orbit for this ``(T, t0, BW)``. On the on-fly path
-        it is interpolated and its grid limits the geometry accuracy.
+        Optional cached orbit for this ``(T, t0, BW)``. On the on-fly path a
+        response count below ``BW`` interpolates it, and its grid limits the
+        geometry accuracy; a count at or above ``BW`` uses it unchanged.
     backend
         Algorithm: ``"onfly"`` (default) or the legacy ``"fourier"`` path.
     response_samples
         ``None`` selects a duration-dependent power-of-two grid of 32–2048
         samples, targeting 128 samples per year. An explicit static integer
-        of at least four fixes the count independently of ``BW``. Unused by
-        the legacy backend. Pass an explicit count when differentiating ``T``
-        across automatic grid thresholds: automatic selection is piecewise
-        and changes the interpolation grid. A concrete ``T`` fixes the
-        automatic count on the host before compiling; a traced ``T``
-        compiles every automatic grid and emits
-        :class:`~binary_galactica.glass.waveform.ResponseSamplesWarning`, as
-        for :func:`binary_galactica.glass.ucb_waveform`.
+        of at least four fixes the count independently of ``BW``. Counts at
+        or above ``BW`` evaluate the response directly at the ``BW`` FFT
+        times instead of interpolating. Unused by the legacy backend. Pass an
+        explicit count when differentiating ``T`` across automatic grid
+        thresholds: automatic selection is piecewise and changes the
+        interpolation grid. A concrete ``T`` fixes the automatic count on
+        the host before compiling; a traced ``T`` compiles every automatic
+        count below ``BW``, and one direct evaluation, and emits
+        :class:`~binary_galactica.glass.waveform.ResponseSamplesWarning`
+        when ``BW`` exceeds 32, as for
+        :func:`binary_galactica.glass.ucb_waveform`.
 
     """
     _validation.require_x64()
@@ -105,7 +109,7 @@ def template_on_window(
     n_bins = _validation.integer(n_bins, "n_bins", minimum=0)
     response_samples = _options(backend, response_samples)
     if backend == "onfly":
-        response_samples = _resolve_samples(response_samples, T, np.float64)
+        response_samples = _resolve_samples(response_samples, T, np.float64, BW)
     return _template_on_window(
         params,
         T=T,

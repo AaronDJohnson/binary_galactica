@@ -52,18 +52,23 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
         fmt: ``"sangria"``, ``"frequency"``, or ``"phase"`` TDI convention.
         positions: Optional ``(3, BW, 3)`` spacecraft positions on the exact
             ``(T, t0, BW)`` slow grid, as returned by ``orbit_cache``.
-            On the on-fly path this cache is interpolated; its sampling limits
-            geometry accuracy. Omit it to evaluate analytic geometry directly.
+            On the on-fly path a response count below ``BW`` interpolates
+            this cache, and its sampling limits geometry accuracy; a count at
+            or above ``BW`` uses it unchanged. Omit it to evaluate analytic
+            geometry directly.
         backend: ``"onfly"`` (default) or the legacy ``"fourier"`` path.
         response_samples: ``None`` selects a duration-dependent power-of-two
             grid of 32–2048 samples, targeting 128 samples per year. An explicit
             static integer of at least four fixes the count independently of
-            ``BW``. Unused by the legacy backend. Pass an explicit count when
-            differentiating ``T`` across automatic grid thresholds: automatic
-            selection is piecewise and changes the interpolation grid. A
-            concrete ``T`` fixes the automatic count on the host before
-            compiling; a traced ``T`` compiles every automatic grid and emits
-            ``ResponseSamplesWarning``, as for :func:`ucb_waveform`.
+            ``BW``. Counts at or above ``BW`` evaluate the response directly
+            at the ``BW`` FFT times instead of interpolating. Unused by the
+            legacy backend. Pass an explicit count when differentiating ``T``
+            across automatic grid thresholds: automatic selection is piecewise
+            and changes the interpolation grid. A concrete ``T`` fixes the
+            automatic count on the host before compiling; a traced ``T``
+            compiles every automatic count below ``BW``, and one direct
+            evaluation, and emits ``ResponseSamplesWarning`` when ``BW``
+            exceeds 32, as for :func:`ucb_waveform`.
 
     Returns:
         A dictionary with complex ``X/Y/Z/A/E`` arrays, ``qmin``, and absolute
@@ -98,7 +103,7 @@ def tdi_waveform(  # noqa: N803 -- names follow the GLASS waveform API
         if not -np.pi / 2 <= p[7] <= np.pi / 2:
             raise ValueError("beta must lie in [-pi/2, pi/2]")
     if backend == "onfly":
-        response_samples = _resolve_samples(response_samples, T, np.float64)
+        response_samples = _resolve_samples(response_samples, T, np.float64, BW)
     return _tdi_waveform(
         theta,
         T=duration,

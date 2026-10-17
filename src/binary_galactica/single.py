@@ -107,19 +107,23 @@ def ucb_waveform(
     ``T`` is the positive duration and ``t0`` the observation start, both in
     seconds and cast to float32; source parameters are referenced to time
     zero. ``BW`` (positive even FFT length and number of bins), ``fmt`` and
-    ``response_samples`` are static and behave as in the float64 function.
-    The automatic response count is chosen from the float32 duration: on the
-    host before compiling when ``T`` is concrete, while a traced ``T``
-    compiles every automatic grid and emits
-    :class:`binary_galactica.ResponseSamplesWarning`.
+    ``response_samples`` are static and behave as in the float64 function:
+    counts at or above ``BW`` evaluate the response directly at the ``BW``
+    FFT times instead of interpolating. The automatic response count is
+    chosen from the float32 duration: on the host before compiling when
+    ``T`` is concrete, while a traced ``T`` compiles every automatic count
+    below ``BW``, and one direct evaluation, and emits
+    :class:`binary_galactica.ResponseSamplesWarning` when ``BW`` exceeds 32.
     Channels use raw GLASS Fourier units; multiply by ``sqrt(T)`` for
     continuous-Fourier units.
 
     Optional ``positions`` is the ``(3,BW,3)`` spacecraft cache in metres on
-    ``t0 + T*arange(BW)/BW``, as returned by :func:`binary_galactica.orbit_cache`.
-    Host float64 or float32 caches are cast to float32, whose step near
-    1.5e11 m is about 5e-5 s of light time. Omitting it evaluates the analytic
-    orbit, with its phase reduced in paired float32 arithmetic.
+    ``t0 + T*arange(BW)/BW``, as returned by :func:`binary_galactica.orbit_cache`,
+    interpolated to the response times of a count below ``BW`` and used
+    unchanged otherwise. Host float64 or float32 caches are cast to float32,
+    whose step near 1.5e11 m is about 5e-5 s of light time. Omitting it
+    evaluates the analytic orbit, with its phase reduced in paired float32
+    arithmetic.
 
     Returns int32 ``qmin`` and ``freq_bin_indices``, exact to 2**31, and
     complex64 ``X/Y/Z/A/E`` of length ``BW``. Their squares underflow float32:
@@ -139,7 +143,7 @@ def ucb_waveform(
         q = _single.bin_index(q, "q", margin=BW // 2, integral_floats=True)
     _single.check_frequency(source[0], q_ref, duration, BW=BW, q=q)
     fmt = _format(fmt)
-    response_samples = _resolve_samples(response_samples, T, np.float32)
+    response_samples = _resolve_samples(response_samples, T, np.float32, BW)
     return _single._ucb_waveform(
         source,
         q_ref,
@@ -177,7 +181,7 @@ def template_on_window(
     rfft bin indices; the window must lie in int32 range. Bins the ``BW``
     band does not reach are zero, and band power outside the window is
     dropped. Choose ``BW`` from :func:`binary_galactica.ucb_bw`. A and E are
-    formed from the sparse response before interpolation and only those two
+    formed from the response rows before any interpolation and only those two
     channels are transformed, so they equal :func:`ucb_waveform`'s A and E,
     scaled, to rounding.
 
@@ -199,7 +203,7 @@ def template_on_window(
     q_ref = _single.bin_index(q_ref, "q_ref", margin=BW)
     _single.check_frequency(source[0], q_ref, duration, BW=BW)
     fmt = _format(fmt)
-    response_samples = _resolve_samples(response_samples, T, np.float32)
+    response_samples = _resolve_samples(response_samples, T, np.float32, BW)
     return _single._template_on_window(
         source,
         q_ref,
@@ -318,7 +322,7 @@ def tdi_waveform(
                 )
             _single.check_frequency(offset, q_ref, duration, BW=BW)
     fmt = _format(fmt)
-    response_samples = _resolve_samples(response_samples, T, np.float32)
+    response_samples = _resolve_samples(response_samples, T, np.float32, BW)
     return _single._tdi_waveform(
         physical,
         q_ref,

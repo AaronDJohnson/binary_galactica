@@ -15,9 +15,12 @@ native vector still match bitwise. Elsewhere a different compiler or library may
 legitimately move the last bits, so outputs must instead agree to within a
 relative 1e-12 of each array's peak magnitude, or 1e-8 for the legacy Fourier
 backend, whose sines of full phases near 1e7 rad differ by about 5e-10 of peak
-between builds. Failure messages state which comparison applied. Double
-precision must already be enabled, by the test configuration, before these
-tests run.
+between builds. Two cases whose automatic response grid is finer than their
+band moved further, on every build: they now evaluate the response at the FFT
+times instead of interpolating that grid, so their recorded outputs carry the
+interpolation error, and they are compared at 5e-10 of peak. Failure messages
+state which comparison applied. Double precision must already be enabled, by
+the test configuration, before these tests run.
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ from pathlib import Path
 import jax
 import numpy as np
 import pytest
+
+from binary_galactica.glass import waveform as glass_waveform
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN = ROOT / "tests" / "data" / "float64_golden.npz"
@@ -48,6 +53,17 @@ FOURIER_TOLERANCE = 1e-8
 #: 2.2e-15 of peak, while choosing a neighbouring grid moves an output by
 #: about 1e-10 of its norm and a wrong sign in the sum by order one.
 ONFLY_TOLERANCE = 1e-13
+#: Cases whose automatic grid is finer than their band: 512 samples for 256
+#: bins, and 128 for 64. They were recorded by interpolating that grid onto
+#: the FFT times and now evaluate the response at those times directly, so
+#: on any build their on-fly outputs differ from the recording by its
+#: interpolation error, at most 2.4e-10 and 5.0e-11 of peak. The new outputs
+#: agree to 1.2e-14 of peak with the recorded code at 4096 samples, as
+#: closely as 4096 and 8192 samples agree with each other. A wrong sign,
+#: channel or phase still moves them by order one; the direct evaluation
+#: itself is pinned by tests/test_direct_response.py.
+FINER_GRID_CASES = ("ucb_9p_frequency_auto", "jacobian_9p")
+FINER_GRID_TOLERANCE = 5e-10
 #: Outputs that never pass through the response kernel: exact on that build.
 KERNEL_FREE_OUTPUTS = ("qmin", "freq_bin_indices", "positions", "native")
 #: Environment fields that fix the exact bits of a float64 result. NumPy is
@@ -124,6 +140,20 @@ def test_golden_cases_cover_the_float64_entry_points():
     assert GOLDEN.stat().st_size < 1_000_000
 
 
+def test_finer_grid_cases_are_those_with_more_samples_than_bins():
+    """Only cases whose response count exceeds their band get its bound."""
+    finer = set()
+    for case in CASES.values():
+        if "BW" not in case or case.get("backend") == "fourier":
+            continue
+        count = case["response_samples"]
+        if count is None:
+            count = glass_waveform._automatic_samples(case["T"], np.float64)
+        if count > case["BW"]:
+            finer.add(case["name"])
+    assert finer == set(FINER_GRID_CASES)
+
+
 @pytest.mark.parametrize("name", list(CASES))
 def test_float64_outputs_match_golden(generator, name):
     """Exact bits on the recording build outside the on-fly kernel."""
@@ -133,6 +163,8 @@ def test_float64_outputs_match_golden(generator, name):
     onfly = case.get("backend") != "fourier" and case["function"] != "polarizations"
     if case.get("backend") == "fourier":
         tolerance = FOURIER_TOLERANCE
+    elif name in FINER_GRID_CASES:
+        tolerance = FINER_GRID_TOLERANCE
     elif same_build:
         tolerance = ONFLY_TOLERANCE
     else:

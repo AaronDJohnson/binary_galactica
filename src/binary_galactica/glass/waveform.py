@@ -1,8 +1,9 @@
 """Sparse-time TDI on the fly, followed by a heterodyned Fourier transform.
 
 The mainline path combines delayed source samples into XYZ, removes the
-reference-spacecraft phase, and interpolates the smooth complex response.
-The explicit ``fourier`` backend keeps
+reference-spacecraft phase, and interpolates the smooth complex response onto
+the FFT times, or evaluates it there directly when the response grid has at
+least as many samples. The explicit ``fourier`` backend keeps
 the original GLASS single-link FFT implementation for reproducibility.
 """
 
@@ -45,22 +46,25 @@ class ResponseSamplesWarning(UserWarning):
     """The automatic response grid could not be chosen before compiling.
 
     Emitted once by a public waveform call that receives a traced duration
-    ``T`` with ``response_samples=None``. The compiled program then holds
-    every automatic grid behind ``jax.lax.switch``, and under differentiation
-    JAX keeps the intermediate values of all of them, which multiplies memory
-    and run time. Pass an explicit static ``response_samples``, or close over
-    a concrete ``T`` so that the count is chosen on the host.
+    ``T`` with ``response_samples=None`` and a band ``BW`` above the smallest
+    automatic count. The compiled program then holds every automatic count
+    below ``BW``, and one direct evaluation for the counts of at least
+    ``BW``, behind ``jax.lax.switch``, and under differentiation JAX keeps
+    the intermediate values of all of them, which multiplies memory and run
+    time. Pass an explicit static ``response_samples``, or close over a
+    concrete ``T`` so that the count is chosen on the host.
     """
 
 
 _TRACED_DURATION = (
     "response_samples=None with a traced duration T: the automatic response "
-    f"grid depends on the value of T, so all {len(_AUTO_RESPONSE_SAMPLES)} of its "
-    f"grids ({_AUTO_RESPONSE_SAMPLES[0]} to {_AUTO_RESPONSE_SAMPLES[-1]} samples) "
-    "are compiled behind jax.lax.switch, and under differentiation JAX keeps "
-    "the intermediate values of every one, multiplying memory and run time. "
-    "Pass an explicit static response_samples, or close over a concrete T (a "
-    "Python or NumPy scalar) so that the count is chosen before compiling."
+    "grid depends on the value of T, so each automatic count below BW "
+    f"(from {_AUTO_RESPONSE_SAMPLES[0]} to {_AUTO_RESPONSE_SAMPLES[-1]} samples), "
+    "and one direct evaluation at the BW FFT times for the counts of at least "
+    "BW, is compiled behind jax.lax.switch, and under differentiation JAX "
+    "keeps the intermediate values of every one, multiplying memory and run "
+    "time. Pass an explicit static response_samples, or close over a concrete "
+    "T (a Python or NumPy scalar) so that the count is chosen before compiling."
 )
 
 
@@ -112,7 +116,7 @@ def _options(backend, response_samples):
     return response_samples
 
 
-def _resolve_samples(response_samples, T, real):
+def _resolve_samples(response_samples, T, real, BW):
     """Choose the automatic response count on the host, before compiling.
 
     Call directly from a public entry, after its validation, with the
@@ -120,15 +124,19 @@ def _resolve_samples(response_samples, T, real):
     which inside an enclosing trace makes it a tracer. A concrete ``T`` gives
     exactly the count the compiled switch would select for the same value in
     the working dtype ``real``. A traced ``T`` keeps ``None``, and the
-    switch, and warns once at the caller's line. Compiled callers below a
-    public entry pass its result on, so they neither resolve nor warn again.
+    switch, and warns once at the caller's line, unless every automatic count
+    is at least ``BW``: they then share one direct evaluation and nothing is
+    selected. Compiled callers below a public entry pass its result on, so
+    they neither resolve nor warn again. ``BW`` may still be unvalidated.
     """
     if response_samples is not None:
         return response_samples
     if not isinstance(T, jax.Array) and _validation._contains_jax(T):
         T = jnp.asarray(T)  # A sequence holding JAX values, packed as validation does.
     if isinstance(T, jax.core.Tracer):
-        warnings.warn(_TRACED_DURATION, ResponseSamplesWarning, stacklevel=3)
+        integral = isinstance(BW, (int, np.integer)) and not isinstance(BW, bool)
+        if not integral or len(_automatic_counts(BW)) > 1:
+            warnings.warn(_TRACED_DURATION, ResponseSamplesWarning, stacklevel=3)
         return None
     duration = np.asarray(T, dtype=real)
     if duration.shape != ():
@@ -208,16 +216,22 @@ def ucb_waveform(
     The default ``None`` chooses a power of two from 32 through 2048, at least
     128 samples per observation year until the cap: quarter-year observations
     use 32, one year uses 128, and four years use 512. Supply a static integer
-    at least four to choose the count explicitly. Increase both grid controls
-    separately to check convergence for the source and observation duration;
-    the automatic policy is not an error bound, especially beyond 16 years.
+    at least four to choose the count explicitly. A count below ``BW`` is
+    interpolated onto the ``BW`` FFT times; a count at or above ``BW``
+    evaluates the response directly at those times instead, so every such
+    count gives the same result. Increase both grid controls separately to
+    check convergence for the source and observation duration; the automatic
+    policy is not an error bound, especially beyond 16 years.
     A concrete ``T`` (a Python or NumPy scalar, or a concrete JAX array, also
     when captured by an enclosing ``jax.jit``) fixes the automatic count on
-    the host before compiling. A traced ``T`` cannot: every automatic grid is
-    then compiled behind ``jax.lax.switch``, reverse-mode derivatives keep the
+    the host before compiling. A traced ``T`` cannot: every automatic count
+    below ``BW``, and one direct evaluation for the rest, is then compiled
+    behind ``jax.lax.switch``, reverse-mode derivatives keep the
     intermediates of all of them, and the call emits
-    :class:`ResponseSamplesWarning`. Close over a fixed duration, and pass an
-    explicit count when ``T`` must be a ``jit``, ``grad`` or ``vmap`` argument.
+    :class:`ResponseSamplesWarning`. With ``BW`` at most 32 every automatic
+    count is direct, and a traced ``T`` compiles one grid without warning.
+    Close over a fixed duration, and pass an explicit count when ``T`` must
+    be a ``jit``, ``grad`` or ``vmap`` argument.
 
     The sparse envelope removes the source phase at spacecraft 0's retarded
     time. Local polynomials through up to eight complex response samples
@@ -236,9 +250,11 @@ def ucb_waveform(
     coefficients are conjugated to retain the GLASS convention.
 
     Optional ``positions`` retains the legacy ``(3,BW,3)`` cache layout on
-    ``t0 + T*arange(BW)/BW``. On the on-fly path this geometry is interpolated
-    locally (cubic for BW >= 4, linear for BW = 2); cache sampling then limits
-    orbit accuracy independently of ``response_samples``. Omitting positions
+    ``t0 + T*arange(BW)/BW``. On the on-fly path a count below ``BW``
+    interpolates this geometry locally (cubic for BW >= 4, linear for
+    BW = 2) to its response times, and cache sampling then limits orbit
+    accuracy independently of ``response_samples``; a count at or above
+    ``BW`` uses the cache unchanged at the FFT times. Omitting positions
     evaluates the analytic orbit directly at every needed response time.
 
     ``backend="fourier"`` explicitly selects the old single-link FFT path,
@@ -248,8 +264,9 @@ def ucb_waveform(
     Eager invalid inputs raise ``ValueError``; traced invalid values return
     NaN in every output. Shapes and static controls are always checked.
     AD holds the discrete carrier and automatic grid selection fixed. Automatic
-    count changes introduce small interpolation jumps at duration thresholds;
-    use an explicit count when differentiating across those thresholds.
+    count changes below ``BW`` introduce small interpolation jumps at duration
+    thresholds; use an explicit count when differentiating across those
+    thresholds.
     """
     _validation.require_x64()
     response_samples = _options(backend, response_samples)
@@ -259,7 +276,7 @@ def ucb_waveform(
         )
     duration, t0, positions = _validation.observation(T, BW, t0, positions)
     params, q = _onfly_inputs(params, duration, fmt, q)
-    response_samples = _resolve_samples(response_samples, T, np.float64)
+    response_samples = _resolve_samples(response_samples, T, np.float64, BW)
     return _ucb_waveform(
         params,
         T=duration,
@@ -373,15 +390,30 @@ def _automatic_samples(T, real):
     return _AUTO_RESPONSE_SAMPLES[int(np.sum(_duration_boundaries(real) < duration))]
 
 
+def _automatic_counts(BW):
+    """Return the response counts the automatic grid compiles for ``BW``.
+
+    Each count below ``BW`` interpolates and needs its own branch. Every count
+    of at least ``BW`` evaluates the response directly at the FFT times, so
+    those share one branch, listed as ``BW``.
+    """
+    below = tuple(count for count in _AUTO_RESPONSE_SAMPLES if count < BW)
+    return below if len(below) == len(_AUTO_RESPONSE_SAMPLES) else (*below, BW)
+
+
 def _response_envelope(
     params, T, BW, t0, positions, response_samples, *, channels="xyz"
 ):
-    """Interpolate on a static grid, selecting a duration bucket when requested.
+    """Sample the response on the FFT grid, selecting a duration bucket if asked.
 
-    Knots, coordinates and the duration buckets use the floating dtype of
-    ``params``, to which ``T``, ``t0`` and positions are cast. The envelope
-    has shape ``(3, BW)`` holding X/Y/Z for ``channels="xyz"``, or
-    ``(2, BW)`` holding A/E, combined from the sparse rows, for ``"ae"``.
+    A count below ``BW`` interpolates that many knots onto the ``BW`` FFT
+    times. A count of at least ``BW`` evaluates the response directly at
+    ``slow_time_grid(T, t0, BW)``, the times of the phase restore, where a
+    legacy position cache is already sampled. Knots, times, coordinates and
+    the duration buckets use the floating dtype of ``params``, to which
+    ``T``, ``t0`` and positions are cast. The envelope has shape ``(3, BW)``
+    holding X/Y/Z for ``channels="xyz"``, or ``(2, BW)`` holding A/E,
+    combined from the response rows, for ``"ae"``.
     """
     if channels not in _CHANNELS:
         raise ValueError(f"channels must be one of {_CHANNELS}; got {channels!r}")
@@ -389,33 +421,48 @@ def _response_envelope(
     T, t0 = cast(T, real), cast(t0, real)
     if positions is not None:
         positions = jnp.asarray(positions, dtype=real)
+    times = slow_time_grid(T, t0, BW)
 
-    def sample(count, params, T, t0, positions):
+    def combine(response):
+        if channels == "ae":
+            # A and E are fixed combinations of X, Y and Z, and interpolation,
+            # the phase restore, the FFT and the format factors are linear and
+            # the same for every channel. Combining the response rows leaves
+            # two channels to interpolate and transform instead of three.
+            return jnp.stack(xyz_to_ae(*response))
+        return response
+
+    def sample(count, params, T, t0, times, positions):
+        if count >= BW:
+            # Interpolating at least BW knots onto the BW FFT times would cost
+            # more than evaluating the response there, and add error.
+            return combine(
+                _raw_response(params, times, T, positions, reference_phase=True)
+            )
         knots = t0 + T * (1 - 1 / BW) * jnp.linspace(0.0, 1.0, count, dtype=real)
         geometry = (
             None if positions is None else _cached_positions(positions, knots, T, t0)
         )
-        response = _raw_response(params, knots, T, geometry, reference_phase=True)
-        if channels == "ae":
-            # A and E are fixed combinations of X, Y and Z, and interpolation,
-            # the phase restore, the FFT and the format factors are linear and
-            # the same for every channel. Combining the sparse rows leaves two
-            # channels to interpolate and transform instead of three.
-            response = jnp.stack(xyz_to_ae(*response))
+        response = combine(
+            _raw_response(params, knots, T, geometry, reference_phase=True)
+        )
         # Static normalized coordinates avoid clock-subtraction rounding and
         # stencil changes when duration, epoch or source coordinates are traced.
         coordinates = jnp.arange(BW, dtype=real) / (BW - 1)
         return interpolate_uniform(response.T, coordinates).T
 
     if response_samples is not None:
-        return sample(response_samples, params, T, t0, positions)
+        return sample(response_samples, params, T, t0, times, positions)
     # Public entries resolve a concrete T on the host, so only a traced T
     # reaches the switch. Every branch returns the same FFT-grid shape and only
     # the selected one runs for a scalar T, but every branch is compiled and
-    # reverse-mode AD keeps the residuals of all of them.
-    index = _automatic_index(T, real)
-    branches = tuple(partial(sample, count) for count in _AUTO_RESPONSE_SAMPLES)
-    return jax.lax.switch(index, branches, params, T, t0, positions)
+    # reverse-mode AD keeps the residuals of all of them. Counts of at least
+    # BW share the last, direct branch, so the index is clamped onto it.
+    branches = tuple(partial(sample, count) for count in _automatic_counts(BW))
+    if len(branches) == 1:
+        return branches[0](params, T, t0, times, positions)
+    index = jnp.minimum(_automatic_index(T, real), len(branches) - 1)
+    return jax.lax.switch(index, branches, params, T, t0, times, positions)
 
 
 @partial(jax.jit, static_argnames=("BW", "fmt", "response_samples", "channels"))
@@ -431,12 +478,14 @@ def _ucb_waveform(
     response_samples=DEFAULT_RESPONSE_SAMPLES,
     channels="xyz",
 ) -> WaveformResult:
-    """Interpolate the response, restore the carrier residual, then transform.
+    """Sample the response on the FFT grid, restore the carrier residual, transform.
 
-    ``channels="xyz"`` transforms X, Y and Z and returns all five channels.
-    ``"ae"`` forms A and E from the sparse response, transforms only those,
-    and returns them with ``qmin`` and ``freq_bin_indices``; they equal the
-    five-channel A and E to rounding.
+    :func:`_response_envelope` interpolates a coarser response grid onto the
+    FFT times, or evaluates the response there when the grid is at least
+    ``BW``. ``channels="xyz"`` transforms X, Y and Z and returns all five
+    channels. ``"ae"`` forms A and E from the response rows, transforms only
+    those, and returns them with ``qmin`` and ``freq_bin_indices``; they
+    equal the five-channel A and E to rounding.
     """
     q = (
         _carrier_bin(jax.lax.stop_gradient(params[0]), jax.lax.stop_gradient(T))

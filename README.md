@@ -2,8 +2,9 @@
 
 **LISA TDI waveforms for galactic binaries, in JAX.** The default `onfly`
 backend evaluates demodulated TDI `X/Y/Z` directly at sparse reception times,
-interpolates the response, restores the analytic source phase, and transforms
-the three channels. It follows GLASS's `LISA_spline_response` /
+interpolates the response onto the FFT times (or evaluates it there when the
+sparse grid is at least as fine), restores the analytic source phase, and
+transforms the channels. It follows GLASS's `LISA_spline_response` /
 `LISA_TDI_spline` conventions and returns a narrow band in `X`, `Y`, `Z`, `A`,
 and `E`. JAX provides compilation, batching, and derivatives at fixed discrete
 settings.
@@ -127,6 +128,12 @@ FFT band, while `response_samples` independently controls the sparse response.
 The default `None` selects a power of two from 32 through 2048, targeting at
 least 128 samples per observation year: 32 for a quarter year, 128 for a year,
 and 512 for four years. Set an integer of at least four to fix the grid.
+A count below `BW` is interpolated onto the `BW` FFT times. A count at or
+above `BW` would only be interpolated onto fewer points, so the response is
+evaluated directly at the `BW` FFT times instead: every such count gives the
+same interpolation-free result, at lower cost. A four-year observation with
+`BW=128`, for example, evaluates the response at its 128 FFT times rather than
+interpolating 512 samples onto them.
 With a concrete `T`, public calls choose the automatic count on the host
 before compiling; see [JAX and fixed analysis windows](#jax-and-fixed-analysis-windows)
 for a traced `T`.
@@ -134,10 +141,10 @@ The automatic policy is a starting point, not an error bound; observations
 beyond 16 years particularly need an explicit convergence check.
 Choose both grids by convergence for the
 analysis: increasing `BW` widens the band and does not refine the on-fly
-response; increasing `response_samples` refines that interpolation and does
-not change the number of returned bins. `ucb_alignment(p, T, N)` and
-`ucb_bw(...)` retain the GLASS bandwidth heuristic, but it is not an accuracy
-guarantee.
+response; increasing `response_samples` refines that interpolation, up to
+`BW`, and does not change the number of returned bins.
+`ucb_alignment(p, T, N)` and `ucb_bw(...)` retain the GLASS bandwidth
+heuristic, but it is not an accuracy guarantee.
 
 The sparse response removes the phase at spacecraft 0's retarded source time,
 including the common orbital Doppler phase. Local polynomials through up to
@@ -146,10 +153,11 @@ time-derivative evaluations and singular amplitude/phase coordinates at zeros.
 The reference phase is restored at the FFT times.
 
 For correctness, omit `positions` and use the analytic orbit. Legacy position
-caches with shape `(3, BW, 3)` remain accepted and are interpolated cubically
-to response times, but a coarse cache limits orbit accuracy. All source
-parameters refer to time zero; `t0` moves the observing interval, not the
-parameter reference epoch.
+caches with shape `(3, BW, 3)` remain accepted. With fewer response samples
+than `BW` they are interpolated cubically to the response times, and a coarse
+cache limits orbit accuracy; otherwise the cache is used at its own times,
+and an `orbit_cache` reproduces the analytic orbit. All source parameters refer to time zero; `t0` moves the observing interval,
+not the parameter reference epoch.
 
 ### Native parameters
 
@@ -304,11 +312,14 @@ are static.
 `ucb_waveform(..., q=...)` can explicitly pin the carrier.
 Automatic response counts change discretely with duration. A captured `T`, a
 Python or NumPy scalar or a concrete JAX array, lets each public call choose
-the count on the host and compile one grid. A traced `T` cannot: all seven
-automatic grids are compiled behind `jax.lax.switch`, reverse-mode derivatives
-keep the intermediate values of every one, and the call emits
-`ResponseSamplesWarning`. Pass an explicit `response_samples` whenever `T`
-itself is a `jit`, `grad` or `vmap` argument. AD follows the selected grid;
+the count on the host and compile one grid. A traced `T` cannot: every
+automatic count below `BW` (of 32 through 2048), and one direct evaluation for
+the rest, is compiled behind `jax.lax.switch`, reverse-mode derivatives keep
+the intermediate values of every one, and the call emits
+`ResponseSamplesWarning`. With `BW` of at most 32 every automatic count is
+direct, so a traced `T` compiles a single grid and does not warn. Pass an
+explicit `response_samples` whenever `T` itself is a `jit`, `grad` or `vmap`
+argument. AD follows the selected grid;
 use an explicit `response_samples` when differentiating across a duration
 threshold. For batches with different durations, grouping by duration or using
 an explicit count avoids evaluating multiple automatic grid branches.
@@ -498,7 +509,10 @@ each output's peak on other builds. On its recording JAX, NumPy, and CPU build,
 outputs of the on-fly response kernel must agree to 1e-13 of peak, because
 host-resolved automatic grids, a reorganized kernel and A/E formed before the
 transform in `template_on_window` have since moved their last bits, and every
-other output must reproduce bitwise. The
+other output must reproduce bitwise. Two cases whose automatic response grid
+is finer than their band now evaluate the response directly at the FFT times,
+so on any build they differ from the recording by its interpolation error and
+must agree to 5e-10 of peak. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
 value enters their compiled programs, and require a subprocess with x64
