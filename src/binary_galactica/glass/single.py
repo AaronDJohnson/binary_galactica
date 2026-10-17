@@ -312,6 +312,7 @@ def _waveform(
         - params[6]
         + reference_phase_shift(native, times, T, geometry)
     )
+    # A complex exponential, as in glass.waveform._ucb_waveform.
     envelope = envelope * jnp.exp(1j * phase)
     xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
     xyz = xyz * (jnp.sqrt(T) / (2 * BW))

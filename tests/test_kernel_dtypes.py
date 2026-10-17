@@ -17,8 +17,9 @@ import pytest
 import binary_galactica as bg
 from binary_galactica.glass import _precision
 from binary_galactica.glass import waveform as glass_waveform
+from binary_galactica.glass._trig import cis, cos_sin, cos_sinc
 from binary_galactica.glass.constants import PI2, YEAR
-from binary_galactica.glass.onfly import _sinc, reference_phase_shift, tdi_response
+from binary_galactica.glass.onfly import reference_phase_shift, tdi_response
 from binary_galactica.glass.orbit import (
     analytic_orbits,
     orbital_phase,
@@ -83,7 +84,9 @@ KERNELS = {
         lambda p, t: reference_phase_shift(p, t, HOST_DURATION, HOST_POSITIONS),
         (SOURCE, TIMES),
     ),
-    "_sinc": (_sinc, (np.linspace(-3.0, 3.0, 41, dtype=np.float32),)),
+    "cos_sinc": (cos_sinc, (np.linspace(-3.0, 3.0, 41, dtype=np.float32),)),
+    "cos_sin": (cos_sin, (np.linspace(-3.0, 3.0, 41, dtype=np.float32),)),
+    "cis": (cis, (np.linspace(-3.0, 3.0, 41, dtype=np.float32),)),
     "interpolate_uniform": (interpolate_uniform, (SAMPLES, COORDINATES)),
     "interpolate_uniform, real samples": (
         interpolate_uniform,

@@ -493,11 +493,11 @@ python examples/single_precision.py
 ```
 
 The test configuration enables x64 for the session. A float64 golden archive,
-recorded after the 0.5.0 physical-amplitude fix, must reproduce bitwise on its recording
-JAX, NumPy, and CPU build, and to 1e-12 of each output's peak elsewhere. Its
-automatic response-grid cases, recorded through a switch over every grid that
-public calls no longer compile for a concrete duration, must agree to 1e-13 of
-peak on the recording build. The
+recorded after the 0.5.0 physical-amplitude fix, must reproduce to 1e-12 of
+each output's peak on other builds. On its recording JAX, NumPy, and CPU build,
+outputs of the on-fly response kernel must agree to 1e-13 of peak, because
+host-resolved automatic grids and a reorganized kernel have since moved their
+last bits, and every other output must reproduce bitwise. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
 value enters their compiled programs, and require a subprocess with x64

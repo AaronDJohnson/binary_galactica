@@ -32,20 +32,10 @@ from __future__ import annotations
 import jax.numpy as jnp
 
 from ._precision import CONTRACTION, cast, real_dtype
+from ._trig import cis, cos_sinc
 from .constants import CLIGHT, PI2
 from .orbit import analytic_orbits
 from .response import polarization_tensor
-
-
-def _sinc(x):
-    """Stable value and first/second derivatives of sin(x)/x."""
-    small = jnp.abs(x) < 0.1
-    safe = jnp.where(small, 1.0, x)
-    z = jnp.where(small, x, 0.0) ** 2
-    series = 1 + z * (
-        -1 / 6 + z * (1 / 120 + z * (-1 / 5040 + z * (1 / 362880 - z / 39916800)))
-    )
-    return jnp.where(small, series, jnp.sin(safe) / safe)
 
 
 def reference_phase_shift(params, times, T, positions=None):
@@ -147,17 +137,19 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
             )
             + 0.25 * jnp.pi * (fdot + fddot * tau) * delta_tau**2
         )
+        # One cosine-sine pair serves both factors of the half phase.
+        cos_half, sinc_half = cos_sinc(half_phase)
         return (
             amp
-            * jnp.exp(1j * phase)
+            * cis(phase)
             * (
-                -slope * length * jnp.cos(half_phase)
+                -slope * length * cos_half
                 - 2j
                 * (1 + slope * tau)
                 * jnp.pi
                 * length
                 * secant_frequency
-                * _sinc(half_phase)
+                * sinc_half
             )
         )
 
@@ -166,30 +158,37 @@ def tdi_response(params, times, T, positions=None, *, reference_phase=False):
     # Hessians and JIT instead of expanding it 24 times in Python.
     b, c = jnp.array([1, 2, 0]), jnp.array([2, 0, 1])
     lb, lc = lengths[b], lengths[c]
+    krb, krc = kr[b], kr[c]
     delays = jnp.stack(
         (
             kr + 2 * lb + 2 * lc,
-            kr[b] + 2 * lb + lc,
-            kr[c] + lb + 2 * lc,
+            krb + 2 * lb + lc,
+            krc + lb + 2 * lc,
             kr + 2 * lb,
             kr + 2 * lc,
-            kr[c] + lb,
-            kr[b] + lc,
+            krc + lb,
+            krb + lc,
             kr,
         )
     )
     first = delays[jnp.array([0, 3, 0, 4, 1, 6, 2, 5])]
     second = delays[jnp.array([2, 5, 1, 6, 3, 7, 4, 7])]
     pair_lengths = jnp.stack((lb, lb, lc, lc, lc, lc, lb, lb))
-    minus_b, plus_b = 1 - mu[b], 1 + mu[b]
-    minus_c, plus_c = 1 - mu[c], 1 + mu[c]
+    mub, muc = mu[b], mu[c]
+    minus_b, plus_b = 1 - mub, 1 + mub
+    minus_c, plus_c = 1 - muc, 1 + muc
     denominators = jnp.stack(
         (minus_b, minus_b, plus_c, plus_c, minus_c, minus_c, plus_b, plus_b)
     )
     values = difference(first, second, pair_lengths, denominators)
-    mb, pc = values[0] - values[1], -values[2] + values[3]
-    mc, pb = -values[4] + values[5], values[6] - values[7]
-    return antenna[b] * (mb + pb) + antenna[c] * (mc + pc)
+    # Each channel is antenna[b]*(v0 - v1 + v6 - v7) +
+    # antenna[c]*(-v2 + v3 - v4 + v5). Weighting every difference by its
+    # signed antenna factor makes that one reduction over the batch axis.
+    # Its rounding differs from differencing pairs first by about 2e-14 of
+    # the channel at 30 uHz, where the pairs nearly cancel, falling as 1/f.
+    ab, ac = antenna[b], antenna[c]
+    weights = jnp.stack((ab, -ab, -ac, ac, -ac, ac, ab, -ab))
+    return jnp.sum(weights * values, axis=0)
 
 
 __all__ = ["reference_phase_shift", "tdi_response"]

@@ -432,6 +432,10 @@ def _ucb_waveform(
     phase = (
         PI2 * cycles - params[6] + reference_phase_shift(params, times, T, positions)
     )
+    # A complex exponential, not _trig.cis: XLA in JAX 0.6 and 0.9 recomputes
+    # cis's cosine and sine in backward consumers here, which made float32
+    # value-and-gradient calls up to three times slower on CPU, and JAX 0.11
+    # ran no faster with it.
     envelope = envelope * jnp.exp(1j * phase)
     xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
     xyz = xyz * (jnp.sqrt(T) / (2 * BW))

@@ -1,8 +1,9 @@
 """Sinc values and derivatives against an independent high-precision series.
 
 Each backend has its own guarded ``sin(z)/z``: the Fourier backend's
-``fourier._sinc`` (re-exported as ``waveform._sinc``) and ``onfly._sinc``,
-which the default on-fly response uses. Both are checked.
+``fourier._sinc`` (re-exported as ``waveform._sinc``) and the second output of
+``_trig.cos_sinc``, which the default on-fly response uses. Both are checked,
+and so is the cosine that ``cos_sinc`` returns beside its sinc.
 """
 
 from decimal import Decimal, localcontext
@@ -13,8 +14,8 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
+from binary_galactica.glass._trig import cos_sinc
 from binary_galactica.glass.fourier import _sinc as _fourier_sinc
-from binary_galactica.glass.onfly import _sinc as _onfly_sinc
 
 
 def _reference(z, derivative):
@@ -54,7 +55,7 @@ _POSITIVE = np.array(
 _POINTS = np.concatenate([-_POSITIVE[::-1], [0.0], _POSITIVE])
 
 
-_SINCS = {"fourier": _fourier_sinc, "onfly": _onfly_sinc}
+_SINCS = {"fourier": _fourier_sinc, "onfly": lambda z: cos_sinc(z)[1]}
 
 
 @pytest.mark.parametrize("compiled", [False, True], ids=["eager", "jit"])
@@ -90,5 +91,29 @@ def test_sinc_and_derivatives_near_zero_and_at_large_argument(backend, compiled)
             rtol=2e-12,
             atol=0,
             err_msg=f"derivative order {derivative} at z={large}",
+        )
+        evaluate = jax.grad(evaluate)
+
+
+@pytest.mark.parametrize("compiled", [False, True], ids=["eager", "jit"])
+def test_cosine_beside_the_onfly_sinc(compiled):
+    """The shared cosine and its derivatives, including in the series range."""
+    expected = (np.cos, lambda z: -np.sin(z), lambda z: -np.cos(z))
+    points = np.append(_POINTS, 1e40)
+
+    def cosine(z):
+        return cos_sinc(z)[0]
+
+    evaluate = cosine
+    for derivative in range(3):
+        batched = jax.vmap(evaluate)
+        if compiled:
+            batched = jax.jit(batched)
+        np.testing.assert_allclose(
+            np.asarray(batched(jnp.asarray(points))),
+            expected[derivative](points),
+            rtol=2e-12,
+            atol=1e-24,
+            err_msg=f"derivative order {derivative}",
         )
         evaluate = jax.grad(evaluate)
