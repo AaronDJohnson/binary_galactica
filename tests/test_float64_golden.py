@@ -60,8 +60,11 @@ ONFLY_TOLERANCE = 1e-13
 #: interpolation error, at most 2.4e-10 and 5.0e-11 of peak. The new outputs
 #: agree to 1.2e-14 of peak with the recorded code at 4096 samples, as
 #: closely as 4096 and 8192 samples agree with each other. A wrong sign,
-#: channel or phase still moves them by order one; the direct evaluation
-#: itself is pinned by tests/test_direct_response.py.
+#: channel or phase still moves them by order one, but this bound also admits
+#: the recorded interpolation itself, so these two cases no longer tell the
+#: direct evaluation from interpolating the finer grid; the tests in
+#: tests/test_direct_response.py do. Regenerating the archive would restore
+#: exact checks here at the cost of re-basing it on the current sources.
 FINER_GRID_CASES = ("ucb_9p_frequency_auto", "jacobian_9p")
 FINER_GRID_TOLERANCE = 5e-10
 #: Outputs that never pass through the response kernel: exact on that build.

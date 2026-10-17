@@ -156,8 +156,9 @@ For correctness, omit `positions` and use the analytic orbit. Legacy position
 caches with shape `(3, BW, 3)` remain accepted. With fewer response samples
 than `BW` they are interpolated cubically to the response times, and a coarse
 cache limits orbit accuracy; otherwise the cache is used at its own times,
-and an `orbit_cache` reproduces the analytic orbit. All source parameters refer to time zero; `t0` moves the observing interval,
-not the parameter reference epoch.
+and an `orbit_cache` reproduces the analytic orbit. All source parameters
+refer to time zero; `t0` moves the observing interval, not the parameter
+reference epoch.
 
 ### Native parameters
 

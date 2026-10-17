@@ -200,6 +200,33 @@ def test_traced_duration_warns_once_and_keeps_the_switch(name):
     assert "cond" in primitives(jaxpr)
 
 
+#: The same public functions with every argument but ``T`` bound, so that a
+#: JAX transform, not a function in this file, calls them.
+BARE = {
+    "ucb_waveform": partial(bg.ucb_waveform, NATIVE, BW=BW),
+    "template_on_window": partial(bg.template_on_window, NATIVE, BW=BW, **WINDOW),
+    "tdi_waveform": partial(bg.tdi_waveform, PHYSICAL, BW=BW),
+    "single.ucb_waveform": partial(bg32.ucb_waveform, NATIVE32, q_ref=Q_REF, BW=BW),
+    "single.template_on_window": partial(
+        bg32.template_on_window, NATIVE32, q_ref=Q_REF, BW=BW, **WINDOW
+    ),
+    "single.tdi_waveform": partial(
+        bg32.tdi_waveform, PHYSICAL32, q_ref=Q_PHYSICAL, BW=BW
+    ),
+}
+
+
+@pytest.mark.parametrize("name", list(BARE))
+def test_warning_names_the_line_that_applies_a_transform_to_an_entry(name):
+    """JAX's frames lie between the transform and the entry; skip them too."""
+    assert set(BARE) == set(ENTRIES)
+    with pytest.warns(bg.ResponseSamplesWarning) as record:
+        jax.make_jaxpr(BARE[name])(T=DURATION)
+    found = grid_warnings(record)
+    assert len(found) == 1
+    assert found[0].filename == __file__
+
+
 @pytest.mark.parametrize("bandwidth", [2, 32])
 @pytest.mark.parametrize("name", list(ENTRIES))
 def test_traced_duration_is_silent_when_every_count_is_direct(name, bandwidth):

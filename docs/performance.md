@@ -56,7 +56,10 @@ earlier record, before the per-sample phase sum used pairs, measured 0.56 to
 the compiled float32 quarter-year call grew by 0.5% at BW=128, 2% at BW=512
 and 7% at BW=2048, so the difference between the records is mostly within
 their round-to-round spread. GPU and TPU timings have not been measured, and
-neither Jacobians nor `template_on_window` were timed.
+neither Jacobians nor `template_on_window` were timed. The four-year rows
+predate direct evaluation: their 512 response samples, at least `BW` at
+BW=128 and BW=512, were then interpolated onto the FFT times, whereas the
+response is now evaluated directly at those times, so that cost follows `BW`.
 
 Reproduce, serially and preferably on an idle machine, with:
 
@@ -206,6 +209,9 @@ the package returns 512 complex Fourier bins per channel while GLASS returns
 costs do not establish a speedup for equivalent work. Explicitly requesting
 GLASS's response counts in the package yields outer-JIT times of
 0.167/0.293/0.700 ms; that still does not make the output transforms equivalent.
+These runs predate direct evaluation: four years at BW512, with 512 samples by
+default or GLASS's 797, then interpolated the package's response, which is
+now evaluated directly at the 512 FFT times, at a cost that follows `BW`.
 
 For a closer comparison of sparse response evaluation, use the same endpoint
 grid and the same number of samples in both implementations:
@@ -436,13 +442,14 @@ def catalogue_channels(sources, duration, epoch, *, bandwidth, samples):
 Here `sources` holds native vectors and the result has shape
 `(number_of_sources, 2, bandwidth)` in raw GLASS units. `duration` is a traced
 argument, so the static `samples` fixes the response grid: the automatic policy
-would choose 32 for a quarter year, 128 for a year and 512 for four years, but
-check convergence for the intended sources. A count at or above `bandwidth`
-evaluates the response directly at the `bandwidth` FFT times, so any such
-count gives the same result. Without it, every automatic count below
-`bandwidth`, and one direct evaluation, would be compiled. If the duration
-never changes, close over it instead and omit `response_samples`; the count is
-then chosen on the host. An A/E-only
-calculation can discard unused outputs during compilation. Ordinary public calls still
-perform eager input validation; traced invalid values retain the documented
-NaN behavior.
+would choose 32, 128 and 512 for a quarter, one and four GLASS orbital years
+(`binary_galactica.glass.constants.YEAR`), but check convergence for the
+intended sources. The same multiples of the slightly longer
+`binary_galactica.YEAR` fall in the next bucket, 64, 256 and 1024. A count at
+or above `bandwidth` evaluates the response directly at the `bandwidth` FFT
+times, so any such count gives the same result. Without it, every automatic
+count below `bandwidth`, and one direct evaluation, would be compiled. If the
+duration never changes, close over it instead and omit `response_samples`; the
+count is then chosen on the host. An A/E-only calculation can discard unused
+outputs during compilation. Ordinary public calls still perform eager input
+validation; traced invalid values retain the documented NaN behavior.

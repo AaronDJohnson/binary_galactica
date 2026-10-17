@@ -3,6 +3,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+import pytest
 
 import binary_galactica as bg
 from binary_galactica.glass.constants import YEAR
@@ -15,8 +16,20 @@ def _quadratures(a, e):
     return jnp.concatenate((channels.real, channels.imag))
 
 
-def test_source_jacobian_matches_dense_response_without_sparse_phase_reference():
-    duration, epoch, bandwidth = 4 * YEAR, 0.7 * YEAR, 128
+# A deliberately coarse 256-point response over four years is interpolated
+# onto a 512-bin band, with measured derivative errors of about 2e-7. Bound
+# every coordinate, including the second chirp and edge-on inclination,
+# independently. With a 128-bin band the same 256 points exceed the band, so
+# the response is evaluated directly at the FFT times, as the dense
+# construction does: the Jacobians agree to 1.2e-13, against 1.2e-7 when that
+# grid was interpolated.
+@pytest.mark.parametrize(
+    "bandwidth,bound", [(512, 3e-6), (128, 1e-12)], ids=["interpolated", "direct"]
+)
+def test_source_jacobian_matches_dense_response_without_sparse_phase_reference(
+    bandwidth, bound
+):
+    duration, epoch = 4 * YEAR, 0.7 * YEAR
     params = jnp.array(
         [0.03 * duration + 0.25, 0.2, 2.3, np.log(1e-22), 0.0, 0.8, 0.4, -0.2, 2.0]
     )
@@ -51,10 +64,7 @@ def test_source_jacobian_matches_dense_response_without_sparse_phase_reference()
     column_norm = np.linalg.norm(expected, axis=0)
     assert np.all(column_norm > 1e-6), column_norm
     relative_error = np.linalg.norm(actual - expected, axis=0) / column_norm
-    # A deliberately coarse 256-point response over four years has measured
-    # interpolation derivative errors of order 1e-7. Bound every coordinate,
-    # including the second chirp and edge-on inclination, independently.
-    assert np.all(relative_error < 3e-6), relative_error
+    assert np.all(relative_error < bound), relative_error
 
 
 def test_fixed_grid_duration_epoch_derivatives_across_auto_grid_threshold():

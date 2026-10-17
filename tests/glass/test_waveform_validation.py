@@ -1,5 +1,7 @@
 """Invalid source domains fail clearly without breaking JAX transforms."""
 
+import warnings
+
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -102,17 +104,30 @@ def test_traced_invalid_native_sources_return_nan(glass_params):
         assert np.all(np.isnan(np.asarray(output[1:])))
 
 
-@pytest.mark.parametrize("kwargs", [{"T": -1.0}, {"t0": np.inf}, {"q": 7884.5}])
-def test_traced_invalid_grid_values_return_nan(glass_params, kwargs):
+# At BW=64 a fixed 32-point grid is interpolated, and the automatic grid,
+# with a traced duration, compiles a switch between that grid and a direct
+# evaluation, which must also see the invalid values.
+@pytest.mark.parametrize("samples", [32, None], ids=["fixed", "automatic"])
+@pytest.mark.parametrize(
+    "kwargs", [{"T": -1.0}, {"T": np.inf}, {"t0": np.inf}, {"q": 7884.5}]
+)
+def test_traced_invalid_grid_values_return_nan(glass_params, kwargs, samples):
     arguments = {"T": 7_884_000.0, "t0": 0.0, "q": 7884.0, **kwargs}
-    # A fixed grid: with a traced duration the automatic one compiles every
-    # branch of its switch, which test_onfly covers.
     evaluate = jax.jit(
         lambda duration, epoch, carrier: bg.ucb_waveform(
-            glass_params, T=duration, BW=32, t0=epoch, q=carrier, response_samples=32
+            glass_params,
+            T=duration,
+            BW=64,
+            t0=epoch,
+            q=carrier,
+            response_samples=samples,
         )
     )
-    result = evaluate(arguments["T"], arguments["t0"], arguments["q"])
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        result = evaluate(arguments["T"], arguments["t0"], arguments["q"])
+    grid = [w for w in record if issubclass(w.category, bg.ResponseSamplesWarning)]
+    assert len(grid) == (samples is None)
     for output in result.values():
         assert np.all(np.isnan(np.asarray(output)))
 

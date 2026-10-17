@@ -7,6 +7,8 @@ least as many samples. The explicit ``fourier`` backend keeps
 the original GLASS single-link FFT implementation for reproducibility.
 """
 
+import os
+import sys
 import warnings
 from functools import partial
 
@@ -68,6 +70,32 @@ _TRACED_DURATION = (
 )
 
 
+#: Directories of JAX and of this package, whose frames a warning skips so
+#: that it points at the user's line.
+_INTERNAL_DIRECTORIES = (
+    os.path.dirname(jax.__file__) + os.sep,
+    os.path.dirname(os.path.dirname(__file__)) + os.sep,
+)
+
+
+def _caller_stacklevel():
+    """Return the ``stacklevel`` of the first frame outside JAX and this package.
+
+    For use as ``warnings.warn(..., stacklevel=_caller_stacklevel())``. A
+    public entry may be called from user code, or passed to a JAX transform,
+    as in ``jax.jit(bg.ucb_waveform, ...)``, which then calls it from JAX's
+    own frames; either way the warning names the user's line.
+    """
+    frame = sys._getframe(1)  # The frame that calls warnings.warn: level 1.
+    level = 1
+    while frame.f_back is not None and frame.f_code.co_filename.startswith(
+        _INTERNAL_DIRECTORIES
+    ):
+        frame = frame.f_back
+        level += 1
+    return level
+
+
 def _native_parameters(params, T):
     """Validate native source coordinates without extracting tracers."""
     params = _validation.finite_array(params, "params")
@@ -124,10 +152,11 @@ def _resolve_samples(response_samples, T, real, BW):
     which inside an enclosing trace makes it a tracer. A concrete ``T`` gives
     exactly the count the compiled switch would select for the same value in
     the working dtype ``real``. A traced ``T`` keeps ``None``, and the
-    switch, and warns once at the caller's line, unless every automatic count
-    is at least ``BW``: they then share one direct evaluation and nothing is
-    selected. Compiled callers below a public entry pass its result on, so
-    they neither resolve nor warn again. ``BW`` may still be unvalidated.
+    switch, and warns once at the first line outside JAX and this package,
+    unless every automatic count is at least ``BW``: they then share one
+    direct evaluation and nothing is selected. Compiled callers below a
+    public entry pass its result on, so they neither resolve nor warn again.
+    ``BW`` may still be unvalidated.
     """
     if response_samples is not None:
         return response_samples
@@ -136,7 +165,11 @@ def _resolve_samples(response_samples, T, real, BW):
     if isinstance(T, jax.core.Tracer):
         integral = isinstance(BW, (int, np.integer)) and not isinstance(BW, bool)
         if not integral or len(_automatic_counts(BW)) > 1:
-            warnings.warn(_TRACED_DURATION, ResponseSamplesWarning, stacklevel=3)
+            warnings.warn(
+                _TRACED_DURATION,
+                ResponseSamplesWarning,
+                stacklevel=_caller_stacklevel(),
+            )
         return None
     duration = np.asarray(T, dtype=real)
     if duration.shape != ():
