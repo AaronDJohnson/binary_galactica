@@ -176,7 +176,10 @@ def template_on_window(
     with the default carrier. ``bin_lo`` and ``n_bins`` are static absolute
     rfft bin indices; the window must lie in int32 range. Bins the ``BW``
     band does not reach are zero, and band power outside the window is
-    dropped. Choose ``BW`` from :func:`binary_galactica.ucb_bw`.
+    dropped. Choose ``BW`` from :func:`binary_galactica.ucb_bw`. A and E are
+    formed from the sparse response before interpolation and only those two
+    channels are transformed, so they equal :func:`ucb_waveform`'s A and E,
+    scaled, to rounding.
 
     The ``sqrt(T)`` factor lifts typical values to 1e-18-1e-15, but their
     squares stay within a few decades of float32's smallest normal number,

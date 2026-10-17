@@ -280,11 +280,24 @@ def grid_cycles(residual, params, T, t0, BW, disabled=(), first=None):
 
 
 def _waveform(
-    params, q_ref, T, BW, t0, fmt, positions, q, response_samples, disabled, first=None
+    params,
+    q_ref,
+    T,
+    BW,
+    t0,
+    fmt,
+    positions,
+    q,
+    response_samples,
+    disabled,
+    first=None,
+    channels="xyz",
 ):
     """Return unmasked float32 channels, int32 bins and their validity.
 
     ``first`` optionally gives ``params[7]`` as a more precise pair.
+    ``channels="ae"`` forms A and E from the sparse response and returns only
+    those with the bins, as in the float64 ``_ucb_waveform``.
     """
     carrier, residual, scaled_frequency, valid = _carrier(params[0], q_ref, q)
     if "carrier" in disabled:
@@ -301,7 +314,9 @@ def _waveform(
     valid = valid & _source_valid(native, T)
     if positions is not None:
         valid = valid & jnp.all(jnp.isfinite(positions))
-    envelope = _response_envelope(native, T, BW, t0, positions, response_samples)
+    envelope = _response_envelope(
+        native, T, BW, t0, positions, response_samples, channels=channels
+    )
     geometry = positions
     if positions is None and "orbit" not in disabled:
         geometry = positions_from_phase(grid_orbital_phase(T, t0, BW))
@@ -314,29 +329,26 @@ def _waveform(
     )
     # A complex exponential, as in glass.waveform._ucb_waveform.
     envelope = envelope * jnp.exp(1j * phase)
-    xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
-    xyz = xyz * (jnp.sqrt(T) / (2 * BW))
+    spectra = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
+    spectra = spectra * (jnp.sqrt(T) / (2 * BW))
     qmin = carrier - BW // 2
     bins = qmin + jnp.arange(BW, dtype=jnp.int32)
     if fmt == "frequency":
-        xyz = -1j * xyz
+        spectra = -1j * spectra
     elif fmt == "phase":
         dc = bins == 0
         x = jnp.where(dc, 1, bins).astype(jnp.float32) / (T * FSTAR)
-        xyz = jnp.where(dc, 0j, xyz / (2j * x))
-    X, Y, Z = xyz
-    A, E = xyz_to_ae(X, Y, Z)
+        spectra = jnp.where(dc, 0j, spectra / (2j * x))
+    result = {"qmin": qmin, "freq_bin_indices": bins}
+    if channels == "ae":
+        A, E = spectra
+    else:
+        X, Y, Z = spectra
+        A, E = xyz_to_ae(X, Y, Z)
+        result.update(X=X, Y=Y, Z=Z)
     if fmt == "phase":
         A, E = jnp.conj(A), jnp.conj(E)
-    result = {
-        "qmin": qmin,
-        "freq_bin_indices": bins,
-        "X": X,
-        "Y": Y,
-        "Z": Z,
-        "A": A,
-        "E": E,
-    }
+    result.update(A=A, E=E)
     return result, valid
 
 
@@ -413,9 +425,22 @@ def _template_on_window(
     response_samples,
     disabled,
 ):
-    """Place continuous-Fourier A and E on a window, NaN throughout if invalid."""
+    """Place continuous-Fourier A and E on a window, NaN throughout if invalid.
+
+    Only A and E are formed, from the sparse response, and transformed.
+    """
     result, valid = _waveform(
-        params, q_ref, T, BW, t0, fmt, positions, None, response_samples, disabled
+        params,
+        q_ref,
+        T,
+        BW,
+        t0,
+        fmt,
+        positions,
+        None,
+        response_samples,
+        disabled,
+        channels="ae",
     )
     scale = jnp.sqrt(T)
     index = result["freq_bin_indices"] - np.int32(bin_lo)

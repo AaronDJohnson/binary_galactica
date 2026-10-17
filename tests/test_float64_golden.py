@@ -5,12 +5,13 @@ commit 8363ec0. Bitwise equality is only meaningful on the same JAX/XLA build
 and CPU. When the recorded jax, jaxlib, NumPy, machine and default backend
 match the running environment, every output must keep its recorded dtype,
 shape and exact bits, except outputs computed by the on-fly response kernel,
-which must agree to 1e-13 of peak. Two later changes moved their last bits:
-public calls now choose the automatic response grid on the host and compile
-only it, not the recorded switch over every grid, and the kernel now forms its
-rotations from a shared cosine-sine pair and combines its eight delayed
-differences in one signed sum. Bin indices, geometry and the native vector
-still match bitwise. Elsewhere a different compiler or library may
+which must agree to 1e-13 of peak. Three later changes moved their last
+bits: public calls now choose the automatic response grid on the host and
+compile only it, not the recorded switch over every grid; the kernel now forms
+its rotations from a shared cosine-sine pair and combines its eight delayed
+differences in one signed sum; and ``template_on_window`` now forms A and E
+from the sparse response before the transform. Bin indices, geometry and the
+native vector still match bitwise. Elsewhere a different compiler or library may
 legitimately move the last bits, so outputs must instead agree to within a
 relative 1e-12 of each array's peak magnitude, or 1e-8 for the legacy Fourier
 backend, whose sines of full phases near 1e7 rad differ by about 5e-10 of peak
@@ -40,12 +41,12 @@ RELATIVE_TOLERANCE = 1e-12
 FOURIER_TOLERANCE = 1e-8
 #: The same on the recording build for outputs of the on-fly response kernel.
 #: Automatic-grid cases were recorded through a ``lax.switch`` over every
-#: grid, which host resolution no longer compiles, and the kernel's rotations
+#: grid, which host resolution no longer compiles; the kernel's rotations
 #: and its signed sum over the eight delayed differences were since
-#: reorganized; XLA rounds both differently. On that build every such output
-#: moved by at most 2.2e-15 of peak, while choosing a neighbouring grid moves
-#: an output by about 1e-10 of its norm and a wrong sign in the sum by order
-#: one.
+#: reorganized; and the window now forms A and E before the transform. XLA
+#: rounds each differently. On that build every such output moved by at most
+#: 2.2e-15 of peak, while choosing a neighbouring grid moves an output by
+#: about 1e-10 of its norm and a wrong sign in the sum by order one.
 ONFLY_TOLERANCE = 1e-13
 #: Outputs that never pass through the response kernel: exact on that build.
 KERNEL_FREE_OUTPUTS = ("qmin", "freq_bin_indices", "positions", "native")

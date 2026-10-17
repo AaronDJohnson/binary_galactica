@@ -35,6 +35,10 @@ from .types import WaveformResult
 BACKENDS = ("onfly", "fourier")
 DEFAULT_RESPONSE_SAMPLES = None
 _AUTO_RESPONSE_SAMPLES = (32, 64, 128, 256, 512, 1024, 2048)
+#: Channel sets of the internal on-fly pipeline. ``"xyz"`` transforms X, Y
+#: and Z and forms A and E from their spectra; ``"ae"`` forms A and E from the
+#: sparse response and transforms only those two.
+_CHANNELS = ("xyz", "ae")
 
 
 class ResponseSamplesWarning(UserWarning):
@@ -280,12 +284,16 @@ def _onfly_inputs(params, T, fmt, q):
     return params, q
 
 
-def _waveform(params, *, T, BW, t0, fmt, positions, backend, response_samples):
+def _waveform(
+    params, *, T, BW, t0, fmt, positions, backend, response_samples, channels="xyz"
+):
     """Validate and generate like :func:`ucb_waveform`, without resolving.
 
     For compiled callers below a public entry, which has already resolved
     ``response_samples`` with :func:`_resolve_samples`, or warned and kept
-    ``None``, so that one public call warns at most once.
+    ``None``, so that one public call warns at most once. ``channels="ae"``
+    returns only A, E and the bins on the on-fly path, as in
+    :func:`_ucb_waveform`; the legacy backend always returns all five channels.
     """
     response_samples = _options(backend, response_samples)
     if backend == "fourier":
@@ -303,6 +311,7 @@ def _waveform(params, *, T, BW, t0, fmt, positions, backend, response_samples):
         positions=positions,
         q=q,
         response_samples=response_samples,
+        channels=channels,
     )
 
 
@@ -364,12 +373,18 @@ def _automatic_samples(T, real):
     return _AUTO_RESPONSE_SAMPLES[int(np.sum(_duration_boundaries(real) < duration))]
 
 
-def _response_envelope(params, T, BW, t0, positions, response_samples):
+def _response_envelope(
+    params, T, BW, t0, positions, response_samples, *, channels="xyz"
+):
     """Interpolate on a static grid, selecting a duration bucket when requested.
 
     Knots, coordinates and the duration buckets use the floating dtype of
-    ``params``, to which ``T``, ``t0`` and positions are cast.
+    ``params``, to which ``T``, ``t0`` and positions are cast. The envelope
+    has shape ``(3, BW)`` holding X/Y/Z for ``channels="xyz"``, or
+    ``(2, BW)`` holding A/E, combined from the sparse rows, for ``"ae"``.
     """
+    if channels not in _CHANNELS:
+        raise ValueError(f"channels must be one of {_CHANNELS}; got {channels!r}")
     real = real_dtype(params)
     T, t0 = cast(T, real), cast(t0, real)
     if positions is not None:
@@ -380,11 +395,17 @@ def _response_envelope(params, T, BW, t0, positions, response_samples):
         geometry = (
             None if positions is None else _cached_positions(positions, knots, T, t0)
         )
-        response = _raw_response(params, knots, T, geometry, reference_phase=True).T
+        response = _raw_response(params, knots, T, geometry, reference_phase=True)
+        if channels == "ae":
+            # A and E are fixed combinations of X, Y and Z, and interpolation,
+            # the phase restore, the FFT and the format factors are linear and
+            # the same for every channel. Combining the sparse rows leaves two
+            # channels to interpolate and transform instead of three.
+            response = jnp.stack(xyz_to_ae(*response))
         # Static normalized coordinates avoid clock-subtraction rounding and
         # stencil changes when duration, epoch or source coordinates are traced.
         coordinates = jnp.arange(BW, dtype=real) / (BW - 1)
-        return interpolate_uniform(response, coordinates).T
+        return interpolate_uniform(response.T, coordinates).T
 
     if response_samples is not None:
         return sample(response_samples, params, T, t0, positions)
@@ -397,7 +418,7 @@ def _response_envelope(params, T, BW, t0, positions, response_samples):
     return jax.lax.switch(index, branches, params, T, t0, positions)
 
 
-@partial(jax.jit, static_argnames=("BW", "fmt", "response_samples"))
+@partial(jax.jit, static_argnames=("BW", "fmt", "response_samples", "channels"))
 def _ucb_waveform(
     params,
     *,
@@ -408,8 +429,15 @@ def _ucb_waveform(
     positions=None,
     q=None,
     response_samples=DEFAULT_RESPONSE_SAMPLES,
+    channels="xyz",
 ) -> WaveformResult:
-    """Interpolate combined XYZ, restore the carrier residual, then transform."""
+    """Interpolate the response, restore the carrier residual, then transform.
+
+    ``channels="xyz"`` transforms X, Y and Z and returns all five channels.
+    ``"ae"`` forms A and E from the sparse response, transforms only those,
+    and returns them with ``qmin`` and ``freq_bin_indices``; they equal the
+    five-channel A and E to rounding.
+    """
     q = (
         _carrier_bin(jax.lax.stop_gradient(params[0]), jax.lax.stop_gradient(T))
         if q is None
@@ -420,7 +448,9 @@ def _ucb_waveform(
     if positions is not None:
         valid = valid & jnp.all(jnp.isfinite(positions))
     times = slow_time_grid(T, t0, BW)
-    envelope = _response_envelope(params, T, BW, t0, positions, response_samples)
+    envelope = _response_envelope(
+        params, T, BW, t0, positions, response_samples, channels=channels
+    )
     # Restore phi(t-k.x0/c) minus the carrier without forming or subtracting
     # large source phases. Public tdi_response retains phi(t) demodulation.
     u = times / T
@@ -437,28 +467,26 @@ def _ucb_waveform(
     # value-and-gradient calls up to three times slower on CPU, and JAX 0.11
     # ran no faster with it.
     envelope = envelope * jnp.exp(1j * phase)
-    xyz = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
-    xyz = xyz * (jnp.sqrt(T) / (2 * BW))
+    spectra = jnp.fft.fftshift(jnp.fft.fft(envelope, axis=-1), axes=-1)
+    spectra = spectra * (jnp.sqrt(T) / (2 * BW))
     qmin = q - BW // 2
     bins = qmin + jnp.arange(BW, dtype=jnp.float64)
     if fmt == "frequency":
-        xyz = -1j * xyz
+        spectra = -1j * spectra
     elif fmt == "phase":
         x = bins / (T * FSTAR)
-        xyz = jnp.where(x == 0, 0j, xyz / (2j * jnp.where(x == 0, 1.0, x)))
-    X, Y, Z = xyz
-    A, E = xyz_to_ae(X, Y, Z)
+        spectra = jnp.where(x == 0, 0j, spectra / (2j * jnp.where(x == 0, 1.0, x)))
+    result = {"qmin": qmin, "freq_bin_indices": bins}
+    if channels == "ae":
+        A, E = spectra
+    else:
+        X, Y, Z = spectra
+        A, E = xyz_to_ae(X, Y, Z)
+        result.update(X=X, Y=Y, Z=Z)
     if fmt == "phase":
+        # GLASS's LISA_tdi conjugates A and E, not X, Y and Z, after the transform.
         A, E = jnp.conj(A), jnp.conj(E)
-    result = {
-        "qmin": qmin,
-        "freq_bin_indices": bins,
-        "X": X,
-        "Y": Y,
-        "Z": Z,
-        "A": A,
-        "E": E,
-    }
+    result.update(A=A, E=E)
     return {name: jnp.where(valid, value, jnp.nan) for name, value in result.items()}
 
 

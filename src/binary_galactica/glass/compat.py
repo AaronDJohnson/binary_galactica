@@ -60,7 +60,11 @@ def template_on_window(
     """``(2, n_bins)`` complex ``[A, E]`` on bins ``bin_lo .. bin_lo+n_bins-1``.
 
     In the continuous-Fourier convention, i.e. already through
-    :func:`binary_galactica.glass.convert.to_continuous_ft`.
+    :func:`binary_galactica.glass.convert.to_continuous_ft`. The on-fly
+    backend forms A and E from the sparse response before interpolation and
+    transforms only those two channels, so they equal
+    :func:`binary_galactica.glass.ucb_waveform`'s A and E to rounding, not
+    bitwise.
 
     Parameters
     ----------
@@ -123,7 +127,11 @@ def template_on_window(
 def _template_on_window(
     params, *, T, bin_lo, n_bins, BW, t0, fmt, positions, backend, response_samples
 ):
-    """Compile waveform generation and placement after validating static indices."""
+    """Compile waveform generation and placement after validating static indices.
+
+    The on-fly path forms only A and E, from the sparse response, and
+    transforms two channels instead of three.
+    """
     w = _waveform(
         params,
         T=T,
@@ -133,6 +141,7 @@ def _template_on_window(
         positions=positions,
         backend=backend,
         response_samples=response_samples,
+        channels="ae",
     )
     c = GLASS_TO_CONTINUOUS(T)
 

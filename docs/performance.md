@@ -345,8 +345,10 @@ For repeated single-source inference, use `template_on_window` with a fixed
 analysis window. A concrete duration uses one automatic response count, chosen
 on the host before compiling; an explicit `response_samples` also keeps the
 grid fixed when the duration is traced or varies. It compiles waveform
-generation and placement together. The default analytic orbit is the
-most accurate option:
+generation and placement together. It forms A and E from the sparse response
+before interpolation, so it interpolates and transforms two channels where
+`ucb_waveform` transforms X, Y and Z. The default analytic orbit is the most
+accurate option:
 
 ```python
 import jax

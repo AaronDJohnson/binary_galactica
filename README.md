@@ -496,8 +496,9 @@ The test configuration enables x64 for the session. A float64 golden archive,
 recorded after the 0.5.0 physical-amplitude fix, must reproduce to 1e-12 of
 each output's peak on other builds. On its recording JAX, NumPy, and CPU build,
 outputs of the on-fly response kernel must agree to 1e-13 of peak, because
-host-resolved automatic grids and a reorganized kernel have since moved their
-last bits, and every other output must reproduce bitwise. The
+host-resolved automatic grids, a reorganized kernel and A/E formed before the
+transform in `template_on_window` have since moved their last bits, and every
+other output must reproduce bitwise. The
 float32 tests compare the `single` waveform, window, arbitrary-time response,
 and physical adapter with float64 at identical inputs, check that no float64
 value enters their compiled programs, and require a subprocess with x64

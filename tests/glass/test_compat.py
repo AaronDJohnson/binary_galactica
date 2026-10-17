@@ -59,7 +59,10 @@ def test_template_on_window_matches_direct_overlap(glass_params, injection):
             np.asarray(waveform["E"])[11 : 11 + n_bins],
         ]
     )
-    assert np.allclose(got, expected, rtol=2e-15, atol=0.0)
+    # The window forms A and E before the transform and ucb_waveform after
+    # it, so they agree to rounding (3e-16 of the norm here), not bitwise.
+    error = np.linalg.norm(got - expected)
+    assert error <= 1e-14 * np.linalg.norm(expected)
 
 
 def test_far_out_of_window_source_contributes_exactly_zero(glass_params, injection):
