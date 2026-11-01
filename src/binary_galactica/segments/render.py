@@ -2,7 +2,7 @@
 
 Templates are in ``dt * rfft`` units: GLASS's raw output times ``sqrt(T)``.
 They are given in A and E, and in GLASS's ``T = (X + Y + Z) / sqrt(3)`` when
-the data has a third channel. As in
+the data has a third channel (``fmt="sangria"`` only). As in
 :class:`~binary_galactica.segments.SegmentLikelihood`, an automatic (``None``)
 on-fly response grid is resolved from the concrete ``T`` before compiling.
 """
@@ -81,9 +81,18 @@ def render_sources(
     """Render ``(n, 8)`` sources in A, E (and T if ``n_channels == 3``).
 
     Bins outside ``[1, n_freq - 1)`` are dropped, so DC and Nyquist stay zero.
+    Three channels need ``fmt="sangria"``, the convention the conventions gate
+    validated. Under ``"phase"`` GLASS conjugates A and E but not X, Y and Z,
+    so a T built from X + Y + Z would not share A and E's convention.
+    ``"frequency"`` is unvalidated for T. Either combination raises
+    ``ValueError``.
     """
     if n_channels not in (2, 3):
         raise ValueError("n_channels must be 2 (A, E) or 3 (A, E, T)")
+    if n_channels == 3 and fmt != "sangria":
+        raise ValueError(
+            f"the T channel is only consistent with A and E for fmt='sangria', got {fmt!r}"
+        )
     x = np.asarray(sources, dtype=np.float64).reshape(-1, 8)
     n = x.shape[0]
     if n == 0:

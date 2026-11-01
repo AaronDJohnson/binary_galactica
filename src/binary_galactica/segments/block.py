@@ -2,7 +2,8 @@
 
 One :meth:`UCBBlock.sample` call:
 1. checks that the residual and covariance are frequency-domain and on the
-   construction grid;
+   construction grid (channels, length, sample rate and start time), and that
+   the ledger's turn matches the block's;
 2. takes the A and E coefficient variances ``C = (T/2) S`` from the
    covariance;
 3. sweeps even segments, then odd. Each segment's sampler sees the conditional
@@ -59,10 +60,19 @@ class UCBBlock:
     config
         :class:`UCBBlockConfig`; the default holds the spec's settings.
     reference_covariance
-        Optional frequency ``DataCovariance`` defining the SNR cut for the run.
-        ``None`` takes the first turn's covariance.
+        Frequency ``DataCovariance`` defining the SNR cut for the run; start
+        sources below the cut are dropped at construction. It is required by
+        :meth:`initial_block_state`, so that the published turn-0 template
+        never includes a source the block then drops. ``None`` defers the cut
+        to the first turn's covariance, for callers that seed the ledger
+        another way.
     name
         Registration name.
+
+    The block holds its own sampler state (every segment's chains) and does
+    not restart from ``current_block_state``. It only checks that the ledger's
+    ``parameters["turn"]``, when present, equals :attr:`turn`, so a ledger out
+    of step with the block raises.
 
     Register with ``Wheel.add(..., data_domain="frequency")``.
     """
@@ -137,8 +147,11 @@ class UCBBlock:
             tuple(data.channel_names) != self.channels
             or int(data.num_time_samples) != self.num_time_samples
             or float(data.sample_rate_hz) != self.sample_rate_hz
+            or float(data.start_time_gps) != self.t0
         ):
-            raise ValueError("data grid or channels differ from the construction grid")
+            raise ValueError(
+                "data grid, start time or channels differ from the construction grid"
+            )
 
     def _diagonals(self, cov: Any) -> NDArray[np.float64]:
         """Return ``(2, n_freq)`` A/E coefficient variances; inactive bins are inf."""
@@ -218,7 +231,18 @@ class UCBBlock:
         return {"turn": self.turn, "segments": segments}
 
     def initial_block_state(self, data: Any) -> Any:
-        """Return the start set's published state on ``data``'s grid."""
+        """Return the start set's published state on ``data``'s grid.
+
+        It renders the start sources that survive the SNR cut and publishes
+        ``parameters["turn"] == 0`` (the current :attr:`turn` before any
+        sample). It raises ``ValueError`` if the block was built without
+        ``reference_covariance``, because the cut is not yet applied.
+        """
+        if self.c_ref is None:
+            raise ValueError(
+                "initial_block_state needs the SNR cut applied first; build the "
+                "UCBBlock with reference_covariance= (e.g. the initial noise covariance)"
+            )
         sources = self._start_sources()
         contrib = {seg.index: self._render(seg, sources[seg.index]) for seg in self.table.segments}
         return data.block_state(self._template(self._model_of(contrib)),
@@ -257,7 +281,26 @@ class UCBBlock:
         *,
         rng: np.random.Generator,
     ) -> Any:
-        """Run one Gibbs turn and return the published block state."""
+        """Run one Gibbs turn and return the published block state.
+
+        Within a parity the segments advance in index order, and each updates
+        the shared model in place before the next one reads it. Same-parity
+        padded windows are disjoint, but a template can still reach a
+        same-parity neighbour's window through its tail, because ``bw`` is
+        capped at ``floor_pow2(width + 2 * pad)`` rather than ``2 * pad``.
+        This sequential order is therefore the defined sweep: a parallel sweep
+        within a parity would need a snapshot of the model taken before it.
+
+        ``current_block_state`` is not used to restart the sampler. Its
+        ``parameters["turn"]``, if present, must equal :attr:`turn`.
+        """
+        params = getattr(current_block_state, "parameters", None)
+        ledger_turn = params.get("turn") if isinstance(params, dict) else None
+        if ledger_turn is not None and ledger_turn != self.turn:
+            raise ValueError(
+                f"current_block_state is from turn {ledger_turn} but the block is at "
+                f"turn {self.turn}; the ledger and the block's sampler state are out of step"
+            )
         data = conditional_residual
         self._check_data(data)
         c = self._diagonals(noise_covariance)
