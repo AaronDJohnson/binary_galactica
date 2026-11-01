@@ -62,18 +62,28 @@ class _Noise:
         return ae_noise(f)
 
 
+class _InjectedFailure(Exception):
+    pass
+
+
 class _FakeRunner:
-    """Records each advance; ``move`` replaces and ``extra`` appends cold sources."""
+    """Records each advance; ``move`` replaces and ``extra`` appends cold sources.
+
+    With ``fail = n``, the advance made after ``n`` recorded calls raises.
+    """
 
     calls: list = []
     extra = None
     move = None
+    fail = None
 
     def __init__(self, segment, start, **kwargs):
         self.segment = segment
         self.start = np.array(start).reshape(-1, 8)
 
     def advance(self, residual, c):
+        if _FakeRunner.fail is not None and len(_FakeRunner.calls) == _FakeRunner.fail:
+            raise _InjectedFailure(f"segment {self.segment.index}")
         _FakeRunner.calls.append((self.segment.index, np.array(residual)))
 
     def cold_sources(self):
@@ -92,6 +102,7 @@ def fake_runner(monkeypatch):
     _FakeRunner.calls = []
     _FakeRunner.extra = None
     _FakeRunner.move = None
+    _FakeRunner.fail = None
     monkeypatch.setattr(block_module, "SegmentRunner", _FakeRunner)
     return _FakeRunner
 
@@ -214,6 +225,29 @@ def test_rejects_a_ledger_out_of_step(tmp_path, fake_runner):
     with pytest.raises(ValueError, match="turn 0 but the block is at turn 1"):
         block.sample(_grid(), _cov(), state0, rng=rng)
     assert block.sample(_grid(), _cov(), state1, rng=rng).parameters["turn"] == 2
+
+
+def test_refuses_to_continue_after_a_failed_sweep(tmp_path, fake_runner):
+    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config(),
+                     reference_covariance=_cov())
+    rng = np.random.default_rng(7)
+    # A rejected input changes nothing, so the block stays usable.
+    with pytest.raises(ValueError, match="start time"):
+        block.sample(_grid(t0=100.0), _cov(), None, rng=rng)
+    state = block.sample(_grid(), _cov(), None, rng=rng)
+    assert block.turn == 1
+
+    fake_runner.calls = []
+    fake_runner.fail = 1  # segment 0 advances, then segment 2's advance raises
+    with pytest.raises(_InjectedFailure, match="segment 2"):
+        block.sample(_grid(), _cov(), state, rng=rng)
+    assert [s for s, _ in fake_runner.calls] == [0]
+    assert block.turn == 1
+
+    fake_runner.fail = None
+    with pytest.raises(RuntimeError, match="failed mid-sweep; build a fresh UCBBlock"):
+        block.sample(_grid(), _cov(), state, rng=rng)
+    assert [s for s, _ in fake_runner.calls] == [0]
 
 
 def test_initial_block_state_needs_the_reference(tmp_path, fake_runner):

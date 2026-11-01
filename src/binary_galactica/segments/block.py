@@ -74,6 +74,15 @@ class UCBBlock:
     ``parameters["turn"]``, when present, equals :attr:`turn`, so a ledger out
     of step with the block raises.
 
+    A turn is not atomic. If an exception escapes :meth:`sample` after its
+    inputs are validated, some segments may already have advanced and
+    archived the turn while :attr:`turn` has not moved. This covers applying
+    the cut, starting the runners and the sweep itself. A retry would advance
+    those segments twice, so every later call raises ``RuntimeError``; build a
+    fresh ``UCBBlock`` with a new ``outdir``. Rejected inputs (a wrong domain,
+    grid or covariance, or a ledger turn out of step) raise before anything
+    changes and leave the block usable.
+
     Register with ``Wheel.add(..., data_domain="frequency")``.
     """
 
@@ -116,6 +125,7 @@ class UCBBlock:
         self._sources: dict[int, NDArray[np.float64]] = {}
         self._contrib: dict[int, Contribution] = {}
         self._model: NDArray[np.complex128] | None = None
+        self._failed = False
         if reference_covariance is not None:
             self._set_reference(self._diagonals(reference_covariance))
         self._write_dropped()
@@ -292,8 +302,14 @@ class UCBBlock:
         within a parity would need a snapshot of the model taken before it.
 
         ``current_block_state`` is not used to restart the sampler. Its
-        ``parameters["turn"]``, if present, must equal :attr:`turn`.
+        ``parameters["turn"]``, if present, must equal :attr:`turn`. After a
+        failed turn every call raises ``RuntimeError`` (see the class notes).
         """
+        if self._failed:
+            raise RuntimeError(
+                "a previous sample() failed mid-sweep; build a fresh UCBBlock "
+                "(with a new outdir)"
+            )
         params = getattr(current_block_state, "parameters", None)
         ledger_turn = params.get("turn") if isinstance(params, dict) else None
         if ledger_turn is not None and ledger_turn != self.turn:
@@ -304,12 +320,26 @@ class UCBBlock:
         data = conditional_residual
         self._check_data(data)
         c = self._diagonals(noise_covariance)
+        r = np.stack([np.asarray(data.channel_data[ch], dtype=np.complex128) for ch in ("A", "E")])
+        # Everything above only reads its inputs. From here on segments change
+        # state one by one, so a failure leaves the block unusable.
+        try:
+            model = self._turn(r, c, rng)
+        except BaseException:
+            self._failed = True
+            raise
+        return data.block_state(self._template(model),
+                                parameters=self._parameters(self._sources))
+
+    def _turn(
+        self, r: NDArray[np.complex128], c: NDArray[np.float64], rng: np.random.Generator
+    ) -> NDArray[np.complex128]:
+        """Apply the cut and start the runners if needed, sweep, and return the model."""
         if self.c_ref is None:
             self._set_reference(c)
         if self._runners is None:
             self._start(rng)
         assert self._runners is not None and self._model is not None
-        r = np.stack([np.asarray(data.channel_data[ch], dtype=np.complex128) for ch in ("A", "E")])
         for parity in (0, 1):
             for seg in self.table.segments[parity::2]:
                 runner = self._runners[seg.index]
@@ -325,10 +355,10 @@ class UCBBlock:
                 new.add_to(self._model, 1.0)
                 self._contrib[seg.index] = new
                 self._sources[seg.index] = keep
-        self._model = self._model_of(self._contrib)
+        model = self._model_of(self._contrib)
+        self._model = model
         self.turn += 1
-        return data.block_state(self._template(self._model),
-                                parameters=self._parameters(self._sources))
+        return model
 
 
 __all__ = ["CHANNEL_SETS", "UCBBlock"]
