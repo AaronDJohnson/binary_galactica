@@ -178,6 +178,8 @@ class SegmentLikelihood:
         if not (np.isfinite(self.T) and self.T > 0):
             raise ValueError(f"T must be finite and positive, got {T!r}")
         self.t0 = float(t0)
+        if not np.isfinite(self.t0):
+            raise ValueError(f"t0 must be finite, got {t0!r}")
         self.bin_lo = int(bin_lo)
         self.n_bins = int(n_bins)
         self.k_max = int(k_max)

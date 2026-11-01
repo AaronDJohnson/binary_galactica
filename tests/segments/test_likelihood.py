@@ -100,8 +100,9 @@ def test_temperature_batch_matches_rows():
 
 
 def test_compile_key_sharing():
-    # k_max=2 is a key no other test here uses, so its compile count starts at zero.
-    liks = []
+    # The kernel cache is process-wide, so compare compile counts before and
+    # after the second segment rather than asserting an absolute count.
+    liks, compiled = [], []
     for bin_lo, n_bins in ((1000, 100), (5000, 120)):
         lik = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=bin_lo, n_bins=n_bins, BW=64,
                                 k_max=2, snr_min=0.0)
@@ -113,10 +114,11 @@ def test_compile_key_sharing():
         x[0, :8] = native_source(bin_lo + 50.3)
         assert np.isfinite(lik(x, np.array([1]))[0])
         liks.append(lik)
+        compiled.append(lik.kernels.lnlike._cache_size())
     a, b = liks
     c = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=5000, n_bins=200, BW=64, k_max=2)
     assert a.key == b.key and a.kernels is b.kernels
-    assert a.kernels.lnlike._cache_size() == 1
+    assert compiled[1] == compiled[0] >= 1
     assert c.key != a.key
 
 
@@ -184,7 +186,8 @@ def test_covariance_zero_or_inf_excludes_and_nan_or_negative_raises():
 def test_construction_and_call_validation():
     base = dict(T=T_SHORT, t0=0.0, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW, k_max=3)
     for bad in ({"BW": 63}, {"BW": 0}, {"backend": "taylor"}, {"fmt": "xyz"},
-                {"response_samples": 3}, {"response_samples": True}):
+                {"response_samples": 3}, {"response_samples": True},
+                {"t0": np.nan}, {"t0": np.inf}):
         with pytest.raises(ValueError):
             SegmentLikelihood(**{**base, **bad})
     lik, _, _ = _lik()
