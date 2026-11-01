@@ -32,7 +32,7 @@ MARGIN = 300
 SPAN = 300
 
 
-def glass_segments(count: int, fmin=3e-3, fmax=5e-3, nmin=8, nmax=15):
+def glass_segments(count: int, fmin=3e-3, fmax=5e-3, nmin=8, nmax=20):
     """Return GLASS's detections and ``count`` segment indices with ``nmin..nmax`` of them."""
     import pandas as pd
 
@@ -59,6 +59,20 @@ def _counterpart(chain: dict, q: float, burn: float = 0.25, tol: float = 2.0):
     rows = np.arange(comps.shape[0])
     hit = d[rows, j] < tol
     return comps[rows, j][hit], float(hit.mean()) if hit.size else 0.0
+
+
+def _nearest_catalogue(path, T, q, start, block):
+    """Return the catalogue row of any SNR nearest ``q`` (bins), and whether it was a start source."""
+    rows = runs.catalogue_rows(path, T=T, band=(q - 10, q + 10))
+    if not len(rows):
+        return None
+    j = int(np.argmin(np.abs(rows["Frequency"] * T - q)))
+    r = rows[j]
+    return {"name": str(r["Name"]), "f": float(r["Frequency"]),
+            "lnA": float(np.log(r["Amplitude"])),
+            "analytic_snr": float(runs.analytic_snrs(r["Frequency"], r["Amplitude"], T)),
+            "distance_bins": float(r["Frequency"] * T - q),
+            "in_start_set": bool(r["Name"] in set(start["Name"]))}
 
 
 def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path):
@@ -112,6 +126,8 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
                                   "lnA": float(np.log(start["Amplitude"][j])),
                                   "dropped": inj_name in dropped,
                                   "block_snr": dropped.get(inj_name)}
+        if frac < 0.5:
+            entry["nearest_catalogue"] = _nearest_catalogue(path, T, qd, start, block)
         entry["overlap"] = bool(frac >= 0.5 and entry.get("sep_f", np.inf) < 3
                                 and entry.get("sep_lnA", np.inf) < 3)
         out.append(entry)
@@ -153,6 +169,8 @@ def main() -> None:
                   f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']} "
                   f"inj={inj.get('name')} inj_dropped={inj.get('dropped')} "
                   f"inj_block_snr={inj.get('block_snr')}")
+            if "nearest_catalogue" in d:
+                print(f"    MISS nearest catalogue: {d['nearest_catalogue']}")
     if not bright:
         print("VACUOUS: no GLASS detection has SNR >= 10")
     print(f"n_bright {len(bright)}; bright overlap fraction {fraction:.2f}; run directory: {outdir}")
