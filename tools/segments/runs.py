@@ -93,8 +93,10 @@ def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
 def covariance(data, variances: dict, lo: int, hi: int):
     """Return a diagonal DataCovariance.
 
-    It uses ``variances`` on ``[lo, hi)`` and ``(T/2) ae_noise`` elsewhere;
-    DC is inactive.
+    It uses ``variances`` on ``[lo, hi)`` and the instrument-only
+    ``(T/2) ae_noise`` elsewhere; DC is inactive. Callers must pass ``lo`` and
+    ``hi`` covering the block's whole padded band (``segments[0].bin_lo`` to
+    ``segments[-1].bin_hi``), or the block sees instrument-only noise there.
     """
     import enchilada
 
@@ -130,24 +132,38 @@ def run_block(block, data, cov, turns: int, seed: int):
 def recovery(chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0):
     """Return, for each injection, how often a cold-chain source sits within ``tol`` bins.
 
-    Also returns the histogram of the count after burn-in.
+    Matching is one-to-one within each sample: injection-component pairs are
+    taken greedily by increasing distance, so two injections within ``tol`` of
+    one component cannot both claim it. Also returns the histogram of the count
+    after burn-in.
     """
     first = int(burn * chain["k"].size)
     samples, ks = chain["samples"][first:], chain["k"][first:]
     comps = samples.reshape(samples.shape[0], -1, 8)
-    rows = np.arange(samples.shape[0])
-    out = []
-    for inj in np.atleast_2d(injections):
-        d = np.abs(comps[..., 0] - inj[0])
+    inj = np.atleast_2d(injections)
+    n_s, n_i = comps.shape[0], len(inj)
+    near = np.full((n_s, n_i), np.inf)
+    match = np.zeros((n_s, n_i), dtype=int)
+    for s in range(n_s):
+        d = np.abs(comps[s, :, 0][None, :] - inj[:, 0][:, None])  # (n_i, n_comp)
         d = np.where(np.isnan(d), np.inf, d)
-        j = np.argmin(d, axis=1)
-        near = d[rows, j]
-        hit = near < tol
+        for _ in range(min(n_i, d.shape[1])):
+            i, j = np.unravel_index(np.argmin(d), d.shape)
+            if not np.isfinite(d[i, j]):
+                break
+            near[s, i], match[s, i] = d[i, j], j
+            d[i, :] = np.inf
+            d[:, j] = np.inf
+    out = []
+    rows = np.arange(n_s)
+    for i, row in enumerate(inj):
+        hit = near[:, i] < tol
         out.append({
-            "q": float(inj[0]),
-            "lnA": float(inj[3]),
+            "q": float(row[0]),
+            "lnA": float(row[3]),
             "recovered": float(hit.mean()) if hit.size else 0.0,
-            "median_dq": float(np.median(near[hit])) if hit.any() else None,
-            "median_dlnA": float(np.median(comps[rows, j, 3][hit] - inj[3])) if hit.any() else None,
+            "median_dq": float(np.median(near[hit, i])) if hit.any() else None,
+            "median_dlnA": float(np.median(comps[rows, match[:, i], 3][hit] - row[3]))
+            if hit.any() else None,
         })
     return out, np.bincount(ks).tolist()

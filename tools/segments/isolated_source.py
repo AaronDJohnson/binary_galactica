@@ -16,10 +16,10 @@ import time
 from pathlib import Path
 
 import numpy as np
-import runs  # enables x64 before the package is used
 
-from binary_galactica.glass import ae_noise, template_on_window, ucb_fdot
-from binary_galactica.segments import SegmentRunner, UCBBlockConfig, build_segment_table
+# runs (hence h5py, via sangria) and the package are imported inside the functions
+# that need them, so ``fold_offsets`` imports without h5py; runs enables x64 first.
+PERIODS = {2: 2.0 * np.pi, 5: np.pi, 6: 2.0 * np.pi}
 
 T = 31_536_000.0
 N_FREQ = 3_153_601
@@ -27,6 +27,8 @@ N_FREQ = 3_153_601
 
 def injection(f0: float = 3e-3, lnA: float = -50.0) -> np.ndarray:
     """Return the injected native source."""
+    from binary_galactica.glass import ucb_fdot
+
     return np.array([f0 * T + 0.3, 0.2, 1.1, lnA, 0.3, 0.7, 2.0, ucb_fdot(0.3, f0) * T**2])
 
 
@@ -38,7 +40,7 @@ def fold_offsets(d: np.ndarray) -> np.ndarray:
     equal modes. Each sample is compared with the nearer image of the injection.
     """
     d = d.copy()
-    for i, period in runs.PERIODS.items():
+    for i, period in PERIODS.items():
         d[:, i] = (d[:, i] + period / 2) % period - period / 2
     flip = np.abs(d[:, 5]) > np.pi / 4
     d[flip, 5] -= np.sign(d[flip, 5]) * np.pi / 2
@@ -48,6 +50,11 @@ def fold_offsets(d: np.ndarray) -> np.ndarray:
 
 def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11, outdir=None):
     """Run the check and return the report."""
+    import runs  # enables x64 before the package is used  # noqa: F401
+
+    from binary_galactica.glass import ae_noise, template_on_window
+    from binary_galactica.segments import SegmentRunner, UCBBlockConfig, build_segment_table
+
     src = injection()
     q = int(np.floor(src[0]))
     config = UCBBlockConfig(band_bins=(q - 40, q + 40), birth_death=False,
@@ -62,28 +69,34 @@ def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11,
     outdir = Path(outdir) if outdir is not None else Path(tempfile.mkdtemp(prefix="isolated-"))
     runner = SegmentRunner(seg, src[None], T=T, t0=0.0, config=config, outdir=outdir,
                            seed=seed, reference=c)
-    start = time.perf_counter()
+    turn_seconds = []
     for _ in range(turns):
+        start = time.perf_counter()
         runner.advance(h + noise, c)
-    seconds = time.perf_counter() - start
+        turn_seconds.append(time.perf_counter() - start)
+    seconds = float(sum(turn_seconds))
+    # Turn 0 includes the JIT compile; the steady-state rate excludes it.
+    steady = turn_seconds[1:] or turn_seconds
     chain = runner.archive.load()
     x = chain["samples"][int(0.25 * chain["k"].size):]
     d = x - src
     d = fold_offsets(d)
     mean, std = d.mean(axis=0), d.std(axis=0)
-    sigma = np.sqrt(np.diag(np.linalg.inv(runner.likelihood.fisher_matrices(src[None])[0])))
+    cov = np.linalg.inv(runner.likelihood.fisher_matrices(src[None])[0])
+    sigma = np.sqrt(np.diag(cov))
     ratio = std / sigma
     # The fdot prior box is narrower than the Fisher sigma at this frequency, and
     # f0, fdot and longitude are 0.9-0.99 correlated, so the prior truncates the
     # posterior. Compare with the Fisher Gaussian truncated to the same box.
-    cov = np.linalg.inv(runner.likelihood.fisher_matrices(src[None])[0])
     draws = rng.multivariate_normal(np.zeros(8), cov, size=400_000)
-    inside = np.all((src + draws >= runner.prior.lo) & (src + draws <= runner.prior.hi), axis=1)
+    wrapped = runner.prior.wrap(src + draws)
+    inside = np.all((wrapped >= runner.prior.lo) & (wrapped <= runner.prior.hi), axis=1)
+    trunc_mean = draws[inside].mean(axis=0)
     trunc_sigma = draws[inside].std(axis=0)
     trunc_ratio = std / trunc_sigma
     checks = {
-        "mean_within_4_std": bool(np.all(np.abs(mean / std) < 4)),
-        "widths_match_fisher": bool(np.all((trunc_ratio[:3] > 0.6) & (trunc_ratio[:3] < 1.6))),
+        "mean_within_4_std": bool(np.all(np.abs((mean - trunc_mean) / std) < 4)),
+        "widths_match_truncated_fisher": bool(np.all((trunc_ratio > 0.6) & (trunc_ratio < 1.6))),
     }
     return {
         "injection": src,
@@ -95,13 +108,15 @@ def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11,
         "width_ratio": ratio,
         "truncated_fisher_sigma": trunc_sigma,
         "truncated_width_ratio": trunc_ratio,
+        "truncated_fisher_mean": trunc_mean,
         "prior_inside_fraction": float(inside.mean()),
         "checks": checks,
         "turns": turns,
         "steps": steps,
         "ntemps": ntemps,
         "seconds": seconds,
-        "seconds_per_step": seconds / (turns * steps),
+        "seconds_per_step": float(np.mean(steady)) / steps,
+        "seconds_per_step_incl_compile": seconds / (turns * steps),
         "acceptance": runner.sampler.proposal_acceptance_rates(),
     }
 
@@ -113,6 +128,8 @@ def main() -> None:
     parser.add_argument("--ntemps", type=int, default=12)
     parser.add_argument("--seed", type=int, default=11)
     args = parser.parse_args()
+    import runs
+
     report = run(turns=args.turns, steps=args.steps, ntemps=args.ntemps, seed=args.seed)
     path = runs.write_report("segments-isolated.json", report)
     names = ["f0T", "sinb", "lam", "lnA", "cosi", "psi", "phi0", "fdotT2"]

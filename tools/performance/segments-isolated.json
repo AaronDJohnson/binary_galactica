@@ -75,16 +75,27 @@
     1.025462968721361,
     0.984348322907155
   ],
+  "truncated_fisher_mean": [
+    -0.06211929477732156,
+    0.0054759954103172125,
+    0.004111209475141344,
+    -0.00012931661232266602,
+    0.0004058861664841272,
+    0.0015173243717157983,
+    -0.05844151401426085,
+    0.1324258045536383
+  ],
   "prior_inside_fraction": 0.4532575,
   "checks": {
     "mean_within_4_std": true,
-    "widths_match_fisher": true
+    "widths_match_truncated_fisher": true
   },
   "turns": 20,
   "steps": 1000,
   "ntemps": 12,
-  "seconds": 25.388244208006654,
-  "seconds_per_step": 0.0012694122104003327,
+  "seconds": 30.249429498100653,
+  "seconds_per_step": 0.0014640779955294228,
+  "seconds_per_step_incl_compile": 0.0015124714749050327,
   "acceptance": {
     "rj_am": {
       "calls": 0,
