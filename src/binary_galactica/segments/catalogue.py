@@ -1,8 +1,11 @@
 """LDC catalogue rows <-> GLASS-native 8-vectors, in host NumPy float64.
 
 The native vector is :func:`binary_galactica.parameters.to_glass_vector`'s
-``[f0*T, sin(beta), lambda, ln A, cos(iota), psi, -phi0, fdot*T**2]``, computed
-in NumPy so that it needs no JAX precision flag. Longitude and ``-phi0`` are
+``[f0*T, sin(beta), lambda, ln A, cos(iota), psi, phi0_G, fdot*T**2]``, computed
+in NumPy so that it needs no JAX precision flag. The LDC ``InitialPhase`` is
+GLASS's ``phi0_G`` itself, i.e. ``to_glass_vector`` applied to a package
+``phi0 = -InitialPhase`` (measured against Sangria's noise-free streams in
+``tools/segments/conventions_gate.py``). Longitude and ``phi0_G`` are
 folded into ``[0, 2*pi)`` and ``psi`` into ``[0, pi)``: the periodic intervals
 of :class:`~binary_galactica.glass.UCBPrior`. The waveform is unchanged by
 ``psi -> psi + pi``.
@@ -71,7 +74,7 @@ def ldc_to_native(rows: Any, T: float) -> NDArray[np.float64]:
     native[:, 3] = np.log(cols["Amplitude"])
     native[:, 4] = np.cos(cols["Inclination"])
     native[:, 5] = np.mod(cols["Polarization"], np.pi)
-    native[:, 6] = np.mod(-cols["InitialPhase"], TWO_PI)
+    native[:, 6] = np.mod(cols["InitialPhase"], TWO_PI)
     native[:, 7] = cols["FrequencyDerivative"] * T * T
     return native
 
@@ -90,7 +93,7 @@ def native_to_ldc(native: ArrayLike, T: float) -> dict[str, NDArray[np.float64]]
         "Frequency": x[:, 0] / T,
         "FrequencyDerivative": x[:, 7] / (T * T),
         "Inclination": np.arccos(np.clip(x[:, 4], -1.0, 1.0)),
-        "InitialPhase": np.mod(-x[:, 6], TWO_PI),
+        "InitialPhase": np.mod(x[:, 6], TWO_PI),
         "Polarization": x[:, 5].copy(),
     }
 

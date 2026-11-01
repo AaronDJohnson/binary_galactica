@@ -30,7 +30,7 @@ def test_matches_to_glass_vector():
         amp=rows["Amplitude"],
         f0=rows["Frequency"],
         fdot=rows["FrequencyDerivative"],
-        phi0=rows["InitialPhase"],
+        phi0=-rows["InitialPhase"],  # LDC InitialPhase is GLASS's phi0_G
         iota=rows["Inclination"],
         psi=rows["Polarization"],
         lam=rows["EclipticLongitude"],
@@ -54,7 +54,7 @@ def test_h5py_shaped_rows_and_folds():
     assert native.shape == (1, 8)
     assert native[0, 5] == pytest.approx(4.0 - np.pi)
     assert native[0, 2] == pytest.approx(7.0 - 2 * np.pi)
-    assert native[0, 6] == pytest.approx(2 * np.pi - 0.5)
+    assert native[0, 6] == pytest.approx(0.5)
 
 
 def test_mapping_input():
