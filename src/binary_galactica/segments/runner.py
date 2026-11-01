@@ -77,10 +77,15 @@ class ChainArchive:
 
     def load(self) -> dict[str, NDArray[Any]]:
         """Concatenate every turn; ``turn`` gives each row's turn."""
-        parts = [np.load(p) for p in self.files()]
+        parts, turns = [], []
+        for p in self.files():
+            # Close each file after reading: an open NpzFile per turn would
+            # exhaust the descriptor limit on long runs.
+            with np.load(p) as z:
+                parts.append({name: z[name] for name in ("samples", "k", "lnlike")})
+            turns.append(int(p.stem.split("_")[1]))
         if not parts:
             raise FileNotFoundError(f"no archived turns in {self.directory}")
-        turns = [int(p.stem.split("_")[1]) for p in self.files()]
         return {
             "samples": np.concatenate([z["samples"] for z in parts]),
             "k": np.concatenate([z["k"] for z in parts]),
