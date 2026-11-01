@@ -60,7 +60,12 @@ class FisherMove(SlotMove):
 
 
 class PriorRedrawMove(SlotMove):
-    """Redraw all eight parameters of the source from the segment prior."""
+    """Redraw all eight parameters of the source from the segment prior.
+
+    Returning ``qxy = 0`` is valid only because ``prior`` is the same uniform
+    box as the per-slot prior of the target :class:`SegmentPrior`; callers must
+    pass that same prior.
+    """
 
     def __init__(self, prior: UCBPrior) -> None:
         self.prior = prior
