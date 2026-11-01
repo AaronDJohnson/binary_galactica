@@ -81,6 +81,12 @@ class _FakeRunner:
         self.segment = segment
         self.start = np.array(start).reshape(-1, 8)
 
+    @property
+    def archive(self):
+        index = self.segment.index
+        return types.SimpleNamespace(
+            load=lambda: {"k": np.array([1]), "samples": np.zeros((1, 8)), "index": index})
+
     def advance(self, residual, c):
         if _FakeRunner.fail is not None and len(_FakeRunner.calls) == _FakeRunner.fail:
             raise _InjectedFailure(f"segment {self.segment.index}")
@@ -105,6 +111,19 @@ def fake_runner(monkeypatch):
     _FakeRunner.fail = None
     monkeypatch.setattr(block_module, "SegmentRunner", _FakeRunner)
     return _FakeRunner
+
+
+def test_cold_chain_accessor(tmp_path, fake_runner):
+    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    with pytest.raises(RuntimeError):
+        block.cold_chain(0)
+    block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+    chain = block.cold_chain(1)
+    assert {"k", "samples"} <= set(chain) and chain["index"] == 1
+    with pytest.raises(KeyError):
+        block.cold_chain(99)
+    block._runners[1] = None  # a segment with no start sources and a fixed count
+    assert block.cold_chain(1) is None
 
 
 def test_rejects_unsupported_inputs(tmp_path, fake_runner):

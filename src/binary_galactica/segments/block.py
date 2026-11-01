@@ -281,6 +281,18 @@ class UCBBlock:
                          for seg in self.table.segments}
         self._model = self._model_of(self._contrib)
 
+    def cold_chain(self, index: int) -> dict[str, NDArray[Any]] | None:
+        """Return segment ``index``'s archived cold chain (``ChainArchive.load()`` of its runner).
+
+        ``None`` when the segment has no runner (fixed count with no start sources).
+        Raises ``RuntimeError`` before the first ``sample()`` call and ``KeyError`` for
+        an unknown index.
+        """
+        if self._runners is None:
+            raise RuntimeError("no chains yet: call sample() first")
+        runner = self._runners[index]
+        return None if runner is None else runner.archive.load()
+
     # ---- Block protocol ---------------------------------------------------
 
     def sample(
