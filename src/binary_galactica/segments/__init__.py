@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from .catalogue import CATALOGUE_FIELDS, ldc_to_native, native_to_ldc
 from .config import BACKENDS, UCBBlockConfig
+from .fisher import FisherBank, fisher_decomposition, floor_eigenvalues
 from .likelihood import SegmentLikelihood, quantize_bins
+from .moves import FisherMove, FmShiftMove, PriorRedrawMove, PsiPhiMove, SlotMove
+from .prior import SegmentPrior
 from .table import (
     Segment,
     SegmentTable,
@@ -21,12 +24,21 @@ from .table import (
 __all__ = [
     "BACKENDS",
     "CATALOGUE_FIELDS",
+    "FisherBank",
+    "FisherMove",
+    "FmShiftMove",
+    "PriorRedrawMove",
+    "PsiPhiMove",
     "Segment",
     "SegmentLikelihood",
+    "SegmentPrior",
     "SegmentTable",
+    "SlotMove",
     "UCBBlockConfig",
     "build_segment_table",
     "doppler_bins",
+    "fisher_decomposition",
+    "floor_eigenvalues",
     "ldc_to_native",
     "native_to_ldc",
     "padding_bins",
