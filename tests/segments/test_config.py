@@ -27,6 +27,7 @@ def test_birth_death_weight_gives_the_requested_fraction():
     [
         {"n_target": 0},
         {"ntemps": 1.5},
+        {"steps_per_turn": 10, "thin": 11},
         {"ladder_step": 1.0},
         {"birth_death_fraction": 1.0},
         {"fisher_weight": -0.1},

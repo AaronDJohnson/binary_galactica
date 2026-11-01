@@ -73,6 +73,10 @@ class UCBBlockConfig:
             value = getattr(self, name)
             if not _is_int(value) or value < 1:
                 raise ValueError(f"{name} must be a positive integer, got {value!r}")
+        if self.thin > self.steps_per_turn:
+            raise ValueError(
+                f"thin must not exceed steps_per_turn={self.steps_per_turn}, got {self.thin}"
+            )
         if self.band_bins is not None:
             lo, hi = self.band_bins
             if not (_is_int(lo) and _is_int(hi) and 0 < lo < hi):
