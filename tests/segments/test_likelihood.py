@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from binary_galactica.glass import ae_noise, template_on_window
+from binary_galactica.glass.constants import YEAR
 from binary_galactica.segments import SegmentLikelihood, quantize_bins
 
 from .support import DT, N_FREQ, N_TIME, SANGRIA, T_SHORT, native_source, requires_sangria
@@ -99,11 +100,100 @@ def test_temperature_batch_matches_rows():
 
 
 def test_compile_key_sharing():
-    a = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=1000, n_bins=100, BW=64, k_max=3)
-    b = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=5000, n_bins=120, BW=64, k_max=3)
-    c = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=5000, n_bins=200, BW=64, k_max=3)
+    # k_max=2 is a key no other test here uses, so its compile count starts at zero.
+    liks = []
+    for bin_lo, n_bins in ((1000, 100), (5000, 120)):
+        lik = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=bin_lo, n_bins=n_bins, BW=64,
+                                k_max=2, snr_min=0.0)
+        f = (bin_lo + np.arange(n_bins)) / T_SHORT
+        cov = np.stack([0.5 * T_SHORT * ae_noise(f)] * 2)
+        lik.set_data(np.zeros(cov.shape, dtype=complex), cov)
+        lik.set_reference(cov)
+        x = np.full((1, 16), np.nan)
+        x[0, :8] = native_source(bin_lo + 50.3)
+        assert np.isfinite(lik(x, np.array([1]))[0])
+        liks.append(lik)
+    a, b = liks
+    c = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=5000, n_bins=200, BW=64, k_max=2)
     assert a.key == b.key and a.kernels is b.kernels
+    assert a.kernels.lnlike._cache_size() == 1
     assert c.key != a.key
+
+
+def test_automatic_response_grid_is_resolved_at_construction():
+    long_T = 1.5 * YEAR
+    for T, bin_lo, q, count in ((T_SHORT, BIN_LO, 2949.12, 32), (long_T, 94000, 94040.4, 256)):
+        lik = SegmentLikelihood(T=T, t0=0.0, bin_lo=bin_lo, n_bins=N_BINS, BW=BW, k_max=3)
+        assert lik.key[-1] == count
+        src = native_source(q)
+        ref = np.asarray(template_on_window(src, T=T, bin_lo=bin_lo, n_bins=N_BINS, BW=BW,
+                                            backend="onfly", response_samples=None))
+        np.testing.assert_allclose(lik.templates(src[None])[0], ref, rtol=0,
+                                   atol=1e-13 * np.max(np.abs(ref)))
+
+
+@pytest.mark.parametrize("q", [2880.3, 3030.6])
+def test_templates_across_window_edges(q):
+    # 2880.3 straddles bin_lo; 3030.6 runs into and past the quantization
+    # padding (bins 3020 .. 3027 of n_pad = 128) and beyond it.
+    lik, r, c = _lik(snr_min=0.0)
+    src = native_source(q)
+    ref = _independent(src)
+    assert 0 < np.count_nonzero(ref[0]) < N_BINS
+    np.testing.assert_allclose(lik.templates(src[None])[0], ref, rtol=0,
+                               atol=1e-13 * np.max(np.abs(ref)))
+    got = lik(_row(src[None])[None], np.array([1]))[0]
+    assert got == pytest.approx(-np.sum(np.abs(r - ref) ** 2 / c), rel=1e-10)
+
+
+def test_snr_cut_at_threshold():
+    lik, _, _ = _lik()
+    src = native_source(2949.12)
+    rho = lik.snr(src[None])[0]
+    for target, finite in ((4.9, False), (5.1, True)):
+        scaled = src.copy()
+        scaled[3] += np.log(target / rho)
+        assert lik.snr(scaled[None])[0] == pytest.approx(target, rel=1e-10)
+        value = lik(_row(scaled[None])[None], np.array([1]))[0]
+        assert bool(np.isfinite(value)) is finite
+
+
+def test_covariance_zero_or_inf_excludes_and_nan_or_negative_raises():
+    lik, r, c = _lik()
+    for bad in (np.nan, -1.0):
+        c_bad = c.copy()
+        c_bad[0, 5] = bad
+        with pytest.raises(ValueError, match="NaN or negative"):
+            lik.set_data(r, c_bad)
+        with pytest.raises(ValueError, match="NaN or negative"):
+            lik.set_reference(c_bad)
+    c_excl = c.copy()
+    c_excl[0, 5] = 0.0
+    c_excl[1, 7] = np.inf
+    keep = np.ones(c.shape, dtype=bool)
+    keep[0, 5] = keep[1, 7] = False
+    lik.set_data(r, c_excl)
+    empty = lik(_row(SOURCES[:0])[None], np.array([0]))[0]
+    assert empty == pytest.approx(-np.sum(np.abs(r[keep]) ** 2 / c[keep]), rel=1e-12)
+    lik.set_reference(c_excl)
+    h = _independent(SOURCES[0])
+    rho = np.sqrt(2.0 * np.sum(np.abs(h[keep]) ** 2 / c[keep]))
+    assert lik.snr(SOURCES[:1])[0] == pytest.approx(rho, rel=1e-10)
+
+
+def test_construction_and_call_validation():
+    base = dict(T=T_SHORT, t0=0.0, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW, k_max=3)
+    for bad in ({"BW": 63}, {"BW": 0}, {"backend": "taylor"}, {"fmt": "xyz"},
+                {"response_samples": 3}, {"response_samples": True}):
+        with pytest.raises(ValueError):
+            SegmentLikelihood(**{**base, **bad})
+    lik, _, _ = _lik()
+    rows = np.stack([_row(SOURCES)] * 2)
+    with pytest.raises(ValueError, match="entries"):
+        lik(rows, np.array([2]))
+    for k in (-1, 4):
+        with pytest.raises(ValueError, match="k must lie"):
+            lik(rows[:1], np.array([k]))
 
 
 def test_matches_enchilada_quadratic_form():

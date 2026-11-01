@@ -16,7 +16,9 @@ Gibbs turn.
 Templates are placed with a *traced* first bin. Window lengths are padded to
 :func:`quantize_bins`, with zero inverse variance in the extra bins. One XLA
 compile therefore serves every segment with the same
-``(BW, n_pad, K, backend, fmt, response_samples)``.
+``(BW, n_pad, K, backend, fmt, response_samples)``. On the on-fly backend an
+automatic (``None``) response grid is resolved from the concrete ``T`` at
+construction, so only that grid compiles rather than every automatic branch.
 """
 
 from __future__ import annotations
@@ -31,7 +33,9 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from ..glass import GLASS_TO_CONTINUOUS, SNR_MIN, ucb_waveform
-from .config import UCBBlockConfig
+from ..glass.tdi import FORMATS
+from ..glass.waveform import _AUTO_RESPONSE_SAMPLES, _duration_boundaries
+from .config import BACKENDS, UCBBlockConfig
 from .table import Segment
 
 
@@ -109,13 +113,31 @@ def _kernels(
 
 
 def _inverse(c: ArrayLike, shape: tuple[int, int]) -> NDArray[np.float64]:
+    """Return ``1 / c``, with weight zero where ``c`` is 0 or ``+inf``.
+
+    NaN or negative entries raise ``ValueError``.
+    """
     c = np.asarray(c, dtype=np.float64)
     if c.shape != shape:
         raise ValueError(f"covariance must have shape {shape}, got {c.shape}")
+    if np.any(np.isnan(c) | (c < 0)):
+        raise ValueError("covariance must not be NaN or negative")
     inv = np.zeros(shape)
     ok = np.isfinite(c) & (c > 0)
     inv[ok] = 1.0 / c[ok]
     return inv
+
+
+def _response_samples(T: float, backend: str, response_samples: int | None) -> int | None:
+    """Resolve the on-fly automatic grid for a concrete ``T`` (glass's own policy)."""
+    if backend != "onfly" or response_samples is not None:
+        return response_samples
+    boundaries = np.asarray(_duration_boundaries(jnp.float64))
+    return _AUTO_RESPONSE_SAMPLES[int(np.sum(boundaries < T))]
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.bool_))
 
 
 class SegmentLikelihood:
@@ -140,16 +162,32 @@ class SegmentLikelihood:
         response_samples: int | None = None,
         snr_min: float = SNR_MIN,
     ) -> None:
-        if int(n_bins) < 1 or int(k_max) < 1 or int(BW) < 2:
-            raise ValueError("n_bins and k_max must be positive and BW at least 2")
+        if int(n_bins) < 1 or int(k_max) < 1:
+            raise ValueError("n_bins and k_max must be positive")
+        if not _is_int(BW) or BW <= 0 or BW % 2:
+            raise ValueError(f"BW must be a positive even integer, got {BW!r}")
+        if backend not in BACKENDS:
+            raise ValueError(f"backend must be one of {BACKENDS}, got {backend!r}")
+        if fmt not in FORMATS:
+            raise ValueError(f"fmt must be one of {FORMATS}, got {fmt!r}")
+        if response_samples is not None and (
+            not _is_int(response_samples) or response_samples < 4
+        ):
+            raise ValueError("response_samples must be None or an integer >= 4")
         self.T = float(T)
+        if not (np.isfinite(self.T) and self.T > 0):
+            raise ValueError(f"T must be finite and positive, got {T!r}")
         self.t0 = float(t0)
         self.bin_lo = int(bin_lo)
         self.n_bins = int(n_bins)
         self.k_max = int(k_max)
         self.n_pad = quantize_bins(self.n_bins)
         self.snr_min = float(snr_min)
-        self.key = (int(BW), self.n_pad, self.k_max, backend, fmt, response_samples)
+        resolved = _response_samples(self.T, backend, response_samples)
+        self.response_samples = None if resolved is None else int(resolved)
+        self.key: tuple[int, int, int, str, str, int | None] = (
+            int(BW), self.n_pad, self.k_max, backend, fmt, self.response_samples
+        )
         self.kernels = _kernels(*self.key)
         self._residual: jax.Array | None = None
         self._inv_c: jax.Array | None = None
@@ -187,15 +225,25 @@ class SegmentLikelihood:
         return jnp.float64(self.T), jnp.float64(self.t0), jnp.int64(self.bin_lo)
 
     def set_data(self, residual: ArrayLike, c: ArrayLike) -> None:
-        """Set this turn's ``(2, n_bins)`` A/E residual and coefficient variance."""
+        """Set this turn's ``(2, n_bins)`` A/E residual and coefficient variance.
+
+        A bin with ``c == 0`` or ``c == +inf`` is excluded (zero weight), as
+        enchilada stores its excluded DC bin with zero covariance. NaN or
+        negative ``c`` raises ``ValueError``.
+        """
         r = np.asarray(residual, dtype=np.complex128)
         if r.shape != (2, self.n_bins) or not np.all(np.isfinite(r)):
             raise ValueError(f"residual must be finite with shape (2, {self.n_bins})")
+        inv_c = _inverse(c, (2, self.n_bins))
         self._residual = self._padded(r, np.complex128)
-        self._inv_c = self._padded(_inverse(c, (2, self.n_bins)), np.float64)
+        self._inv_c = self._padded(inv_c, np.float64)
 
     def set_reference(self, c_ref: ArrayLike) -> None:
-        """Set the run-fixed ``(2, n_bins)`` covariance that defines the SNR cut."""
+        """Set the run-fixed ``(2, n_bins)`` covariance that defines the SNR cut.
+
+        Zero or ``+inf`` entries exclude their bin from the SNR; NaN or
+        negative entries raise ``ValueError``, as in :meth:`set_data`.
+        """
         self._inv_c_ref = self._padded(_inverse(c_ref, (2, self.n_bins)), np.float64)
 
     def _batch(self, sources: ArrayLike) -> tuple[jax.Array, int]:
@@ -237,6 +285,10 @@ class SegmentLikelihood:
         if rows.ndim != 2 or rows.shape[1] != 8 * self.k_max:
             raise ValueError(f"x must have shape (n, {8 * self.k_max})")
         ks = np.asarray(k, dtype=np.int64).reshape(-1)
+        if ks.shape[0] != rows.shape[0]:
+            raise ValueError(f"k has {ks.shape[0]} entries for {rows.shape[0]} rows")
+        if np.any((ks < 0) | (ks > self.k_max)):
+            raise ValueError(f"k must lie in 0 .. {self.k_max}")
         out = self.kernels.lnlike(
             jnp.asarray(rows),
             jnp.asarray(ks),
