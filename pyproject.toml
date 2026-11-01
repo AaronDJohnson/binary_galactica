@@ -28,6 +28,7 @@ Issues = "https://github.com/AaronDJohnson/binary_galactica/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]
+segments = ["impulse-mcmc>=2.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
@@ -48,5 +49,8 @@ ignore = ["D203", "D213"]
 "tests/*" = ["D103"]
 "src/binary_galactica/glass/*" = ["N802", "N803", "N806"]
 "tests/glass/*" = ["N802", "N803", "N806"]
+"src/binary_galactica/segments/*" = ["N802", "N803", "N806"]
+"tests/segments/*" = ["N802", "N803", "N806"]
+"tools/segments/*" = ["N802", "N803", "N806", "D103"]
 "src/binary_galactica/detector.py" = ["N803"]
 "src/binary_galactica/single.py" = ["N803"]
