@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pytest
 
@@ -50,6 +52,12 @@ def test_archive_round_trip(tmp_path):
     assert chain["k"].tolist() == [2, 2, 2, 1, 1]
 
 
+def test_archive_refuses_a_used_directory(tmp_path):
+    ChainArchive(tmp_path).append(0, samples=np.ones((1, 8)), k=[1], lnlike=[0.0])
+    with pytest.raises(ValueError, match=re.escape(str(tmp_path))):
+        ChainArchive(tmp_path)
+
+
 def test_fixed_count_smoke(tmp_path):
     rj_impulse()
     r, c = _window()
@@ -64,6 +72,33 @@ def test_fixed_count_smoke(tmp_path):
     assert chain["samples"].shape == (50, 8)
     assert np.all(chain["k"] == 1) and np.all(np.isfinite(chain["lnlike"]))
     assert not list((tmp_path / "impulse").glob("chain_*"))
+    assert runner.sampler.short_chain is None
+
+
+def test_positions_and_counts_carry_over_between_turns(tmp_path):
+    rj_impulse()
+    r, c = _window()
+    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
+                           config=_config(steps_per_turn=20), outdir=tmp_path, seed=5,
+                           reference=c)
+    calls = []
+    original = runner.sampler.sample
+
+    def spy(initial_position, num_iterations, thin=1, initial_k=None):
+        calls.append((np.array(initial_position), np.array(initial_k)))
+        return original(initial_position, num_iterations, thin=thin, initial_k=initial_k)
+
+    runner.sampler.sample = spy
+    runner.advance(r, c)
+    width = 8 * runner.k_max
+    final = np.asarray(runner.sampler.state.positions)
+    np.testing.assert_array_equal(runner.positions, final[:, :width])
+    np.testing.assert_array_equal(runner.ks, final[:, width])
+    assert not np.array_equal(runner.positions, calls[0][0], equal_nan=True)
+    after_x, after_k = runner.positions, runner.ks
+    runner.advance(r, c)
+    np.testing.assert_array_equal(calls[1][0], after_x)
+    np.testing.assert_array_equal(calls[1][1], after_k)
 
 
 def test_residual_change_recomputes_likelihoods(tmp_path):
@@ -92,6 +127,8 @@ def test_prior_only_count_is_uniform(tmp_path):
     f0 = chain["samples"][::10, 0][chain["k"][::10] >= 1]
     p = stats.kstest((f0 - SEG.bin_lo) / SEG.n_bins, "uniform").pvalue
     assert p > 1e-3
+    # f0*T in bins, like SEG.lo/hi: the padding holds 8/72 ~ 0.11 of the band.
+    assert 0.04 < np.mean((f0 < SEG.lo) | (f0 >= SEG.hi)) < 0.2
 
 
 def test_fixed_count_needs_sources(tmp_path):

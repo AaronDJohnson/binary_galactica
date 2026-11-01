@@ -56,11 +56,19 @@ def glass_ladder(ntemps: int, step: float = 1.2, hottest: float = 1.0e12) -> NDA
 
 
 class ChainArchive:
-    """Cold-chain samples of one segment, one compressed file per turn."""
+    """Cold-chain samples of one segment, one compressed file per turn.
+
+    The directory must not already hold archived turns, so that one archive
+    never mixes two runs; existing turns raise ``ValueError``.
+    """
 
     def __init__(self, directory: str | Path) -> None:
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
+        if self.files():
+            raise ValueError(
+                f"{self.directory} already holds archived turns; use a new directory"
+            )
 
     def append(self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike) -> None:
         """Write one turn's cold samples ``(n, D)``, counts and likelihoods."""
@@ -258,6 +266,8 @@ class SegmentRunner:
                             lnlike=chain["lnlike"][0])
         for path in (self.outdir / "impulse").glob("chain_*"):
             path.unlink()
+        # Free impulse's (ntemps, steps, D) ring buffer; every sample() call rebuilds it.
+        self.sampler.short_chain = None
         self.turn += 1
 
 
