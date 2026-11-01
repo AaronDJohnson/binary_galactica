@@ -84,7 +84,7 @@ class _FakeRunner:
     @property
     def archive(self):
         index = self.segment.index
-        return types.SimpleNamespace(
+        return SimpleNamespace(
             load=lambda: {"k": np.array([1]), "samples": np.zeros((1, 8)), "index": index})
 
     def advance(self, residual, c):
