@@ -3,7 +3,7 @@
   "start_sources": 10370,
   "n_segments": 879,
   "outside_band": 0,
-  "table_seconds": 4.347223834018223,
+  "table_seconds": 4.480876999965403,
   "compile_keys": 74,
   "compile_key_counts": {
     "(32, 384, 20)": 2,
@@ -121,13 +121,14 @@
     "mean": 11.797497155858931
   },
   "memory_bytes": 159367584,
-  "memory_counted": "chain positions+counts and Fisher bank at k_max sources per chain, float64, summed over segments; impulse short_chain excluded (freed)",
+  "memory_counted": "chain positions+counts and Fisher bank at k_max sources per chain, float64, summed over segments; impulse short_chain, JAX executables and the tool's full-band spectra excluded",
   "archive_bytes_per_turn": 1341424000,
+  "archive_note": "archive_bytes_per_turn is an uncompressed upper bound at 1000 steps, thin 1; the measured_* per-sample keys are at the sampled step count",
   "timings": [
     {
       "segment": 0,
       "frequency_hz": 0.0004873795027904617,
-      "archive_bytes_per_turn_measured": 13280,
+      "measured_archive_bytes_per_turn_at_100_steps": 13280,
       "acceptance": {
         "birth": {
           "calls": 287,
@@ -158,166 +159,166 @@
       "n_pad": 4096,
       "k_max": 20,
       "owned": 10,
-      "first_turn_s": 2.2376528329914436,
-      "steady_turn_s": 1.1209512500208803,
-      "per_step_s": 0.011209512500208803
+      "first_turn_s": 2.8486413749633357,
+      "steady_turn_s": 1.9969539580051787,
+      "per_step_s": 0.019969539580051786
     },
     {
-      "segment": 176,
-      "frequency_hz": 0.002185042491121258,
-      "archive_bytes_per_turn_measured": 9485,
+      "segment": 293,
+      "frequency_hz": 0.0027379502790461693,
+      "measured_archive_bytes_per_turn_at_100_steps": 13724,
       "acceptance": {
         "birth": {
-          "calls": 324,
-          "rate": 0.05864197530864197
+          "calls": 296,
+          "rate": 0.06756756756756757
         },
         "death": {
-          "calls": 293,
-          "rate": 0.13993174061433447
+          "calls": 287,
+          "rate": 0.10801393728222997
         },
         "FisherMove": {
-          "calls": 886,
-          "rate": 0.7020316027088036
+          "calls": 901,
+          "rate": 0.758046614872364
         },
         "PriorRedrawMove": {
-          "calls": 299,
-          "rate": 0.08361204013377926
+          "calls": 322,
+          "rate": 0.07763975155279502
         },
         "FmShiftMove": {
-          "calls": 314,
-          "rate": 0.15605095541401273
-        },
-        "PsiPhiMove": {
-          "calls": 284,
-          "rate": 0.4788732394366197
-        }
-      },
-      "bw": 64,
-      "n_pad": 256,
-      "k_max": 20,
-      "owned": 8,
-      "first_turn_s": 1.948712292010896,
-      "steady_turn_s": 0.9217222089646384,
-      "per_step_s": 0.009217222089646385
-    },
-    {
-      "segment": 351,
-      "frequency_hz": 0.0030431570268899034,
-      "archive_bytes_per_turn_measured": 12319,
-      "acceptance": {
-        "birth": {
-          "calls": 355,
-          "rate": 0.05070422535211268
-        },
-        "death": {
-          "calls": 293,
-          "rate": 0.11262798634812286
-        },
-        "FisherMove": {
-          "calls": 889,
-          "rate": 0.7581552305961755
-        },
-        "PriorRedrawMove": {
-          "calls": 293,
-          "rate": 0.10580204778156997
-        },
-        "FmShiftMove": {
-          "calls": 263,
-          "rate": 0.11406844106463879
-        },
-        "PsiPhiMove": {
-          "calls": 307,
-          "rate": 0.5407166123778502
-        }
-      },
-      "bw": 64,
-      "n_pad": 384,
-      "k_max": 20,
-      "owned": 6,
-      "first_turn_s": 1.6501881669973955,
-      "steady_turn_s": 0.9426532909856178,
-      "per_step_s": 0.009426532909856178
-    },
-    {
-      "segment": 527,
-      "frequency_hz": 0.004127330669710807,
-      "archive_bytes_per_turn_measured": 17100,
-      "acceptance": {
-        "birth": {
-          "calls": 269,
-          "rate": 0.07434944237918216
-        },
-        "death": {
-          "calls": 282,
-          "rate": 0.13829787234042554
-        },
-        "FisherMove": {
-          "calls": 914,
-          "rate": 0.8522975929978118
-        },
-        "PriorRedrawMove": {
-          "calls": 311,
-          "rate": 0.04501607717041801
-        },
-        "FmShiftMove": {
-          "calls": 323,
-          "rate": 0.11145510835913312
-        },
-        "PsiPhiMove": {
           "calls": 301,
-          "rate": 0.5149501661129569
+          "rate": 0.10631229235880399
+        },
+        "PsiPhiMove": {
+          "calls": 293,
+          "rate": 0.44368600682593856
+        }
+      },
+      "bw": 256,
+      "n_pad": 384,
+      "k_max": 40,
+      "owned": 6,
+      "first_turn_s": 4.370723958010785,
+      "steady_turn_s": 2.5526821250095963,
+      "per_step_s": 0.025526821250095963
+    },
+    {
+      "segment": 585,
+      "frequency_hz": 0.004564022070015221,
+      "measured_archive_bytes_per_turn_at_100_steps": 12877,
+      "acceptance": {
+        "birth": {
+          "calls": 308,
+          "rate": 0.06493506493506493
+        },
+        "death": {
+          "calls": 300,
+          "rate": 0.12333333333333334
+        },
+        "FisherMove": {
+          "calls": 931,
+          "rate": 0.8066595059076263
+        },
+        "PriorRedrawMove": {
+          "calls": 276,
+          "rate": 0.07971014492753623
+        },
+        "FmShiftMove": {
+          "calls": 302,
+          "rate": 0.08278145695364239
+        },
+        "PsiPhiMove": {
+          "calls": 283,
+          "rate": 0.38869257950530034
         }
       },
       "bw": 128,
-      "n_pad": 384,
-      "k_max": 40,
-      "owned": 12,
-      "first_turn_s": 3.137107999995351,
-      "steady_turn_s": 2.0169178750365973,
-      "per_step_s": 0.020169178750365974
+      "n_pad": 512,
+      "k_max": 20,
+      "owned": 7,
+      "first_turn_s": 2.250904082960915,
+      "steady_turn_s": 1.0824977500014938,
+      "per_step_s": 0.010824977500014939
     },
     {
-      "segment": 702,
-      "frequency_hz": 0.005571331177067478,
-      "archive_bytes_per_turn_measured": 14874,
+      "segment": 876,
+      "frequency_hz": 0.01322152460679858,
+      "measured_archive_bytes_per_turn_at_100_steps": 11908,
       "acceptance": {
         "birth": {
-          "calls": 303,
-          "rate": 0.07920792079207921
+          "calls": 304,
+          "rate": 0.10855263157894737
         },
         "death": {
-          "calls": 344,
-          "rate": 0.11918604651162791
+          "calls": 299,
+          "rate": 0.09698996655518395
         },
         "FisherMove": {
-          "calls": 872,
-          "rate": 0.8325688073394495
+          "calls": 885,
+          "rate": 0.847457627118644
         },
         "PriorRedrawMove": {
-          "calls": 304,
-          "rate": 0.0756578947368421
+          "calls": 299,
+          "rate": 0.06354515050167224
         },
         "FmShiftMove": {
-          "calls": 313,
-          "rate": 0.09584664536741214
+          "calls": 302,
+          "rate": 0.08940397350993377
         },
         "PsiPhiMove": {
-          "calls": 264,
-          "rate": 0.3712121212121212
+          "calls": 311,
+          "rate": 0.24758842443729903
         }
       },
       "bw": 512,
-      "n_pad": 768,
+      "n_pad": 24576,
       "k_max": 20,
       "owned": 10,
-      "first_turn_s": 2.4462599590187892,
-      "steady_turn_s": 1.3382119159796275,
-      "per_step_s": 0.013382119159796275
+      "first_turn_s": 3.700124083959963,
+      "steady_turn_s": 2.5859581250115298,
+      "per_step_s": 0.025859581250115296
+    },
+    {
+      "segment": 877,
+      "frequency_hz": 0.014636986301369862,
+      "measured_archive_bytes_per_turn_at_100_steps": 12288,
+      "acceptance": {
+        "birth": {
+          "calls": 305,
+          "rate": 0.08524590163934426
+        },
+        "death": {
+          "calls": 298,
+          "rate": 0.07046979865771812
+        },
+        "FisherMove": {
+          "calls": 898,
+          "rate": 0.8329621380846325
+        },
+        "PriorRedrawMove": {
+          "calls": 299,
+          "rate": 0.043478260869565216
+        },
+        "FmShiftMove": {
+          "calls": 300,
+          "rate": 0.09333333333333334
+        },
+        "PsiPhiMove": {
+          "calls": 300,
+          "rate": 0.26666666666666666
+        }
+      },
+      "bw": 1024,
+      "n_pad": 98304,
+      "k_max": 20,
+      "owned": 10,
+      "first_turn_s": 13.798947874980513,
+      "steady_turn_s": 15.6370010409737,
+      "per_step_s": 0.156370010409737
     },
     {
       "segment": 878,
       "frequency_hz": 0.029327181633688484,
-      "archive_bytes_per_turn_measured": 8243,
+      "measured_archive_bytes_per_turn_at_100_steps": 8243,
       "acceptance": {
         "birth": {
           "calls": 294,
@@ -348,15 +349,31 @@
       "n_pad": 1048576,
       "k_max": 20,
       "owned": 10,
-      "first_turn_s": 155.06979966699146,
-      "steady_turn_s": 155.6881171670393,
-      "per_step_s": 1.5568811716703932
+      "first_turn_s": 138.68862208299106,
+      "steady_turn_s": 145.73998999997275,
+      "per_step_s": 1.4573998999997275
     }
   ],
   "fit_seconds_per_step": {
-    "intercept": -0.004829155831078001,
-    "per_template_bin": 3.969454405582676e-07
+    "per_slot": 0.0005342862136050829,
+    "per_slot_window_bin": 6.900926175233202e-08
   },
+  "tail": {
+    "segments": 1,
+    "n_pad": 1048576.0,
+    "predicted_turn_s": 1457.9148372963678,
+    "share_of_total": 0.10691198285252904,
+    "measured_per_step_s": 1.4573998999997275
+  },
+  "predicted_turn_s_by_model": {
+    "k_npad_nnls": 13636.589635676,
+    "bulk_k_scaled_plus_measured_heavy": 16663.935512704193,
+    "ntemps_k_bw_lstsq": 22253.03032639128
+  },
+  "predicted_turn_s_range": [
+    13636.589635676,
+    22253.03032639128
+  ],
   "steps_per_turn_predicted": 1000,
-  "predicted_turn_s": 11899.025656638816
+  "predicted_turn_s": 13636.589635676
 }
