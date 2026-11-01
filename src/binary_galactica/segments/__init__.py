@@ -7,6 +7,13 @@ Trans-dimensional sampling uses impulse's ``RJPTSampler``, imported lazily.
 
 from __future__ import annotations
 
+from .catalogue import CATALOGUE_FIELDS, ldc_to_native, native_to_ldc
 from .config import BACKENDS, UCBBlockConfig
 
-__all__ = ["BACKENDS", "UCBBlockConfig"]
+__all__ = [
+    "BACKENDS",
+    "CATALOGUE_FIELDS",
+    "UCBBlockConfig",
+    "ldc_to_native",
+    "native_to_ldc",
+]
