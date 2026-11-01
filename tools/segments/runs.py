@@ -63,6 +63,37 @@ def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
     return rows[np.argsort(rows["Frequency"], kind="stable")]
 
 
+def target_band(path, *, T, core, span, snr_min=7.0, extra=None):
+    """Return ``(band, rows)`` for a band of ``span`` bins either side of ``core``.
+
+    ``rows`` holds every dgb/igb catalogue row in ``band`` with analytic SNR >= ``snr_min``,
+    plus the rows of ``extra`` (merged by Name, no duplicates), sorted by frequency.
+    """
+    band = (int(core[0]) - int(span), int(core[1]) + int(span))
+    rows = catalogue_rows(path, T=T, band=band, snr_min=snr_min)
+    if extra is not None and len(extra):
+        new = extra[~np.isin(extra["Name"], rows["Name"])]
+        rows = np.concatenate([rows, new.astype(rows.dtype)])
+        rows = rows[np.argsort(rows["Frequency"], kind="stable")]
+    return band, rows
+
+
+def inner_segments(block, core):
+    """Return the block's segments except the first and last.
+
+    The edge segments' outer padding holds catalogue sources outside the band that no
+    segment models, so recovery there is not judged. Raises ValueError if ``core``
+    overlaps the first or last segment's interior (widen ``span``).
+    """
+    segs = block.table.segments
+    if len(segs) < 3:
+        raise ValueError("fewer than three segments: widen span")
+    for edge in (segs[0], segs[-1]):
+        if core[0] < edge.hi and core[1] > edge.lo:
+            raise ValueError(f"core {tuple(core)} overlaps edge segment {edge.index}; widen span")
+    return list(segs[1:-1])
+
+
 def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = 500) -> dict:
     """Return each channel's coefficient variance on ``[lo, hi)``.
 
