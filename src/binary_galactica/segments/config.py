@@ -10,7 +10,7 @@ from typing import Any
 
 from ..glass import DEFAULT_RESPONSE_SAMPLES, SNR_MIN
 
-#: Waveform backends the block can use; the conventions gate picks the default.
+#: Waveform backends the block can use; the conventions gate chose the default ("onfly").
 BACKENDS = ("fourier", "onfly")
 
 _POSITIVE_INTS = (
@@ -64,7 +64,7 @@ class UCBBlockConfig:
     de_weight: float = 0.0
     fisher_match_bins: float = 4.0
     snr_min: float = SNR_MIN
-    backend: str = "fourier"
+    backend: str = "onfly"
     response_samples: int | None = DEFAULT_RESPONSE_SAMPLES
 
     def __post_init__(self) -> None:

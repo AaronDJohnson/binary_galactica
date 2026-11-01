@@ -74,10 +74,13 @@ def test_dense_cluster_forces_merges():
 
 def test_padding_uses_owned_fdot():
     qs = 120_000 + 80.0 * np.arange(20) + 0.37
-    fast = _sources(qs, fdot_T2=0.5)
-    table = build_segment_table(fast, T=T, n_freq=N_FREQ, config=UCBBlockConfig())
-    seg = table.segments[0]
-    assert seg.pad == padding_bins(seg.hi / T, 0.5 / T**2, T)
+    src = _sources(qs, fdot_T2=0.0)
+    src[:10, 7] = 0.5  # only the first segment's sources drift fast
+    table = build_segment_table(src, T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    first, second = table.segments[0], table.segments[1]
+    assert first.pad == padding_bins(first.hi / T, 0.5 / T**2, T)
+    assert second.pad == padding_bins(second.hi / T, 0.0, T)
+    assert second.pad < first.pad or second.hi != first.hi
 
 
 def test_k_max_and_prior_band():
@@ -107,10 +110,26 @@ def test_window_touching_dc_raises():
 def test_source_outside_prior_raises():
     with pytest.raises(ValueError, match="prior"):
         build_segment_table(
-            _sources([120_000.5], lnA=-60.0),
+            _sources([120_000.5], lnA=-60.0), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+        )
+
+
+def test_lone_source_builds_one_segment():
+    table = build_segment_table(
+        _sources([120_000.5]), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
+    _check_rules(table)
+    assert len(table.segments) == 1 and table.segments[0].owned == (0,)
+    assert table.segments[0].width >= table.segments[0].pad
+
+
+def test_too_narrow_explicit_band_raises():
+    with pytest.raises(ValueError, match="band_bins"):
+        build_segment_table(
+            _sources([120_000.5]),
             T=T,
             n_freq=N_FREQ,
-            config=UCBBlockConfig(band_bins=(120_000, 120_400)),
+            config=UCBBlockConfig(band_bins=(120_000, 120_016)),
         )
 
 

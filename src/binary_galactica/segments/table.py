@@ -198,8 +198,10 @@ def build_segment_table(
 
     ``native`` is ``(n, 8)``, as from :func:`~binary_galactica.segments.ldc_to_native`.
     The band is ``config.band_bins`` if given, otherwise
-    ``[floor(min f0*T), floor(max f0*T) + 1)``, widened to at least
-    ``min_interior_bins``.
+    ``[floor(min f0*T), floor(max f0*T) + 1)``, widened about its centre to at
+    least ``min_interior_bins`` and to the padding that width implies (so a lone
+    source builds a valid one-segment table). The widened band is shifted to keep the
+    padded window inside the grid interior, but always covers every start source; the grid check below is the final guard.
     """
     x = np.asarray(native, dtype=np.float64).reshape(-1, 8)
     q = x[:, 0]
@@ -209,7 +211,25 @@ def build_segment_table(
         if q.size == 0:
             raise ValueError("an empty start set needs explicit band_bins")
         band_lo = int(np.floor(q.min()))
-        band_hi = max(int(np.floor(q.max())) + 1, band_lo + config.min_interior_bins)
+        band_hi = int(np.floor(q.max())) + 1
+        fdot_max = float(np.max(np.abs(x[:, 7]))) / T**2
+        width = max(band_hi - band_lo, config.min_interior_bins)
+        pad = 0
+        for _ in range(4):  # the padding depends weakly on the upper edge
+            width = max(width, pad)
+            centre = 0.5 * (band_lo + band_hi)
+            lo = int(np.floor(centre - 0.5 * width))
+            hi = lo + width
+            pad = padding_bins(hi / T, fdot_max, T)
+            if width >= pad:
+                break
+        width = max(width, pad)
+        lo = int(np.floor(centre - 0.5 * width))
+        hi = lo + width
+        shift = max(0, pad + 1 - lo) - max(0, hi - (n_freq - 1 - pad))
+        lo, hi = lo + shift, hi + shift
+        band_lo = min(lo, int(np.floor(q.min())))
+        band_hi = max(hi, int(np.floor(q.max())) + 1)
     inside = (q >= band_lo) & (q < band_hi)
     members = np.nonzero(inside)[0]
     outside = tuple(int(i) for i in np.nonzero(~inside)[0])
@@ -224,7 +244,8 @@ def build_segment_table(
             break
         if len(pads) == 1:
             raise ValueError(
-                f"band [{band_lo}, {band_hi}) is narrower than its padding ({pads[0]})"
+                f"band [{band_lo}, {band_hi}) is narrower than its padding "
+                f"({pads[0]}); widen config.band_bins"
             )
         if bad == 0:
             neighbour = 1

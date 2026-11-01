@@ -8,7 +8,7 @@ from binary_galactica.segments import UCBBlockConfig
 def test_defaults_follow_the_spec():
     cfg = UCBBlockConfig()
     assert (cfg.n_target, cfg.steps_per_turn, cfg.ntemps, cfg.k_max_floor) == (10, 1000, 12, 10)
-    assert cfg.backend == "fourier"
+    assert cfg.backend == "onfly"
     weights = cfg.within_model_weights()
     assert weights["fisher"] == pytest.approx(0.5)
     assert sum(weights.values()) == pytest.approx(1.0)
@@ -48,7 +48,7 @@ def test_invalid_settings_raise(kwargs):
 
 
 def test_json_round_trip(tmp_path):
-    cfg = UCBBlockConfig(band_bins=(100, 900), steps_per_turn=50, backend="onfly")
+    cfg = UCBBlockConfig(band_bins=(100, 900), steps_per_turn=50, backend="fourier")
     path = tmp_path / "config.json"
     cfg.write(path)
     assert UCBBlockConfig.read(path) == cfg
