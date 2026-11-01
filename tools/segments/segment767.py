@@ -1,9 +1,18 @@
-"""Crowded band: gbnoisefit's Segment767 (18 sources) at fixed count and with RJ.
+"""Crowded band: gbnoisefit's Segment767 core with a band built around it.
 
 Data: Sangria obs minus the true MBHB and VGB streams. Noise: a running median
 of the data's own power. It absorbs the unresolved galaxy, and serves as both
-the turn's covariance and the SNR-cut reference. Start set: the 18 catalogue
-rows matching the npz's ``initial_sources_native`` frequencies (column 0, Hz).
+the turn's covariance and the SNR-cut reference. The core is the npz band
+(``f_lo``..``f_hi``); the block's band extends SPAN bins either side, and the
+start set is every dgb/igb catalogue row in it with analytic SNR >= 7 plus the
+18 rows matching the npz's ``initial_sources_native`` frequencies (column 0, Hz).
+Loud neighbours therefore get segments of their own instead of sitting
+unmodelled in the core's padding.
+
+Recovery is judged over start sources that survive the SNR-5 cut, in the
+segments other than the first and last: the edge segments' outer padding holds
+catalogue sources outside the band that no segment models. The 18 npz sources
+are reported as a labelled subset, not as the pass criterion.
 
     PYTHONPATH=src:... python tools/segments/segment767.py --mode fixed
 """
@@ -33,6 +42,7 @@ NPZ = Path(os.environ.get(
     str(Path.home() / "Documents/lisa/gbnoisefit/vendor/sangria_segment_767/segment_767.npz"),
 ))
 MARGIN = 300
+SPAN = 600
 
 
 def start_rows(path: Path, T: float) -> np.ndarray:
@@ -57,42 +67,57 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
     n, dt = sangria.grid(path)
     T = n * dt
     z = np.load(NPZ)
-    band = (int(np.floor(float(z["f_lo"]) * T)), int(np.ceil(float(z["f_hi"]) * T)))
-    rows = start_rows(path, T)
+    core = (int(np.floor(float(z["f_lo"]) * T)), int(np.ceil(float(z["f_hi"]) * T)))
+    npz_rows = start_rows(path, T)
+    band, rows = runs.target_band(path, T=T, core=core, span=SPAN, extra=npz_rows)
     spectra = sangria.aet_spectra(*sangria.combine(["obs"], ["mbhb", "vgb"], path))
     data = runs.frequency_data(spectra, n, dt)
     lo, hi = band[0] - MARGIN, band[1] + MARGIN
     cov = runs.covariance(data, runs.running_median_variance(spectra, lo, hi), lo, hi)
-    config = UCBBlockConfig(band_bins=band, n_target=len(rows),
-                            birth_death=(mode == "rj"), steps_per_turn=steps)
+    config = UCBBlockConfig(band_bins=band, birth_death=(mode == "rj"), steps_per_turn=steps)
     block = UCBBlock(grid=data, start_sources=rows, outdir=outdir / mode, config=config,
                      reference_covariance=cov)
     segs = block.table.segments
     if segs[0].bin_lo < lo or segs[-1].bin_hi > hi:
         raise RuntimeError(f"padded band {segs[0].bin_lo}..{segs[-1].bin_hi} exceeds "
                            f"the running-median range {lo}..{hi}")
+    inner = runs.inner_segments(block, core)
     _, seconds = runs.run_block(block, data, cov, turns, seed)
-    native = ldc_to_native(rows, T)
-    report = {"mode": mode, "band": band, "segments": len(block.table.segments),
-              "dropped": block.dropped, "seconds_per_turn": seconds, "sources": []}
-    for seg in block.table.segments:
+    dropped = {d["name"] for d in block.dropped}
+    npz_names = set(npz_rows["Name"])
+    survivors = rows[[name not in dropped for name in rows["Name"]]]
+    floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
+    report = {"mode": mode, "band": band, "core": core, "span": SPAN,
+              "segments": len(segs), "edge_segments": [segs[0].index, segs[-1].index],
+              "dropped": block.dropped, "seconds_per_turn": seconds,
+              "n_start": len(rows), "n_dropped": len(block.dropped), "sources": [],
+              "count_histogram": []}
+    for seg in inner:
         lik = SegmentLikelihood.for_segment(seg, T=T, t0=0.0, config=config)
         lik.set_reference(block.c_ref[:, seg.bin_lo : seg.bin_hi])
-        inj = native[(native[:, 0] >= seg.lo) & (native[:, 0] < seg.hi)]
-        # ChainArchive refuses a directory that already holds turns, so read the
-        # block's own runner archive instead of opening a second one.
-        runner = block._runners[seg.index]
-        if runner is None:
+        own = survivors[(survivors["Frequency"] * T >= seg.lo)
+                        & (survivors["Frequency"] * T < seg.hi)]
+        chain = block.cold_chain(seg.index)
+        if chain is None or not len(own):
             continue
-        chain = runner.archive.load()
+        inj = ldc_to_native(own, T)
         found, counts = runs.recovery(chain, inj)
-        for entry, rho in zip(found, lik.snr(inj) if len(inj) else []):
-            entry["snr"] = float(rho)
+        for entry, row, rho in zip(found, own, lik.snr(inj)):
+            entry.update(snr=float(rho), npz=bool(row["Name"] in npz_names),
+                         segment=seg.index, name=str(row["Name"]))
         report["sources"].extend(found)
-        report.setdefault("count_histogram", []).append(counts)
-    floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
+        report["count_histogram"].append(counts)
+    report["n_evaluated"] = len(report["sources"])
+    report["n_at_floor"] = sum(s["snr"] >= floor for s in report["sources"])
+    report["npz_subset"] = [
+        {"q": float(q), "name": str(name), "dropped": name in dropped,
+         **{k: next((s[k] for s in report["sources"] if s["name"] == name), None)
+            for k in ("snr", "recovered")}}
+        for q, name in zip(npz_rows["Frequency"] * T, npz_rows["Name"])
+    ]
     report["criterion"] = {"snr_at_least": floor, "recovered_at_least": need}
-    report["pass"] = all(s["recovered"] >= need for s in report["sources"] if s["snr"] >= floor)
+    report["pass"] = report["n_at_floor"] >= 1 and all(
+        s["recovered"] >= need for s in report["sources"] if s["snr"] >= floor)
     return report
 
 
@@ -111,9 +136,14 @@ def main() -> None:
     merged[args.mode] = report
     runs.write_report("segments-767.json", merged)
     for s in report["sources"]:
-        print(f"q={s['q']:.2f} snr={s['snr']:6.1f} recovered={s['recovered']:.2f} "
-              f"dq={s['median_dq']} dlnA={s['median_dlnA']}")
-    print("counts:", report["count_histogram"], " dropped:", len(report["dropped"]))
+        print(f"seg={s['segment']:2d} q={s['q']:.2f} snr={s['snr']:6.1f} "
+              f"recovered={s['recovered']:.2f} dq={s['median_dq']} dlnA={s['median_dlnA']}"
+              f"{' npz' if s['npz'] else ''}")
+    print("counts:", report["count_histogram"], " dropped:", report["n_dropped"],
+          " evaluated:", report["n_evaluated"])
+    print(f"n_at_floor (snr >= {report['criterion']['snr_at_least']}): {report['n_at_floor']}")
+    if report["n_at_floor"] == 0:
+        print("VACUOUS: no evaluated source reaches the SNR floor")
     print(f"run directory: {outdir}")
     print("PASS" if report["pass"] else "FAIL")
     sys.exit(0 if report["pass"] else 1)
