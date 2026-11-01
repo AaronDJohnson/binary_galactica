@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from .catalogue import CATALOGUE_FIELDS, ldc_to_native, native_to_ldc
 from .config import BACKENDS, UCBBlockConfig
+from .likelihood import SegmentLikelihood, quantize_bins
 from .table import (
     Segment,
     SegmentTable,
@@ -21,6 +22,7 @@ __all__ = [
     "BACKENDS",
     "CATALOGUE_FIELDS",
     "Segment",
+    "SegmentLikelihood",
     "SegmentTable",
     "UCBBlockConfig",
     "build_segment_table",
@@ -28,4 +30,5 @@ __all__ = [
     "ldc_to_native",
     "native_to_ldc",
     "padding_bins",
+    "quantize_bins",
 ]
