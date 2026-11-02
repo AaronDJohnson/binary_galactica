@@ -41,3 +41,27 @@ def test_inner_segments():
         runs.inner_segments(block, (12, 35))
     with pytest.raises(ValueError):
         runs.inner_segments(SimpleNamespace(table=SimpleNamespace(segments=segs[:2])), (0, 1))
+
+
+@requires_sangria
+def test_residual_spectra_removes_noise_free_sources():
+    import runs
+    import sangria
+
+    n, dt = sangria.grid(SANGRIA)
+    T = n * dt
+    spectra = sangria.aet_spectra(*sangria.combine(["dgb"], [], SANGRIA))
+    before = {ch: s.copy() for ch, s in spectra.items()}
+    lo, hi = 113500, 113560
+    # the dgb stream has no noise, so subtracting every catalogue row in a wider band
+    # (the template wings reach past [lo, hi)) must leave almost nothing in [lo, hi)
+    resid, rows = runs.residual_spectra(spectra, SANGRIA, T=T, lo=lo - 40, hi=hi + 40,
+                                        snr_min=None)
+    assert len(rows) > 5
+    for ch in ("A", "E"):
+        power_in = np.sum(np.abs(spectra[ch][lo:hi]) ** 2)
+        power_out = np.sum(np.abs(resid[ch][lo:hi]) ** 2)
+        assert power_in > 0
+        assert power_out < 0.02 * power_in  # measured 0.0067 (A), 0.0055 (E)
+    for ch in spectra:
+        np.testing.assert_array_equal(spectra[ch], before[ch])

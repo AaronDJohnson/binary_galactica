@@ -11,7 +11,7 @@ import numpy as np
 import sangria  # enables x64 before the package is used
 
 from binary_galactica.glass import FSTAR, ae_noise, analytic_snr
-from binary_galactica.segments import CATALOGUE_FIELDS
+from binary_galactica.segments import CATALOGUE_FIELDS, ldc_to_native, render_sources
 
 PERFORMANCE = Path(__file__).resolve().parents[1] / "performance"
 CHANNELS = ("A", "E", "T")
@@ -109,6 +109,29 @@ def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = 5
         smooth = median_filter(power, size=2 * half_width + 1, mode="nearest")
         out[ch] = smooth[lo - a : hi - a] / np.log(2.0)
     return out
+
+
+def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min: float | None = 7.0,
+                     BW: int = 512) -> tuple[dict, np.ndarray]:
+    """Return ``spectra`` minus every dgb/igb catalogue source with analytic SNR >= ``snr_min``
+    whose bin lies in ``[lo, hi)``, plus the subtracted rows.
+
+    Sources are rendered with ``render_sources`` (on-fly backend, ``fmt="sangria"``, every
+    channel in ``spectra``) at ``ldc_to_native`` parameters, i.e. the true injected waveforms,
+    in the same ``dt * rfft`` units as ``spectra``. Callers pass ``[lo, hi)`` wide enough to
+    cover the running-median window (band +- MARGIN +- half_width), so the median never sees an
+    unsubtracted start-rule source. ``spectra`` is not modified.
+    """
+    channels = list(spectra)
+    n_freq = len(next(iter(spectra.values())))
+    rows = catalogue_rows(path, T=T, band=(lo, hi), snr_min=snr_min)
+    model = np.zeros((len(channels), n_freq), dtype=np.complex128)
+    if len(rows):
+        contrib = render_sources(ldc_to_native(rows, T), T=T, t0=0.0, BW=BW,
+                                 n_channels=len(channels), n_freq=n_freq)
+        contrib.add_to(model)
+    resid = {ch: np.array(spectra[ch]) - model[i] for i, ch in enumerate(channels)}
+    return resid, rows
 
 
 def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
