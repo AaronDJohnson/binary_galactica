@@ -69,3 +69,15 @@ def test_band_bins_accept_numpy_integers():
     assert all(type(x) is int for x in cfg.band_bins)
     with pytest.raises(ValueError):
         UCBBlockConfig(band_bins=(np.True_, 20))
+
+
+def test_numpy_integers_become_plain_ints_and_round_trip(tmp_path):
+    import numpy as np
+
+    cfg = UCBBlockConfig(n_target=np.int32(5), response_samples=np.int64(64),
+                         ntemps=np.int64(3), hottest_temperature=10.0)
+    for name in ("n_target", "ntemps", "response_samples"):
+        assert type(getattr(cfg, name)) is int
+    cfg.write(tmp_path / "c.json")
+    back = UCBBlockConfig.read(tmp_path / "c.json")
+    assert back == cfg and type(back.n_target) is int

@@ -19,8 +19,8 @@ import numpy as np
 
 from binary_galactica.segments import COMPONENT_PERIODIC
 
-# runs (hence h5py, via sangria) and the package are imported inside the functions
-# that need them, so ``fold_offsets`` imports without h5py; runs enables x64 first.
+# runs (hence h5py, via sangria) is imported inside the functions that need it,
+# so ``fold_offsets`` imports without h5py; runs enables x64 first.
 
 T = 31_536_000.0
 N_FREQ = 3_153_601

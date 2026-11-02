@@ -74,6 +74,7 @@ class UCBBlockConfig:
             value = getattr(self, name)
             if not _is_int(value) or value < 1:
                 raise ValueError(f"{name} must be a positive integer, got {value!r}")
+            object.__setattr__(self, name, int(value))
         if self.thin > self.steps_per_turn:
             raise ValueError(
                 f"thin must not exceed steps_per_turn={self.steps_per_turn}, got {self.thin}"
@@ -116,6 +117,8 @@ class UCBBlockConfig:
             not _is_int(self.response_samples) or self.response_samples < 4
         ):
             raise ValueError("response_samples must be None or an integer >= 4")
+        if self.response_samples is not None:
+            object.__setattr__(self, "response_samples", int(self.response_samples))
 
     def within_model_weights(self) -> dict[str, float]:
         """Return the relative weights of the four within-model moves."""

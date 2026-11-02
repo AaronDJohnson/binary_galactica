@@ -84,9 +84,9 @@ class UCBBlock:
     those segments twice, so every later call raises ``RuntimeError``; build a
     fresh ``UCBBlock`` on a fresh ``outdir``: a failed turn leaves archived
     chains behind, and the constructor refuses an ``outdir`` that holds
-    ``config.json`` or any archived turn, so a run is never mislabelled. Rejected inputs (a wrong domain,
-    grid or covariance, or a ledger turn out of step) raise before anything
-    changes and leave the block usable.
+    ``config.json`` or any archived turn, so a run is never mislabelled.
+    Rejected inputs (a wrong domain, grid or covariance, or a ledger turn out
+    of step) raise before anything changes and leave the block usable.
 
     Register with ``Wheel.add(..., data_domain="frequency")``.
     """
