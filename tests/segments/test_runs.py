@@ -65,3 +65,23 @@ def test_residual_spectra_removes_noise_free_sources():
         assert power_out < 0.02 * power_in  # measured 0.0067 (A), 0.0055 (E)
     for ch in spectra:
         np.testing.assert_array_equal(spectra[ch], before[ch])
+
+
+@requires_sangria
+def test_noise_only_stream_matches_instrument_variance():
+    import runs
+    import sangria
+
+    n, dt = sangria.grid(SANGRIA)
+    T = n * dt
+    spectra = sangria.aet_spectra(
+        *sangria.combine(["obs"], ["dgb", "igb", "vgb", "mbhb"], SANGRIA))
+    for f0 in (2e-3, 5e-3, 8e-3, 12.7e-3):
+        q0 = int(f0 * T)
+        lo, hi = q0 - 200, q0 + 200
+        var = runs.running_median_variance(spectra, lo, hi, half_width=200)
+        f = np.arange(lo, hi) / T
+        for ch in ("A", "E"):
+            ratio = float(np.median(var[ch] / runs.instrument_variance(f, T)))
+            print(f"{f0 * 1e3:.1f} mHz {ch}: {ratio:.3f}")
+            assert 0.9 <= ratio <= 1.35

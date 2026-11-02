@@ -144,11 +144,23 @@ def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
                             data_domain="frequency")
 
 
+def instrument_variance(f, T: float):
+    """Return the instrument-noise variance of a Sangria-format ``dt * rfft`` A/E coefficient.
+
+    ``ae_noise`` is GLASS's phase-format A/E PSD. Sangria-format templates and data carry
+    ``P = 4 x sin(x) sqrt(T)`` against phase's ``2 sin(x) sqrt(T)`` (``glass/tdi.py``, the
+    table of ``P`` per format), so in power the factor is ``4 x^2`` with ``x = f / FSTAR``:
+    ``0.5 * T * ae_noise(f) * 4 * (f / FSTAR)**2``.
+    """
+    f = np.asarray(f, dtype=np.float64)
+    return 0.5 * T * ae_noise(f) * 4.0 * (f / FSTAR) ** 2
+
+
 def covariance(data, variances: dict, lo: int, hi: int):
     """Return a diagonal DataCovariance.
 
     It uses ``variances`` on ``[lo, hi)`` and the instrument-only
-    ``(T/2) ae_noise`` elsewhere; DC is inactive. Callers must pass ``lo`` and
+    :func:`instrument_variance` elsewhere; DC is inactive. Callers must pass ``lo`` and
     ``hi`` covering the block's whole padded band (``segments[0].bin_lo`` to
     ``segments[-1].bin_hi``), or the block sees instrument-only noise there.
     """
@@ -158,7 +170,7 @@ def covariance(data, variances: dict, lo: int, hi: int):
     T = data.Tobs
     f = np.arange(n_freq) / T
     f[0] = f[1]
-    base = 0.5 * T * ae_noise(f)
+    base = instrument_variance(f, T)
     m = np.zeros((n_freq, len(data.channel_names), len(data.channel_names)))
     for i, ch in enumerate(data.channel_names):
         diag = base.copy()
