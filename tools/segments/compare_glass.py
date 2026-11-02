@@ -24,14 +24,14 @@ import sangria
 
 from binary_galactica.segments import UCBBlock, UCBBlockConfig
 
+HALF_WIDTH = runs.HALF_WIDTH
+NOISE_REFERENCE = runs.NOISE_REFERENCE
+
 GLASS_DIR = Path(os.environ.get(
     "BG_GLASS_DIR",
     str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
 ))
 MARGIN = 300
-HALF_WIDTH = 500  # running_median_variance's half_width
-NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
-                   "SNR >= 7")
 SPAN = 300
 
 
@@ -64,7 +64,7 @@ def _counterpart(chain: dict, q: float, burn: float = 0.25, tol: float = 2.0):
     return comps[rows, j][hit], float(hit.mean()) if hit.size else 0.0
 
 
-def _nearest_catalogue(path, T, q, start, block):
+def _nearest_catalogue(path, T, q, start):
     """Return the catalogue row of any SNR nearest ``q`` (bins), and whether it was a start source."""
     rows = runs.catalogue_rows(path, T=T, band=(q - 10, q + 10))
     if not len(rows):
@@ -131,7 +131,7 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
                                   "dropped": inj_name in dropped,
                                   "block_snr": dropped.get(inj_name)}
         if frac < 0.5:
-            entry["nearest_catalogue"] = _nearest_catalogue(path, T, qd, start, block)
+            entry["nearest_catalogue"] = _nearest_catalogue(path, T, qd, start)
         entry["overlap"] = bool(frac >= 0.5 and entry.get("sep_f", np.inf) < 3
                                 and entry.get("sep_lnA", np.inf) < 3)
         out.append(entry)

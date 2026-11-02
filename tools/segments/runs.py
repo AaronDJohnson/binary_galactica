@@ -15,6 +15,10 @@ from binary_galactica.segments import CATALOGUE_FIELDS, ldc_to_native, render_so
 
 PERFORMANCE = Path(__file__).resolve().parents[1] / "performance"
 CHANNELS = ("A", "E", "T")
+HALF_WIDTH = 500  # running_median_variance's half_width
+START_SNR = 7.0  # analytic SNR floor of the start set
+NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
+                   "SNR >= 7")
 PERIODS = {2: 2.0 * np.pi, 5: np.pi, 6: 2.0 * np.pi}
 
 
@@ -63,7 +67,7 @@ def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
     return rows[np.argsort(rows["Frequency"], kind="stable")]
 
 
-def target_band(path, *, T, core, span, snr_min=7.0, extra=None):
+def target_band(path, *, T, core, span, snr_min=START_SNR, extra=None):
     """Return ``(band, rows)`` for a band of ``span`` bins either side of ``core``.
 
     ``rows`` holds every dgb/igb catalogue row in ``band`` with analytic SNR >= ``snr_min``,
@@ -94,7 +98,7 @@ def inner_segments(block, core):
     return list(segs[1:-1])
 
 
-def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = 500) -> dict:
+def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = HALF_WIDTH) -> dict:
     """Return each channel's coefficient variance on ``[lo, hi)``.
 
     The estimate is the running median of ``|r|^2`` divided by ``ln 2``, the
@@ -111,7 +115,7 @@ def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = 5
     return out
 
 
-def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min: float | None = 7.0,
+def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min: float | None = START_SNR,
                      BW: int = 512) -> tuple[dict, np.ndarray]:
     """Return ``spectra`` minus every dgb/igb catalogue source with analytic SNR >= ``snr_min``
     whose bin lies in ``[lo, hi)``, plus the subtracted rows.
@@ -122,15 +126,18 @@ def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min
     cover the running-median window (band +- MARGIN +- half_width), so the median never sees an
     unsubtracted start-rule source. ``spectra`` is not modified.
     """
-    channels = list(spectra)
-    n_freq = len(next(iter(spectra.values())))
+    channels = tuple(spectra)
+    if channels not in (("A", "E"), ("A", "E", "T")):
+        raise ValueError(f"spectra channels must be ('A', 'E') or ('A', 'E', 'T'), got {channels}")
+    n_freq = len(spectra["A"])
     rows = catalogue_rows(path, T=T, band=(lo, hi), snr_min=snr_min)
     model = np.zeros((len(channels), n_freq), dtype=np.complex128)
     if len(rows):
         contrib = render_sources(ldc_to_native(rows, T), T=T, t0=0.0, BW=BW,
                                  n_channels=len(channels), n_freq=n_freq)
         contrib.add_to(model)
-    resid = {ch: np.array(spectra[ch]) - model[i] for i, ch in enumerate(channels)}
+    row = {ch: i for i, ch in enumerate(channels)}
+    resid = {ch: np.array(spectra[ch]) - model[row[ch]] for ch in channels}
     return resid, rows
 
 

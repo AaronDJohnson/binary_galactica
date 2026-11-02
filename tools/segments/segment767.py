@@ -43,9 +43,8 @@ NPZ = Path(os.environ.get(
 ))
 MARGIN = 300
 SPAN = 600
-HALF_WIDTH = 500  # running_median_variance's half_width
-NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
-                   "SNR >= 7")
+HALF_WIDTH = runs.HALF_WIDTH
+NOISE_REFERENCE = runs.NOISE_REFERENCE
 
 
 def start_rows(path: Path, T: float) -> np.ndarray:
@@ -87,7 +86,7 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
                            f"the running-median range {lo}..{hi}")
     inner = runs.inner_segments(block, core)
     _, seconds = runs.run_block(block, data, cov, turns, seed)
-    dropped = {d["name"] for d in block.dropped}
+    dropped_snr = {d["name"]: d["snr"] for d in block.dropped}
     npz_names = set(npz_rows["Name"])
     floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
     report = {"noise_reference": NOISE_REFERENCE, "mode": mode, "band": band, "core": core, "span": SPAN,
@@ -111,13 +110,11 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
         report["count_histogram"][str(seg.index)] = counts
     report["n_evaluated"] = len(report["sources"])
     report["n_at_floor"] = sum(s["snr"] >= floor for s in report["sources"])
-    dropped_snr = {d["name"]: d["snr"] for d in block.dropped}
+    by_name = {s["name"]: s for s in report["sources"]}
     report["npz_subset"] = [
-        {"q": float(q), "name": str(name), "dropped": name in dropped,
-         "snr": dropped_snr.get(name),
-         "recovered": None,
-         **{k: next((s[k] for s in report["sources"] if s["name"] == name), None)
-            for k in ("snr", "recovered") if name not in dropped}}
+        {"q": float(q), "name": str(name), "dropped": name in dropped_snr,
+         "snr": dropped_snr[name] if name in dropped_snr else by_name.get(name, {}).get("snr"),
+         "recovered": by_name.get(name, {}).get("recovered")}
         for q, name in zip(npz_rows["Frequency"] * T, npz_rows["Name"])
     ]
     report["criterion"] = {"snr_at_least": floor, "recovered_at_least": need}

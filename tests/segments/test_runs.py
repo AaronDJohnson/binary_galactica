@@ -69,6 +69,11 @@ def test_residual_spectra_removes_noise_free_sources():
 
 @requires_sangria
 def test_noise_only_stream_matches_instrument_variance():
+    """Noise-only running median over the instrument variance, at four frequencies.
+
+    The measured ratios run 1.03-1.20 (Sangria's noise parameters against GLASS's SPS/SACC
+    defaults), which is why the bound [0.9, 1.35] is asymmetric about 1.
+    """
     import runs
     import sangria
 
@@ -83,5 +88,13 @@ def test_noise_only_stream_matches_instrument_variance():
         f = np.arange(lo, hi) / T
         for ch in ("A", "E"):
             ratio = float(np.median(var[ch] / runs.instrument_variance(f, T)))
-            print(f"{f0 * 1e3:.1f} mHz {ch}: {ratio:.3f}")
             assert 0.9 <= ratio <= 1.35
+
+
+def test_residual_spectra_rejects_unknown_channels():
+    import runs
+
+    for bad in ({"A": np.zeros(8)}, {"E": np.zeros(8), "A": np.zeros(8)},
+                {"A": np.zeros(8), "E": np.zeros(8), "X": np.zeros(8)}):
+        with pytest.raises(ValueError):
+            runs.residual_spectra(bad, "unused", T=1.0, lo=1, hi=4)
