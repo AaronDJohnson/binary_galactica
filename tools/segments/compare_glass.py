@@ -29,6 +29,9 @@ GLASS_DIR = Path(os.environ.get(
     str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
 ))
 MARGIN = 300
+HALF_WIDTH = 500  # running_median_variance's half_width
+NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
+                   "SNR >= 7")
 SPAN = 300
 
 
@@ -83,7 +86,8 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
     band, start = runs.target_band(path, T=T, core=core, span=SPAN)
     config = UCBBlockConfig(band_bins=band, steps_per_turn=steps)
     a, b = band[0] - MARGIN, band[1] + MARGIN
-    cov = runs.covariance(data, runs.running_median_variance(spectra, a, b), a, b)
+    resid, _ = runs.residual_spectra(spectra, path, T=T, lo=a - HALF_WIDTH, hi=b + HALF_WIDTH)
+    cov = runs.covariance(data, runs.running_median_variance(resid, a, b, HALF_WIDTH), a, b)
     block = UCBBlock(grid=data, start_sources=start, outdir=outdir / f"glass_{seg_index}",
                      config=config, reference_covariance=cov)
     segs = block.table.segments
@@ -156,7 +160,7 @@ def main() -> None:
                                path=args.path) for s in chosen]
     bright = [d for r in results for d in r["detections"] if d["glass_snr"] >= 10]
     fraction = float(np.mean([d["overlap"] for d in bright])) if bright else 0.0
-    report = {"T_block": T, "T_glass": 31_457_280.0, "segments": results,
+    report = {"noise_reference": NOISE_REFERENCE, "T_block": T, "T_glass": 31_457_280.0, "segments": results,
               "n_bright": len(bright), "bright_overlap_fraction": fraction,
               "pass": len(bright) >= 1 and fraction >= 0.8}
     runs.write_report("segments-glass-compare.json", report)

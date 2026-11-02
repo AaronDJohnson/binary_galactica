@@ -43,6 +43,9 @@ NPZ = Path(os.environ.get(
 ))
 MARGIN = 300
 SPAN = 600
+HALF_WIDTH = 500  # running_median_variance's half_width
+NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
+                   "SNR >= 7")
 
 
 def start_rows(path: Path, T: float) -> np.ndarray:
@@ -73,7 +76,8 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
     spectra = sangria.aet_spectra(*sangria.combine(["obs"], ["mbhb", "vgb"], path))
     data = runs.frequency_data(spectra, n, dt)
     lo, hi = band[0] - MARGIN, band[1] + MARGIN
-    cov = runs.covariance(data, runs.running_median_variance(spectra, lo, hi), lo, hi)
+    resid, _ = runs.residual_spectra(spectra, path, T=T, lo=lo - HALF_WIDTH, hi=hi + HALF_WIDTH)
+    cov = runs.covariance(data, runs.running_median_variance(resid, lo, hi, HALF_WIDTH), lo, hi)
     config = UCBBlockConfig(band_bins=band, birth_death=(mode == "rj"), steps_per_turn=steps)
     block = UCBBlock(grid=data, start_sources=rows, outdir=outdir / mode, config=config,
                      reference_covariance=cov)
@@ -85,18 +89,16 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
     _, seconds = runs.run_block(block, data, cov, turns, seed)
     dropped = {d["name"] for d in block.dropped}
     npz_names = set(npz_rows["Name"])
-    survivors = rows[[name not in dropped for name in rows["Name"]]]
     floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
-    report = {"mode": mode, "band": band, "core": core, "span": SPAN,
+    report = {"noise_reference": NOISE_REFERENCE, "mode": mode, "band": band, "core": core, "span": SPAN,
               "segments": len(segs), "edge_segments": [segs[0].index, segs[-1].index],
               "dropped": block.dropped, "seconds_per_turn": seconds,
               "n_start": len(rows), "n_dropped": len(block.dropped), "sources": [],
-              "count_histogram": []}
+              "count_histogram": {}}
     for seg in inner:
         lik = SegmentLikelihood.for_segment(seg, T=T, t0=0.0, config=config)
         lik.set_reference(block.c_ref[:, seg.bin_lo : seg.bin_hi])
-        own = survivors[(survivors["Frequency"] * T >= seg.lo)
-                        & (survivors["Frequency"] * T < seg.hi)]
+        own = rows[block.owned_start[seg.index]]
         chain = block.cold_chain(seg.index)
         if chain is None or not len(own):
             continue
@@ -106,13 +108,16 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
             entry.update(snr=float(rho), npz=bool(row["Name"] in npz_names),
                          segment=seg.index, name=str(row["Name"]))
         report["sources"].extend(found)
-        report["count_histogram"].append(counts)
+        report["count_histogram"][str(seg.index)] = counts
     report["n_evaluated"] = len(report["sources"])
     report["n_at_floor"] = sum(s["snr"] >= floor for s in report["sources"])
+    dropped_snr = {d["name"]: d["snr"] for d in block.dropped}
     report["npz_subset"] = [
         {"q": float(q), "name": str(name), "dropped": name in dropped,
+         "snr": dropped_snr.get(name),
+         "recovered": None,
          **{k: next((s[k] for s in report["sources"] if s["name"] == name), None)
-            for k in ("snr", "recovered")}}
+            for k in ("snr", "recovered") if name not in dropped}}
         for q, name in zip(npz_rows["Frequency"] * T, npz_rows["Name"])
     ]
     report["criterion"] = {"snr_at_least": floor, "recovered_at_least": need}
