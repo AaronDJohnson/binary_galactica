@@ -39,7 +39,8 @@ def _impulse() -> Any:
         import impulse
     except ImportError as exc:  # pragma: no cover - exercised without impulse
         raise ImportError(
-            "the segment block needs impulse-mcmc with RJPTSampler "
+            "the segment block needs impulse-mcmc with RJPTSampler, which currently "
+            "needs impulse's rjmcmc branch "
             "(pip install 'binary-galactica[segments]')"
         ) from exc
     if not hasattr(impulse, "RJPTSampler"):

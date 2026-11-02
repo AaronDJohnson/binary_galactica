@@ -19,7 +19,7 @@ HALF_WIDTH = 500  # running_median_variance's half_width
 START_SNR = 7.0  # analytic SNR floor of the start set
 NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
                    "SNR >= 7")
-PERIODS = {2: 2.0 * np.pi, 5: np.pi, 6: 2.0 * np.pi}
+MARGIN = 300  # bins either side of a band kept for the running-median window
 
 
 def _json_default(value: Any) -> Any:

@@ -59,3 +59,13 @@ def test_json_round_trip(tmp_path):
 def test_unknown_keys_raise():
     with pytest.raises(ValueError, match="unknown"):
         UCBBlockConfig.from_dict({"steps": 3})
+
+
+def test_band_bins_accept_numpy_integers():
+    import numpy as np
+
+    cfg = UCBBlockConfig(band_bins=(np.int64(10), np.int64(20)), n_target=np.int32(5))
+    assert cfg.band_bins == (10, 20)
+    assert all(type(x) is int for x in cfg.band_bins)
+    with pytest.raises(ValueError):
+        UCBBlockConfig(band_bins=(np.True_, 20))

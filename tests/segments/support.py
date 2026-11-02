@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from pathlib import Path
@@ -20,8 +21,18 @@ SANGRIA = Path(
         "/Users/aaron/Documents/lisa/project-catalog/LDC2_sangria_training_v2.h5",
     )
 )
+
+
+def _sangria_missing() -> str | None:
+    if importlib.util.find_spec("h5py") is None:
+        return "h5py is not installed"
+    if not SANGRIA.exists():
+        return "Sangria training file not found; set BG_SANGRIA_H5"
+    return None
+
+
 requires_sangria = pytest.mark.skipif(
-    not SANGRIA.exists(), reason="Sangria training file not found; set BG_SANGRIA_H5"
+    _sangria_missing() is not None, reason=_sangria_missing() or ""
 )
 
 #: A short grid that keeps tests fast: 2**16 samples at 15 s, about 11 days.

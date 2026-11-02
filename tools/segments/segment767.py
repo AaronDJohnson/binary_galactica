@@ -1,8 +1,10 @@
 """Crowded band: gbnoisefit's Segment767 core with a band built around it.
 
-Data: Sangria obs minus the true MBHB and VGB streams. Noise: a running median
-of the data's own power. It absorbs the unresolved galaxy, and serves as both
-the turn's covariance and the SNR-cut reference. The core is the npz band
+Data: Sangria obs minus the true MBHB and VGB streams. Noise: the residual
+noise reference (``runs.NOISE_REFERENCE``): a running median of the power of
+obs - mbhb - vgb minus the catalogue sources with analytic SNR >= 7. It absorbs
+the unresolved galaxy, and serves as both the turn's covariance and the
+SNR-cut reference. The core is the npz band
 (``f_lo``..``f_hi``); the block's band extends SPAN bins either side, and the
 start set is every dgb/igb catalogue row in it with analytic SNR >= 7 plus the
 18 rows matching the npz's ``initial_sources_native`` frequencies (column 0, Hz).
@@ -41,7 +43,7 @@ NPZ = Path(os.environ.get(
     "BG_SEGMENT767",
     str(Path.home() / "Documents/lisa/gbnoisefit/vendor/sangria_segment_767/segment_767.npz"),
 ))
-MARGIN = 300
+MARGIN = runs.MARGIN
 SPAN = 600
 HALF_WIDTH = runs.HALF_WIDTH
 NOISE_REFERENCE = runs.NOISE_REFERENCE

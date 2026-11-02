@@ -31,7 +31,7 @@ GLASS_DIR = Path(os.environ.get(
     "BG_GLASS_DIR",
     str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
 ))
-MARGIN = 300
+MARGIN = runs.MARGIN
 SPAN = 300
 
 

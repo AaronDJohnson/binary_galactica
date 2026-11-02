@@ -4,6 +4,9 @@ The block does not build data. These helpers do it for the tools and tests:
 - time-domain XYZ streams;
 - their ``dt * rfft`` A/E/T spectra, in GLASS's AET convention;
 - catalogue rows.
+
+h5py is imported inside the readers, so importing this module (and ``runs``)
+works without it.
 """
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ import os
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
-import h5py
 import jax
 
 jax.config.update("jax_enable_x64", True)
@@ -41,6 +43,8 @@ def _key(stream: str) -> str:
 
 def grid(path: Path = DEFAULT_PATH) -> tuple[int, float]:
     """Return ``(number of samples, dt)`` of the observation."""
+    import h5py
+
     with h5py.File(path, "r") as f:
         ds = f["obs/tdi"]
         t = ds[:2, 0]["t"]
@@ -49,6 +53,8 @@ def grid(path: Path = DEFAULT_PATH) -> tuple[int, float]:
 
 def load_xyz(stream: str, path: Path = DEFAULT_PATH) -> tuple[dict[str, np.ndarray], float]:
     """Return ``({"X", "Y", "Z"} -> samples, dt)`` for one stream."""
+    import h5py
+
     with h5py.File(path, "r") as f:
         data = f[_key(stream)][:, 0]
     dt = float(data["t"][1] - data["t"][0])
@@ -92,6 +98,8 @@ def load_catalogue(
     ``index`` selects rows by position and returns them in increasing index
     order (h5py fancy indexing); ``None`` reads every row.
     """
+    import h5py
+
     with h5py.File(path, "r") as f:
         view = f[f"sky/{population}/cat"].fields(list(fields))
         if index is None:

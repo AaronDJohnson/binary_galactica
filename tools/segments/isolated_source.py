@@ -17,9 +17,10 @@ from pathlib import Path
 
 import numpy as np
 
+from binary_galactica.segments import COMPONENT_PERIODIC
+
 # runs (hence h5py, via sangria) and the package are imported inside the functions
 # that need them, so ``fold_offsets`` imports without h5py; runs enables x64 first.
-PERIODS = {2: 2.0 * np.pi, 5: np.pi, 6: 2.0 * np.pi}
 
 T = 31_536_000.0
 N_FREQ = 3_153_601
@@ -40,7 +41,7 @@ def fold_offsets(d: np.ndarray) -> np.ndarray:
     equal modes. Each sample is compared with the nearer image of the injection.
     """
     d = d.copy()
-    for i, period in PERIODS.items():
+    for i, (_, period) in COMPONENT_PERIODIC.items():
         d[:, i] = (d[:, i] + period / 2) % period - period / 2
     flip = np.abs(d[:, 5]) > np.pi / 4
     d[flip, 5] -= np.sign(d[flip, 5]) * np.pi / 2

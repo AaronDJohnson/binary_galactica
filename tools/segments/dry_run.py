@@ -5,7 +5,7 @@ The stand-in start set is every dgb/igb catalogue row with analytic SNR > 7
 one cold turn (which includes compilation) and one warm turn on a few segments
 spread across the band. Data: obs minus MBHB and VGB, with a running-median
 covariance. The warm per-step time is extrapolated to every segment with a
-least-squares fit in ntemps * K * BW.
+non-negative least-squares (NNLS) fit in K and K * n_pad, the primary model.
 
     PYTHONPATH=src:... python tools/segments/dry_run.py --sample 6 --steps 100
 """

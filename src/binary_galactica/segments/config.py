@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import json
 import math
+import numbers
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any
 
-from ..glass import DEFAULT_RESPONSE_SAMPLES, SNR_MIN
+from ..glass import BACKENDS, DEFAULT_RESPONSE_SAMPLES, SNR_MIN
 
-#: Waveform backends the block can use; the conventions gate chose the default ("onfly").
-BACKENDS = ("fourier", "onfly")
+# BACKENDS is re-exported from the glass package. The conventions gate tied
+# (0.99696 for both backends) and the user chose "onfly" as the default.
 
 _POSITIVE_INTS = (
     "n_target",
@@ -24,7 +25,7 @@ _POSITIVE_INTS = (
 
 
 def _is_int(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
+    return isinstance(value, numbers.Integral) and not isinstance(value, bool)
 
 
 @dataclass(frozen=True)
@@ -83,7 +84,7 @@ class UCBBlockConfig:
                 raise ValueError(
                     f"band_bins must be integers 0 < lo < hi, got {self.band_bins!r}"
                 )
-            object.__setattr__(self, "band_bins", (lo, hi))
+            object.__setattr__(self, "band_bins", (int(lo), int(hi)))
         if not (math.isfinite(self.ladder_step) and self.ladder_step > 1.0):
             raise ValueError("ladder_step must be finite and greater than 1")
         floor = self.ladder_step ** max(self.ntemps - 2, 0)
