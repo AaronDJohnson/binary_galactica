@@ -4691,3 +4691,19 @@ git commit -m "Document the UCB segment block and release 0.6.0"
 | One turn: checks, conditional residual per segment, even/odd sweep, recompute, publish | 7, 8 |
 | Requirements on impulse (continue call): bridged by re-calling `sample()` | 7, 13 |
 | Verification 1–7 | 3; 5; 6 and 7; 9 and 10; 7 and 8; 7, 10 and 11; 12 |
+
+## Execution amendments (2026-11-01)
+
+Decisions and findings made during execution that change the tasks above:
+
+- **Backend (user):** "we should use tdionthefly for ALL domains". `UCBBlockConfig.backend` defaults to `"onfly"`. A WDM-domain likelihood follows as a separate spec addendum.
+- **Phase convention (Task 3 finding):** LDC `InitialPhase` is GLASS's native φ0 directly; the spec's −φ0 was wrong.
+- **Template bandwidth (user):** GLASS `ucb_bw` with safety 1.
+- **Tasks 10 and 11 band design (user, "Band around target"):**
+  - A single band misses loud catalogue sources sitting in its padding. Both tools therefore run a multi-segment band around the target, built by `runs.target_band` (Segment767 ±600 bins; GLASS segments ±300).
+  - The start set is the catalogue at analytic SNR ≥ 7.
+  - Results are judged over the inner segments only (`runs.inner_segments`), and a pass must not be vacuous.
+  - Chains are read through `UCBBlock.cold_chain`.
+- **Noise reference (user, "Residual noise ref"):** the validation tools use the running median of obs − MBHB − VGB minus the start-rule catalogue sources (`runs.residual_spectra`) as both covariance and SNR reference. The raw-data median dropped 34 of 83 start sources in GLASS segment 276; the residual median dropped 1.
+- **Task 11 segment filter (controller):** `glass_segments` uses `nmax` 20. The plan's 8–15 matched only one GLASS segment.
+- **Units (finding):** `ae_noise` is GLASS's phase-format PSD. Sangria `dt * rfft` data has instrument variance `0.5 T ae_noise · 4 (f/f*)^2` (`runs.instrument_variance`), pinned by a test against Sangria's noise-only stream.
