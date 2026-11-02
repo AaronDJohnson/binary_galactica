@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from binary_galactica.segments import (
+    Segment,
     SegmentTable,
     UCBBlockConfig,
     build_segment_table,
@@ -144,3 +145,11 @@ def test_json_round_trip(tmp_path):
     path = tmp_path / "segment_table.json"
     table.write(path)
     assert SegmentTable.read(path) == table
+
+
+def test_segment_owns_scalars_and_arrays():
+    import numpy as np
+
+    seg = Segment(index=0, lo=10, hi=20, pad=3, bw=16, k_max=10, owned=())
+    assert seg.owns(10.0) and seg.owns(19.9) and not seg.owns(20.0) and not seg.owns(9.9)
+    assert list(seg.owns(np.array([9.0, 10.0, 15.0, 20.0]))) == [False, True, True, False]

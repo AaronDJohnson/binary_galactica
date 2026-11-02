@@ -51,12 +51,15 @@ class UCBBlock:
     grid
         An L1Data in any domain. It fixes ``num_time_samples``,
         ``sample_rate_hz``, ``start_time_gps`` and ``channel_names``, which must
-        be ``("A", "E")`` or ``("A", "E", "T")``.
+        be ``("A", "E")`` or ``("A", "E", "T")``. ``start_time_gps`` is used as
+        the waveform and orbit ``t0``, so it must be in the catalogue's time
+        frame (LDC t=0 for Sangria).
     start_sources
         LDC catalogue rows with the ``sky/dgb/cat`` fields; ``Name`` is optional.
     outdir
         Run directory for the configuration, segment table, dropped sources and
-        chains.
+        chains. It may be missing or empty, but must not already hold a run
+        (``config.json`` or ``segment_*/cold/turn_*.npz``), else ``ValueError``.
     config
         :class:`UCBBlockConfig`; the default holds the spec's settings.
     reference_covariance
@@ -79,7 +82,9 @@ class UCBBlock:
     archived the turn while :attr:`turn` has not moved. This covers applying
     the cut, starting the runners and the sweep itself. A retry would advance
     those segments twice, so every later call raises ``RuntimeError``; build a
-    fresh ``UCBBlock`` with a new ``outdir``. Rejected inputs (a wrong domain,
+    fresh ``UCBBlock`` on a fresh ``outdir``: a failed turn leaves archived
+    chains behind, and the constructor refuses an ``outdir`` that holds
+    ``config.json`` or any archived turn, so a run is never mislabelled. Rejected inputs (a wrong domain,
     grid or covariance, or a ledger turn out of step) raise before anything
     changes and leave the block usable.
 
@@ -96,6 +101,8 @@ class UCBBlock:
         reference_covariance: Any = None,
         name: str = "ucb",
     ) -> None:
+        self.outdir = Path(outdir)
+        self._check_outdir_unused()
         self.name = name
         self.config = config if config is not None else UCBBlockConfig()
         channels = tuple(grid.channel_names)
@@ -107,12 +114,14 @@ class UCBBlock:
         self.T = self.num_time_samples / self.sample_rate_hz
         self.t0 = float(grid.start_time_gps)
         self.n_freq = self.num_time_samples // 2 + 1
-        self.outdir = Path(outdir)
-        self.outdir.mkdir(parents=True, exist_ok=True)
         self.start_native = ldc_to_native(start_sources, self.T)
         self.start_names = _names(start_sources, self.start_native.shape[0])
         self.table = build_segment_table(self.start_native, T=self.T, n_freq=self.n_freq,
                                          config=self.config)
+        # Validate the reference before anything is written, so a rejected one
+        # leaves no half-written run directory behind.
+        c_ref = None if reference_covariance is None else self._diagonals(reference_covariance)
+        self.outdir.mkdir(parents=True, exist_ok=True)
         self.config.write(self.outdir / "config.json")
         self.table.write(self.outdir / "segment_table.json")
         self.dropped: list[dict[str, Any]] = [
@@ -126,11 +135,21 @@ class UCBBlock:
         self._contrib: dict[int, Contribution] = {}
         self._model: NDArray[np.complex128] | None = None
         self._failed = False
-        if reference_covariance is not None:
-            self._set_reference(self._diagonals(reference_covariance))
+        if c_ref is not None:
+            self._set_reference(c_ref)
         self._write_dropped()
 
     # ---- inputs -----------------------------------------------------------
+
+    def _check_outdir_unused(self) -> None:
+        """Refuse an outdir that already holds a run, before any file is written."""
+        if (self.outdir / "config.json").exists() or any(
+            self.outdir.glob("segment_*/cold/turn_*.npz")
+        ):
+            raise ValueError(
+                f"{self.outdir} already holds a run (config.json or archived turns); "
+                "use a new directory"
+            )
 
     def _record(self, i: int, snr: float | None, reason: str) -> dict[str, Any]:
         ldc = native_to_ldc(self.start_native[i], self.T)
@@ -248,6 +267,7 @@ class UCBBlock:
         sample). It raises ``ValueError`` if the block was built without
         ``reference_covariance``, because the cut is not yet applied.
         """
+        self._check_data(data)
         if self.c_ref is None:
             raise ValueError(
                 "initial_block_state needs the SNR cut applied first; build the "
@@ -361,7 +381,7 @@ class UCBBlock:
                 own = self._contrib[seg.index].window(lo, hi)[:2]
                 runner.advance(r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi])
                 cold = runner.cold_sources()
-                keep = cold[(cold[:, 0] >= seg.lo) & (cold[:, 0] < seg.hi)]
+                keep = cold[seg.owns(cold[:, 0])]
                 new = self._render(seg, keep)
                 self._contrib[seg.index].add_to(self._model, -1.0)
                 new.add_to(self._model, 1.0)

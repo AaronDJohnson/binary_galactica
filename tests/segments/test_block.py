@@ -367,3 +367,39 @@ def test_check_block_three_segments(tmp_path):
     block = _check_block_run(tmp_path, _rows(), _config())
     assert len(block.table.segments) >= 3
     assert all(len(block.owned_start[s.index]) == 1 for s in block.table.segments)
+
+
+def test_refuses_an_outdir_that_holds_a_run(tmp_path, fake_runner):
+    (tmp_path / "config.json").write_text("{}")
+    with pytest.raises(ValueError, match="already holds a run"):
+        UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    assert (tmp_path / "config.json").read_text() == "{}"
+    assert not (tmp_path / "segment_table.json").exists()
+
+
+def test_refuses_an_outdir_that_holds_archived_turns(tmp_path, fake_runner):
+    cold = tmp_path / "segment_00000" / "cold"
+    cold.mkdir(parents=True)
+    (cold / "turn_00000.npz").write_bytes(b"")
+    with pytest.raises(ValueError, match="already holds a run"):
+        UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    assert not (tmp_path / "config.json").exists()
+
+
+def test_accepts_an_empty_existing_outdir(tmp_path, fake_runner):
+    UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    assert (tmp_path / "config.json").exists()
+
+
+def test_rejected_reference_leaves_no_files(tmp_path, fake_runner):
+    with pytest.raises(ValueError, match="covariance channels"):
+        UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path / "run",
+                 config=_config(), reference_covariance=_cov(("A", "E", "X")))
+    assert not (tmp_path / "run").exists()
+
+
+def test_initial_block_state_checks_the_domain(tmp_path, fake_runner):
+    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config(),
+                     reference_covariance=_cov())
+    with pytest.raises(ValueError, match="frequency-domain"):
+        block.initial_block_state(_grid(domain="time"))

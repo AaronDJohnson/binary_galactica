@@ -84,9 +84,9 @@ class Segment:
         """Return the number of bins in the padded window."""
         return self.bin_hi - self.bin_lo
 
-    def owns(self, q: float) -> bool:
-        """Return whether ``f0*T = q`` lies in the interior."""
-        return self.lo <= q < self.hi
+    def owns(self, q: Any) -> Any:
+        """Return whether ``f0*T = q`` lies in the interior (``q`` may be an array)."""
+        return (q >= self.lo) & (q < self.hi)
 
     def prior(self, T: float) -> UCBPrior:
         """Return GLASS's uniform prior over the padded band."""
