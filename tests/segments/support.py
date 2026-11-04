@@ -15,10 +15,11 @@ TOOLS = REPO / "tools" / "segments"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
+CATALOG = Path.home() / "Documents/lisa/project-catalog"
 SANGRIA = Path(
     os.environ.get(
         "BG_SANGRIA_H5",
-        "/Users/aaron/Documents/lisa/project-catalog/LDC2_sangria_training_v2.h5",
+        str(CATALOG / "data/raw/sangria/LDC2_sangria_training_v2.h5"),
     )
 )
 

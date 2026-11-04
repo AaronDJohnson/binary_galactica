@@ -42,10 +42,7 @@ from binary_galactica.segments import (
 NPZ = Path(
     os.environ.get(
         "BG_SEGMENT767",
-        str(
-            Path.home()
-            / "Documents/lisa/gbnoisefit/vendor/sangria_segment_767/segment_767.npz"
-        ),
+        str(Path.home() / "Documents/lisa/nora/osg_run_full/bundles/segment_767.npz"),
     )
 )
 MARGIN = runs.MARGIN

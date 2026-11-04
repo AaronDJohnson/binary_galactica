@@ -30,7 +30,11 @@ NOISE_REFERENCE = runs.NOISE_REFERENCE
 GLASS_DIR = Path(
     os.environ.get(
         "BG_GLASS_DIR",
-        str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
+        str(
+            Path.home()
+            / "Documents/lisa/project-catalog/data/legacy/old"
+            / "glass_h5_files_sangria_12mo_UCB"
+        ),
     )
 )
 MARGIN = runs.MARGIN

@@ -24,10 +24,11 @@ import numpy as np  # noqa: E402
 from binary_galactica.glass import xyz_to_aet  # noqa: E402
 from binary_galactica.segments import CATALOGUE_FIELDS  # noqa: E402
 
+CATALOG = Path.home() / "Documents/lisa/project-catalog"
 DEFAULT_PATH = Path(
     os.environ.get(
         "BG_SANGRIA_H5",
-        "/Users/aaron/Documents/lisa/project-catalog/LDC2_sangria_training_v2.h5",
+        str(CATALOG / "data/raw/sangria/LDC2_sangria_training_v2.h5"),
     )
 )
 POPULATIONS = ("dgb", "igb", "vgb", "mbhb")
