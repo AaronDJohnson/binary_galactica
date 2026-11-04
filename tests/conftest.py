@@ -41,6 +41,16 @@ def reference_polarizations(
     Written a different way from the package -- a complex exponential for the
     phase and an explicit rotation matrix for the polarization angle -- so that
     agreement is evidence about the model rather than about shared code.
+
+    The convention is the historical one of ``galactic_binary()`` in ldasoft's
+    ``galactic.c``, identical in GBGPU's ``run_wave``: with ``cosps, sinps =
+    cos(2 psi), sin(2 psi)``, the complex coefficients
+    ``DP = Aplus*cosps - 1j*Across*sinps`` and
+    ``DC = -Aplus*sinps - 1j*Across*cosps`` give ``h+ = Re(DP e^{i Phi})`` and
+    ``hx = Re(DC e^{i Phi})``, which is the rotation below. Both codes carry
+    the minus sign in ``Across = -2 amp cos(iota)``, which fixes the handedness
+    of a face-on source, and ``Re(DC) = -Aplus sin(2 psi)`` fixes the direction
+    of the psi rotation.
     """
     amp, f0, fdot, phi0, iota, psi, _lam, _beta = (float(x) for x in theta)
     times = np.asarray(times, dtype=np.float64)

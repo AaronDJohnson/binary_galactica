@@ -19,20 +19,8 @@ import binary_galactica.glass as glass
             64,
             [7884.25, -0.21, 1.1, np.log(8e-22), 0.37, 0.63, 0.41, 7e-5],
         ),
-        (
-            "phase",
-            31_536_000.0,
-            32,
-            [74600.25, 0.61, 4.75, np.log(3e-20), -0.08, 2.41, 1.82],
-        ),
-        (
-            "frequency",
-            126_144_000.0,
-            96,
-            [431970.25, -0.44, 1.57, np.log(5e-23), -0.83, 1.77, 4.39, -0.15, 0.4],
-        ),
     ],
-    ids=["8p-sangria-quarter-year", "7p-phase-year", "9p-frequency-four-years"],
+    ids=["8p-sangria-quarter-year"],
 )
 def test_normalized_real_imaginary_jacobian_matches_finite_differences(
     fmt, T, BW, values

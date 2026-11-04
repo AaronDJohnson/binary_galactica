@@ -2,7 +2,11 @@
 
 Window placement, the arbitrary-time response (to twenty years, with and
 without positions), the physical adapter, position caches and amplitude
-rescaling through ``params[3]``.
+rescaling through ``params[3]``. Supplied caches are a constellation rotated
+from the analytic orbit used without one, so that ignoring them would show.
+Most sources carry eight native entries: a nine-entry float32 program takes
+seconds to compile, and the second derivative is tested with the accuracy
+tests.
 """
 
 from __future__ import annotations
@@ -17,10 +21,7 @@ import pytest
 import binary_galactica as bg
 from binary_galactica import single as bg32
 from tests.single.support import (
-    DURATIONS,
-    EPOCHS,
     FREQUENCIES,
-    SIGNS,
     Source,
     assert_accurate,
     channels,
@@ -30,11 +31,18 @@ from tests.single.support import (
     source,
 )
 
-WINDOW_SOURCES = {
-    "quarter year at 30 mHz, late": source(0.25, 3e-2, 10.0, (1, -1)),
-    "four years at 10 mHz, late": source(4.0, 1e-2, 10.0, (-1, 1)),
-    "ten years at 1 mHz": source(10.0, 1e-3, 0.0, (-1, -1)),
-}
+#: A quarter year at 30 mHz, ten years late: a 128-bin band.
+CASE = source(0.25, 3e-2, 10.0, (1, -1), length=8)
+#: The rotation of the constellation in the supplied positions.
+KAPPA = 0.3
+
+
+def rotated_cache(case: Source) -> np.ndarray:
+    """Return float64 positions of the rotated constellation on ``case``'s grid."""
+    grid = float(case.epoch) + float(case.duration) * (
+        np.arange(case.bandwidth) / case.bandwidth
+    )
+    return np.asarray(bg.analytic_orbits(grid, kappa_0=KAPPA))
 
 
 def windows(case: Source) -> dict[str, tuple[int, int]]:
@@ -49,16 +57,17 @@ def windows(case: Source) -> dict[str, tuple[int, int]]:
     }
 
 
-@pytest.mark.parametrize("name", list(WINDOW_SOURCES))
-def test_window_placement_matches_float64(name):
+def test_window_placement_matches_float64():
     """Windows hold the float32 band at the float64 bins, zero elsewhere.
 
-    Windows that keep most of the band meet the accuracy target on their own.
-    Those that catch only a few edge bins hold little power, so their error is
-    measured against the whole band's norm instead.
+    Every placement: containing the band, cropping it at both ends,
+    overlapping its top or its bottom, and disjoint from it. Windows that keep
+    most of the band meet the accuracy target on their own. Those that catch
+    only a few edge bins hold little power, so their error is measured against
+    the whole band's norm instead.
     """
-    case = WINDOW_SOURCES[name]
-    # The float64 shim uses GLASS's default carrier; these sources share it.
+    case = CASE
+    # The float64 shim uses GLASS's default carrier; this source shares it.
     assert int(bg.ucb_waveform(case.native, **case.double_observation())["qmin"]) == (
         case.carrier - case.bandwidth // 2
     )
@@ -103,10 +112,9 @@ def test_window_placement_matches_float64(name):
 
 
 def test_window_with_cache_and_phase_format():
-    case = WINDOW_SOURCES["four years at 10 mHz, late"]
-    cache = np.asarray(
-        bg.orbit_cache(float(case.duration), float(case.epoch), case.bandwidth)
-    ).astype(np.float32)
+    """The window uses a supplied cache, here in phase format."""
+    case = CASE
+    cache = rotated_cache(case).astype(np.float32)
     bin_lo, n_bins = windows(case)["cropped at both ends"]
     options = {"bin_lo": bin_lo, "n_bins": n_bins, "fmt": "phase"}
     single = bg32.template_on_window(
@@ -119,6 +127,10 @@ def test_window_with_cache_and_phase_format():
         **case.double_observation(),
     )
     assert_accurate(single, double)
+    analytic = bg32.template_on_window(
+        case.params, q_ref=case.q_ref, **options, **case.observation()
+    )
+    assert errors(analytic, double)[0] > 1e-2
 
 
 #: Irregular times from before the epoch to twenty years, with a cluster of
@@ -132,38 +144,37 @@ TIMES = np.concatenate(
         6.0e8 + np.linspace(0.0, 5e5, LATE),
     ]
 ).astype(np.float32)
-#: Positions of a constellation rotated from the analytic default, so that
-#: ignoring supplied positions would show.
-KAPPA = 0.3
 POSITIONS = np.asarray(
     bg.analytic_orbits(TIMES.astype(np.float64), kappa_0=KAPPA)
 ).astype(np.float32)
 
 
 @pytest.mark.parametrize("given", [False, True], ids=["analytic", "positions"])
-@pytest.mark.parametrize("frequency", FREQUENCIES)
-@pytest.mark.parametrize("years", [0.25, 10.0])
-def test_arbitrary_time_response_matches_float64(years, frequency, given):
-    # Derivatives drift a few bins by twenty years.
-    case = source(years, frequency, 20.0 - years, (1, -1))
+def test_arbitrary_time_response_matches_float64(given):
+    """Quarter-year and ten-year sources at every grid frequency, to twenty years."""
     positions = POSITIONS if given else None
-    single = bg32.tdi_response(
-        case.params, TIMES, q_ref=case.q_ref, T=case.duration, positions=positions
-    )
-    double = bg.tdi_response(
-        case.native,
-        TIMES.astype(np.float64),
-        T=float(case.duration),
-        positions=None if positions is None else positions.astype(np.float64),
-    )
-    assert single.shape == (3, TIMES.size) and single.dtype == np.complex64
-    assert_accurate(single, double, "all times")
-    assert_accurate(np.asarray(single)[:, -LATE:], double[:, -LATE:], "near 6e8 s")
-    if given:
-        analytic = bg32.tdi_response(
-            case.params, TIMES, q_ref=case.q_ref, T=case.duration
+    for years, frequency in itertools.product((0.25, 10.0), FREQUENCIES):
+        label = f"T{years:g}yr-f{frequency * 1e3:g}mHz"
+        # Derivatives drift a few bins by twenty years.
+        case = source(years, frequency, 20.0 - years, (1, -1))
+        single = bg32.tdi_response(
+            case.params, TIMES, q_ref=case.q_ref, T=case.duration, positions=positions
         )
-        assert errors(analytic, double)[0] > 1e-2
+        double = bg.tdi_response(
+            case.native,
+            TIMES.astype(np.float64),
+            T=float(case.duration),
+            positions=None if positions is None else positions.astype(np.float64),
+        )
+        assert single.shape == (3, TIMES.size) and single.dtype == np.complex64
+        assert_accurate(single, double, f"{label}, all times")
+        late = np.asarray(single)[:, -LATE:]
+        assert_accurate(late, double[:, -LATE:], f"{label}, near 6e8 s")
+        if given:
+            analytic = bg32.tdi_response(
+                case.params, TIMES, q_ref=case.q_ref, T=case.duration
+            )
+            assert errors(analytic, double)[0] > 1e-2, label
 
 
 def test_response_rounds_host_times_to_float32():
@@ -176,39 +187,17 @@ def test_response_rounds_host_times_to_float32():
     np.testing.assert_array_equal(np.asarray(host), np.asarray(exact))
 
 
-PHYSICAL = [
-    (years, frequency, epoch, signs)
-    for (years, frequency, epoch), signs in zip(
-        itertools.product(DURATIONS, FREQUENCIES, EPOCHS),
-        itertools.cycle(SIGNS),
-        strict=False,
-    )
-]
+def test_physical_waveform_of_a_chirping_source():
+    """A chirp ten years after its reference epoch: ``fdot*T**2`` must not be rounded.
 
-
-@pytest.mark.parametrize(
-    "years, frequency, epoch, signs",
-    PHYSICAL,
-    ids=[f"T{y:g}yr-f{f * 1e3:g}mHz-t0{e:g}yr" for y, f, e, _ in PHYSICAL],
-)
-def test_physical_waveform_matches_float64(years, frequency, epoch, signs):
-    case = source(years, frequency, epoch, signs)
-    theta, double_theta = physical(case)
-    single = bg32.tdi_waveform(theta, q_ref=case.q_ref, **case.observation())
-    double = bg.tdi_waveform(double_theta, **case.double_observation())
-    assert int(single["qmin"]) == int(double["qmin"])
-    assert_accurate(channels(single), channels(double))
-
-
-@pytest.mark.parametrize(
-    "years, frequency, chirp_mass", [(4.0, 3e-2, 0.3), (10.0, 1e-2, 1.0)]
-)
-def test_physical_waveform_of_a_chirping_source(years, frequency, chirp_mass):
-    """Chirps drifting about 3000 bins, where ``fdot*T**2`` must not be rounded.
-
-    Rounding that product to float32 moves the phase by about 1e-4 cycles.
+    Half a solar mass at 30 mHz drifts 30 bins in the quarter year and 1200
+    since time zero, where the adapter centres its band, so the band is
+    widened to hold it. The restored phase includes ``fdot*T**2`` times
+    ``(t0/T)**2/2``, about 800, so rounding that product to float32 would
+    move the phase by about 5e-4 cycles: relative L2 3.5e-3, 35 times the
+    target.
     """
-    case = chirping(years, frequency, chirp_mass)
+    case = dataclasses.replace(chirping(0.25, 3e-2, 0.5, 10.0), bandwidth=4096)
     theta, double_theta = physical(case)
     single = bg32.tdi_waveform(theta, q_ref=case.q_ref, **case.observation())
     double = bg.tdi_waveform(double_theta, **case.double_observation())
@@ -216,62 +205,47 @@ def test_physical_waveform_of_a_chirping_source(years, frequency, chirp_mass):
     assert_accurate(channels(single), channels(double))
 
 
-@pytest.mark.parametrize("fmt", ["frequency", "phase"])
-def test_physical_waveform_formats_and_cache(fmt):
-    case = source(4.0, 3e-2, 10.0, (-1, 1))
+def test_physical_waveform_formats_and_cache():
+    """``GBParams`` and arrays agree, and a supplied cache is used in each format."""
+    case = source(0.25, 3e-2, 10.0, (-1, 1))
     q_ref = case.q_ref
     theta, double_theta = physical(case)
-    cache = np.asarray(
-        bg.orbit_cache(float(case.duration), float(case.epoch), case.bandwidth)
-    ).astype(np.float32)
-    single = bg32.tdi_waveform(
-        bg.GBParams(*theta),
-        q_ref=q_ref,
-        fmt=fmt,
-        positions=cache,
-        **case.observation(),
-    )
-    as_array = bg32.tdi_waveform(
-        theta, q_ref=q_ref, fmt=fmt, positions=cache, **case.observation()
-    )
-    for key in single:
-        np.testing.assert_array_equal(
-            np.asarray(single[key]), np.asarray(as_array[key])
+    cache = rotated_cache(case).astype(np.float32)
+    for fmt in ("frequency", "phase"):
+        single = bg32.tdi_waveform(
+            bg.GBParams(*theta),
+            q_ref=q_ref,
+            fmt=fmt,
+            positions=cache,
+            **case.observation(),
         )
-    double = bg.tdi_waveform(
-        double_theta,
-        fmt=fmt,
-        positions=cache.astype(np.float64),
-        **case.double_observation(),
-    )
-    assert_accurate(channels(single), channels(double))
+        as_array = bg32.tdi_waveform(
+            theta, q_ref=q_ref, fmt=fmt, positions=cache, **case.observation()
+        )
+        for key in single:
+            np.testing.assert_array_equal(
+                np.asarray(single[key]), np.asarray(as_array[key])
+            )
+        double = bg.tdi_waveform(
+            double_theta,
+            fmt=fmt,
+            positions=cache.astype(np.float64),
+            **case.double_observation(),
+        )
+        assert_accurate(channels(single), channels(double), fmt)
+    # The last format, without the cache.
+    analytic = bg32.tdi_waveform(theta, q_ref=q_ref, fmt=fmt, **case.observation())
+    assert errors(channels(analytic), channels(double))[0] > 1e-2
 
 
-CACHED = list(itertools.product((0.25, 10.0), (1e-4, 3e-2), EPOCHS))
-
-
-@pytest.mark.parametrize("rotated", [False, True], ids=["orbit_cache", "rotated"])
-@pytest.mark.parametrize(
-    "years, frequency, epoch",
-    CACHED,
-    ids=[f"T{y:g}yr-f{f * 1e3:g}mHz-t0{e:g}yr" for y, f, e in CACHED],
-)
-def test_position_caches(years, frequency, epoch, rotated):
+def test_position_caches():
     """Float32 and host float64 caches both mean their float32 values.
 
-    The rotated constellation differs from the analytic orbit the functions
-    use without a cache, so the cache must be used throughout.
+    The rotated constellation differs from the analytic orbit the function
+    uses without a cache, so the cache must be used throughout.
     """
-    case = source(years, frequency, epoch, (1, -1))
-    if rotated:
-        grid = float(case.epoch) + float(case.duration) * (
-            np.arange(case.bandwidth) / case.bandwidth
-        )
-        cache = np.asarray(bg.analytic_orbits(grid, kappa_0=KAPPA))
-    else:
-        cache = np.asarray(
-            bg.orbit_cache(float(case.duration), float(case.epoch), case.bandwidth)
-        )
+    case = CASE
+    cache = rotated_cache(case)
     assert cache.shape == (3, case.bandwidth, 3)
     single = case.single(positions=cache.astype(np.float32))
     host = case.single(positions=cache)
@@ -279,8 +253,7 @@ def test_position_caches(years, frequency, epoch, rotated):
         np.testing.assert_array_equal(np.asarray(host[key]), np.asarray(single[key]))
     double = case.double(positions=cache.astype(np.float32).astype(np.float64))
     assert_accurate(channels(single), channels(double))
-    if rotated:
-        assert errors(channels(case.single()), channels(double))[0] > 1e-2
+    assert errors(channels(case.single()), channels(double))[0] > 1e-2
 
 
 def test_phase_format_band_through_zero_frequency():
@@ -290,7 +263,7 @@ def test_phase_format_band_through_zero_frequency():
     the validated range: there float32 error grows as the frequency falls, so
     the phase band is checked against the float32 sangria band instead.
     """
-    case = dataclasses.replace(source(0.25, 1e-4, 0.0), q_ref=5, bandwidth=32)
+    case = dataclasses.replace(source(0.25, 1e-4, 0.0, length=8), q_ref=5, bandwidth=32)
     phase, sangria = case.single(fmt="phase"), case.single()
     bins = np.asarray(phase["freq_bin_indices"])
     double = case.double(fmt="phase")
@@ -340,7 +313,7 @@ def assert_rescaled(scaled, raw, factor, *, raw_underflows=True):
 
 def test_amplitude_rescaling_scales_every_entry_point():
     """Subtracting ``log(s)`` from ``params[3]`` divides every output by ``s``."""
-    case = source(1.0, 1e-3, 10.0, (1, -1))
+    case = source(1.0, 1e-3, 10.0, (1, -1), length=8)
     params, factor = rescaled(case.params)
     assert factor == pytest.approx(SCALE, rel=1e-5)
     shifted = dataclasses.replace(case, params=params)

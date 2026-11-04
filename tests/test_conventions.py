@@ -1,90 +1,17 @@
-"""Source-only polarization algebra in the original physical convention.
+"""The phase convention of the source-only model.
 
-These locally transcribed coefficients test rotation and handedness. They do
-not establish current GLASS equivalence; independent C-generated spectra in
-test_glass_reference.py exercise the detector waveform and its normalization.
+The polarization algebra, including the ldasoft/GBGPU sign and rotation
+conventions, is checked against conftest.reference_polarizations in
+test_waveform.py. Neither establishes current GLASS equivalence; independent
+C-generated spectra in test_glass_reference.py exercise the detector waveform
+and its normalization.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from binary_galactica import phase, polarizations
-
-
-def ldasoft_coefficients(
-    amp: float, iota: float, psi: float
-) -> tuple[float, float, float, float]:
-    """Historical full-amplitude ``DPr, DPi, DCr, DCi`` coefficients.
-
-    Transcribed from ``galactic_binary()`` in ldasoft's ``galactic.c`` (and
-    identical in ``GBGPU``'s ``run_wave``, where they appear as the complex
-    ``DP = Aplus*cosps - 1j*Across*sinps`` and
-    ``DC = -Aplus*sinps - 1j*Across*cosps``).
-    """
-    cosi = np.cos(iota)
-    cosps = np.cos(2.0 * psi)
-    sinps = np.sin(2.0 * psi)
-
-    a_plus = amp * (1.0 + cosi * cosi)
-    a_cross = -amp * (2.0 * cosi)
-
-    dpr = a_plus * cosps
-    dpi = -a_cross * sinps
-    dcr = -a_plus * sinps
-    dci = -a_cross * cosps
-    return dpr, dpi, dcr, dci
-
-
-def test_polarizations_reproduce_ldasoft_coefficients(params, t):
-    """h+ and hx equal the full-amplitude complex coefficient expansion.
-
-    Taking the real part of the complex coefficients times ``e^{+i Phi}``
-    gives the factor multiplying each polarization tensor:
-
-        h+ = DPr cos(Phi) - DPi sin(Phi)
-        hx = DCr cos(Phi) - DCi sin(Phi)
-
-    which must be what this package returns.
-    """
-    dpr, dpi, dcr, dci = ldasoft_coefficients(params.amp, params.iota, params.psi)
-    phi = np.asarray(phase(params, t))
-
-    expected_hp = dpr * np.cos(phi) - dpi * np.sin(phi)
-    expected_hc = dcr * np.cos(phi) - dci * np.sin(phi)
-
-    hp, hc = polarizations(params, t)
-    assert np.allclose(hp, expected_hp, rtol=0, atol=1e-14 * params.amp)
-    assert np.allclose(hc, expected_hc, rtol=0, atol=1e-14 * params.amp)
-
-
-def test_cross_amplitude_is_negative_for_a_face_on_binary(params):
-    """Ax = -2 A cos(iota), not +2 A cos(iota).
-
-    The overall sign of the cross polarization is a genuine convention, and
-    getting it backwards flips the handedness of every circularly polarized
-    source.  ldasoft and GBGPU both carry the minus sign.
-    """
-    p = params._replace(iota=0.0, psi=0.0, phi0=0.0, fdot=0.0)
-    # A quarter period after t = 0 the plus term vanishes and hc = Ax.
-    quarter_period = 0.25 / p.f0
-    _, hc = polarizations(p, np.array([quarter_period]))
-    assert hc[0] < 0.0
-    assert np.isclose(hc[0], -2.0 * p.amp, rtol=1e-9)
-
-
-def test_positive_psi_rotates_in_the_ldasoft_direction(params, t):
-    """Guards the sign of the 2*psi rotation.
-
-    ldasoft's ``DCr = -A+ sin(2 psi)`` fixes the direction: at small positive
-    psi and phi0 = 0, the cross channel picks up a *negative* multiple of the
-    plus amplitude.
-    """
-    p = params._replace(psi=0.05, phi0=0.0, fdot=0.0)
-    _, hc = polarizations(p, np.array([0.0]))
-    cos_iota = np.cos(p.iota)
-    a_plus = p.amp * (1.0 + cos_iota**2)
-    assert np.isclose(hc[0], -a_plus * np.sin(2.0 * p.psi), rtol=1e-12)
+from binary_galactica import phase
 
 
 def test_phase_convention_is_quadratic_with_pi_fdot(params):

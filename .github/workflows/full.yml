@@ -1,0 +1,62 @@
+name: Full test suite
+
+# Every test, including the validation tier (marked `slow`): accuracy sweeps,
+# convergence, stress, and Jacobian checks. Runs on main, nightly, by hand,
+# and from publish.yml before each PyPI upload.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to test (default: the triggering ref)"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  full:
+    name: Full / Python ${{ matrix.python }} / ${{ matrix.dependencies }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.10", dependencies: minimum, os: ubuntu-latest}
+          - {python: "3.11", dependencies: current, os: ubuntu-latest}
+          - {python: "3.12", dependencies: current, os: ubuntu-latest}
+          - {python: "3.13", dependencies: current, os: ubuntu-latest}
+          - {python: "3.14", dependencies: current, os: ubuntu-latest}
+          - {python: "3.12", dependencies: current, os: macos-latest}
+    env:
+      JAX_PLATFORMS: cpu
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements/minimum.txt
+      - name: Install minimum dependencies
+        if: matrix.dependencies == 'minimum'
+        run: python -m pip install -c requirements/minimum.txt -e '.[dev]'
+      - name: Install current dependencies
+        if: matrix.dependencies == 'current'
+        run: python -m pip install -e '.[dev]'
+      - name: Report resolved versions
+        run: python -m pip list
+      - name: Full test suite and doctests
+        run: python -m pytest -q -n auto
+      - name: Run quickstart
+        run: python examples/quickstart.py

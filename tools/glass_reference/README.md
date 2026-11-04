@@ -84,13 +84,16 @@ specified in `generate.py`, with no random sampling or waveform rescaling:
 | Oblique, negative chirp | 9 | 1 | 32 | 3.43 | -1e-17 | 6e-26 |
 
 Each row produces separate C spectra in `sangria`, `phase`, and `frequency`
-formats. BW 96 exercises a non-power-of-two FFT. The corpus coverage test requires
-the varied coordinates, all formats, parameter lengths, durations, bandwidths,
-and both signs of first and second frequency derivatives.
+formats. BW 96 exercises a non-power-of-two FFT. The test suite compares a
+selection of 10 cases that spans every format and parameter length, all
+durations and bandwidths, zero and nonzero t0, both signs of the first and
+second frequency derivatives, the carrier-rounding edges, and the varied
+orientations; `test_compared_cases_span_the_reference_regimes` guards that
+selection, and the archive checksum still covers every case.
 
 `tests.test_glass_reference.load_reference_cases()` returns `(metadata, arrays)`
 pairs for use by physical-adapter tests. Mandatory tests require exact bin arrays
-and relative L2 error at most `1e-9` separately for all 180 channel spectra, without a
+and relative L2 error at most `1e-9` separately for each compared channel spectrum, without a
 fixed absolute floor that could hide these small strain amplitudes. Missing,
 empty, or corrupted fixtures fail rather than skip.
 

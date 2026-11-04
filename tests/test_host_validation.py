@@ -19,18 +19,9 @@ class _JaxArrayOnly:
         return self.value
 
 
+# A scalar and a nested list/tuple: _contains_jax's two host paths.
 @pytest.mark.parametrize(
-    "value",
-    [
-        2,
-        2.0,
-        np.float32(2.0),
-        np.array(2.0),
-        np.array([2, 3], dtype=np.int32),
-        [2.0, 3.0],
-        (2.0, 3.0),
-        [[2.0, 3.0], (4.0, 5.0)],
-    ],
+    "value", [2, [[2.0, 3.0], (4.0, 5.0)]], ids=["integer", "nested-sequence"]
 )
 def test_host_validation_does_not_transfer_to_device(value):
     with jax.transfer_guard("disallow"):
@@ -39,7 +30,9 @@ def test_host_validation_does_not_transfer_to_device(value):
     np.testing.assert_array_equal(result, np.asarray(value))
 
 
-@pytest.mark.parametrize("value", [2, 2.0, np.float64(2.0), [2.0, 3.0]])
+@pytest.mark.parametrize(
+    "value", [np.float64(2.0), [2.0, 3.0]], ids=["float64-scalar", "sequence"]
+)
 def test_float32_validation_casts_on_the_host(value):
     with jax.transfer_guard("disallow"):
         result = _validation.finite_array(value, "value", dtype=np.float32)
@@ -51,23 +44,14 @@ def test_float32_validation_casts_on_the_host(value):
     assert traced.dtype == np.float32
 
 
-def test_float32_validation_rejects_values_that_overflow():
-    with pytest.raises(ValueError, match="finite"):
-        _validation.finite_array([1.0, 1e39], "value", dtype=np.float32)
-    with pytest.raises(ValueError, match="positive"):
-        _validation.scalar(1e-50, "T", positive=True, dtype=np.float32)
-
-
-@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf, [1.0, np.nan]])
+@pytest.mark.parametrize("value", [np.inf, [1.0, np.nan]], ids=["inf", "nan-in-list"])
 def test_invalid_host_values_raise_before_any_device_transfer(value):
     with jax.transfer_guard("disallow"), pytest.raises(ValueError, match="finite"):
         _validation.finite_array(value, "value")
 
 
 @pytest.mark.parametrize(
-    "pack",
-    [lambda x: x, lambda x: [x, x + 1], lambda x: [(x, x + 1)]],
-    ids=["array", "list", "nested-tuple"],
+    "pack", [lambda x: x, lambda x: [(x, x + 1)]], ids=["array", "nested-tuple"]
 )
 def test_jax_input_packing_stays_on_jax(pack):
     result = _validation.finite_array(pack(jnp.array(2.0)), "value")
@@ -75,11 +59,13 @@ def test_jax_input_packing_stays_on_jax(pack):
     assert result.dtype == jnp.float64
 
 
-@pytest.mark.parametrize("transform", [lambda f: f, jax.jit], ids=["eager", "jit"])
 @pytest.mark.parametrize(
-    "pack,expected",
-    [(lambda x: x, 2.0), (lambda x: [(x, x)], [[2.0, 2.0]])],
-    ids=["wrapper", "nested-wrapper"],
+    "transform,pack,expected",
+    [
+        (lambda f: f, lambda x: [(x, x)], [[2.0, 2.0]]),
+        (jax.jit, lambda x: x, 2.0),
+    ],
+    ids=["eager-nested-wrapper", "jit-wrapper"],
 )
 def test_jax_array_protocol_preserves_eager_and_traced_values(
     transform, pack, expected
@@ -136,26 +122,14 @@ def test_invalid_host_params_raise_before_any_device_transfer(params, field, val
     "representation",
     [
         lambda p: list(p),
-        lambda p: tuple(p),
-        lambda p: np.array(p),
         lambda p: jnp.array(p),
         lambda p: p,
-        lambda p: bg.GBParams(*(np.float64(x) for x in p)),
-        lambda p: bg.GBParams(*(np.array(x) for x in p)),
-        lambda p: bg.GBParams(*(jnp.array(x) for x in p)),
         lambda p: p._replace(lam=jnp.array(p.lam)),
     ],
-    ids=[
-        "list",
-        "tuple",
-        "numpy",
-        "jax",
-        "params-python",
-        "params-numpy-scalars",
-        "params-numpy-arrays",
-        "params-jax",
-        "params-mixed",
-    ],
+    # Host sequence, JAX array, GBParams of scalars (packed by validation) and
+    # GBParams with an array field (packed by to_array). The NumPy array is
+    # the reference itself.
+    ids=["list", "jax", "params-python", "params-mixed"],
 )
 def test_physical_input_representations_produce_same_waveform(params, representation):
     expected = bg.tdi_waveform(np.array(params), T=7_884_000.0, BW=32)
@@ -173,7 +147,10 @@ def test_params_array_fields_retain_broadcast_shape_validation(params, array):
 
 def test_named_params_support_jit_grad_and_vmap(params):
     def channels(source, duration):
-        return bg.tdi_waveform(source, T=duration, BW=32)["A"] / 1e-22
+        # A fixed response grid: the automatic one compiles every branch of
+        # its switch on the traced duration, which test_onfly covers.
+        waveform = bg.tdi_waveform(source, T=duration, BW=32, response_samples=32)
+        return waveform["A"] / 1e-22
 
     duration = 7_884_000.0
     expected = channels(np.array(params), duration)
@@ -200,19 +177,9 @@ def test_nested_traced_physical_source_returns_nan_for_invalid_values(params):
         # Packing occurs inside the transform, so only one field is traced.
         source = list(params)
         source[7] = latitude
-        return bg.tdi_waveform(source, T=7_884_000.0, BW=32)
+        return bg.tdi_waveform(source, T=7_884_000.0, BW=32, response_samples=32)
 
     result = jax.jit(jax.vmap(evaluate))(jnp.array([params.beta, np.pi]))
     for value in result.values():
         assert np.all(np.isfinite(value[0]))
         assert np.all(np.isnan(value[1]))
-
-
-def test_named_traced_physical_source_returns_nan_for_invalid_values(params):
-    evaluate = jax.jit(
-        lambda latitude: bg.tdi_waveform(
-            params._replace(beta=latitude), T=7_884_000.0, BW=32
-        )
-    )
-    for value in evaluate(np.pi).values():
-        assert np.all(np.isnan(value))

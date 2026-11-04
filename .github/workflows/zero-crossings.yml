@@ -1,0 +1,37 @@
+name: TDI zero-crossing prototype
+
+# The prototype in tools/tdi_zero_crossings is not part of the installed
+# package and does not import it; test it only when it changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/tdi_zero_crossings/**"
+      - ".github/workflows/zero-crossings.yml"
+  pull_request:
+    paths:
+      - "tools/tdi_zero_crossings/**"
+      - ".github/workflows/zero-crossings.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prototype:
+    name: Prototype tests
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install numpy scipy pytest
+      - name: Solver and synthetic benchmark tests
+        run: >-
+          python -m pytest -q -p no:cacheprovider
+          tools/tdi_zero_crossings/test_solver.py
+          tools/tdi_zero_crossings/test_accuracy.py
+          tools/tdi_zero_crossings/test_benchmark.py

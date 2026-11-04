@@ -31,8 +31,8 @@ the waveform is linear in amplitude, so subtracting ``log(s)`` from native
 ``params[3]``, or dividing physical ``amp`` by ``s``, scales every channel by
 ``1/s``.
 
-Example
--------
+Examples
+--------
 >>> import binary_galactica as bg
 >>> from binary_galactica import single as bg32
 >>> T = 7884000.0

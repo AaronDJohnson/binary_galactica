@@ -118,32 +118,45 @@ def test_orbital_phase_at_arbitrary_times(evaluate):
 
 
 @EVALUATIONS
-@pytest.mark.parametrize("years, epoch", [(10.0, 10.0), (0.25, 19.0), (4.0, 0.0)])
-def test_orbital_phase_on_the_fft_grid(evaluate, years, epoch):
-    """The grid ``t0 + T*n/BW`` is reduced without rounding its times."""
-    duration = np.float32(years * YEAR)
-    start = np.float32(epoch * YEAR)
+def test_orbital_phase_on_the_fft_grid(evaluate):
+    """The grid ``t0 + T*n/BW`` is reduced without rounding its times.
+
+    Ten years late, a quarter year at nineteen years, and four years at once.
+    """
     bandwidth = 4096
-    phase = evaluate(
-        lambda d, s: single_impl.grid_orbital_phase(d, s, bandwidth), duration, start
-    )
-    times = float(start) + float(duration) * np.arange(bandwidth) / bandwidth
-    assert phase_error_cycles(phase, times) < 1e-7
+    for years, epoch in ((10.0, 10.0), (0.25, 19.0), (4.0, 0.0)):
+        duration = np.float32(years * YEAR)
+        start = np.float32(epoch * YEAR)
+        phase = evaluate(
+            lambda d, s: single_impl.grid_orbital_phase(d, s, bandwidth),
+            duration,
+            start,
+        )
+        times = float(start) + float(duration) * np.arange(bandwidth) / bandwidth
+        assert phase_error_cycles(phase, times) < 1e-7, (years, epoch)
 
 
 @EVALUATIONS
-@pytest.mark.parametrize(
-    "years, epoch, signs",
-    [(0.25, 10.0, (1, 1)), (0.25, 20.0, (-1, 1)), (10.0, 10.0, (1, -1))],
-)
-def test_epoch_expansion_matches_exact_arithmetic(evaluate, years, epoch, signs):
+def test_epoch_expansion_matches_exact_arithmetic(evaluate):
     """``c0 + c1*v + c2*v**2 + c3*v**3`` is the float64 phase modulo whole cycles.
 
-    Compared with rational arithmetic at the float32 inputs. The coefficients
-    are float32 pairs. Evaluating the float64 formula directly in float32
-    rounds terms of tens of cycles at late epochs, which the spec's
-    re-expansion avoids.
+    Compared with rational arithmetic at the float32 inputs, for quarter-year
+    observations ten and twenty years late and a ten-year one ten years late.
+    The coefficients are float32 pairs. Evaluating the float64 formula
+    directly in float32 rounds terms of tens of cycles at late epochs, which
+    the spec's re-expansion avoids.
     """
+    for years, epoch, signs in (
+        (0.25, 10.0, (1, 1)),
+        (0.25, 20.0, (-1, 1)),
+        (10.0, 10.0, (1, -1)),
+    ):
+        assert_epoch_expansion_exact(evaluate, years, epoch, signs)
+
+
+def assert_epoch_expansion_exact(evaluate, years, epoch, signs):
+    """Require the re-expansion exact at one observation, the direct form not."""
+    label = f"T{years:g}yr t0{epoch:g}yr signs {signs}"
     case = source(years, 1e-2, epoch, signs)
     residual = tf.pair(case.params[0])
     c0, c1, c2, c3 = (
@@ -174,9 +187,9 @@ def test_epoch_expansion_matches_exact_arithmetic(evaluate, years, epoch, signs)
         expanded = c0 + v * (c1 + v * (c2 + v * c3))
         expanded_error = max(expanded_error, cycles_off(expanded, exact))
         direct_error = max(direct_error, cycles_off(Fraction(float(direct[n])), exact))
-    assert expanded_error < 1e-10
+    assert expanded_error < 1e-10, label
     if epoch / years >= 40:
-        assert direct_error > 1e-5
+        assert direct_error > 1e-5, label
 
 
 def large_terms(kind):
@@ -202,15 +215,21 @@ def large_terms(kind):
 
 
 @EVALUATIONS
-@pytest.mark.parametrize("kind", ["chirp", "late chirp", "override"])
-def test_grid_cycles_keep_large_terms_exact(evaluate, kind):
+def test_grid_cycles_keep_large_terms_exact(evaluate):
     """The restored grid phase stays exact when its terms reach thousands of cycles.
 
-    The per-sample polynomial is summed in pairs and reduced modulo one before
-    rounding, so only the final float32 rounding, below 2**-25 cycles, remains.
-    Float32 Horner steps on the coefficients rounded to float32 miss by 1e-5
-    to 1e-3 cycles.
+    For a chirp, the same chirp late with the carrier mid-observation, and a
+    distant carrier override. The per-sample polynomial is summed in pairs and
+    reduced modulo one before rounding, so only the final float32 rounding,
+    below 2**-25 cycles, remains. Float32 Horner steps on the coefficients
+    rounded to float32 miss by 1e-5 to 1e-3 cycles.
     """
+    for kind in ("chirp", "late chirp", "override"):
+        assert_grid_cycles_exact(evaluate, kind)
+
+
+def assert_grid_cycles_exact(evaluate, kind):
+    """Require the paired grid phase exact for one ``large_terms`` kind."""
     case, carrier = large_terms(kind)
     bandwidth = 4096
     offset = case.params[0]
@@ -223,7 +242,7 @@ def test_grid_cycles_keep_large_terms_exact(evaluate, kind):
     arguments = (residual, case.params, case.duration, case.epoch)
     reduced = np.asarray(evaluate(cycles, *arguments), dtype=np.float64)
     # Reduced by the nearest whole cycle of the leading float32 part.
-    assert np.all(np.abs(reduced) < 0.501)
+    assert np.all(np.abs(reduced) < 0.501), kind
     rounded = [
         np.float32(hi) + np.float32(lo)
         for hi, lo in evaluate(single_impl.epoch_coefficients, *arguments)
@@ -245,5 +264,5 @@ def test_grid_cycles_keep_large_terms_exact(evaluate, kind):
         exact = r * u + first * u**2 / 2 + second * u**3 / 6
         pair_error = max(pair_error, cycles_off(float(reduced[n]), exact))
         plain_error = max(plain_error, cycles_off(float(plain[n]), exact))
-    assert pair_error < 2.0**-25 + 1e-9
-    assert plain_error > 1e-5
+    assert pair_error < 2.0**-25 + 1e-9, kind
+    assert plain_error > 1e-5, kind

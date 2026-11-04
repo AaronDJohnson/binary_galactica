@@ -3,7 +3,8 @@
 Forward Jacobians of A/E with respect to the offset native coordinates must
 agree with float64 to relative L2 1e-3 in every parameter column. Compiled
 and batched evaluations must match eager float32 calls, and float64 at
-identical inputs.
+identical inputs; they use eight-entry sources, whose programs compile in a
+fraction of a second rather than seconds.
 """
 
 from __future__ import annotations
@@ -26,32 +27,29 @@ from tests.single.support import (
     source,
 )
 
-JACOBIAN_SOURCES = {
-    "quarter year at 30 mHz, late": source(0.25, 3e-2, 10.0, (-1, 1)),
-    "one year at 10 mHz, late": source(1.0, 1e-2, 10.0, (1, -1)),
-    "four years at 1 mHz": source(4.0, 1e-3, 0.0, (1, 1)),
-}
-
 
 def channels_of(result):
     """Return A and E without converting traced values."""
     return result["A"], result["E"]
 
 
-@pytest.mark.parametrize("fmt", ["sangria", "phase"])
-@pytest.mark.parametrize("name", list(JACOBIAN_SOURCES))
-def test_forward_jacobian_matches_float64(name, fmt):
-    case = JACOBIAN_SOURCES[name]
+@pytest.mark.slow
+def test_forward_jacobian_matches_float64():
+    """Every column, the second derivative's included.
+
+    A quarter year at 30 mHz, ten years late: of quarter-year, one-year and
+    four-year sources in both formats, its worst column error is the largest
+    (1.1e-5).
+    """
+    case = source(0.25, 3e-2, 10.0, (-1, 1))
 
     def single(params):
-        result = bg32.ucb_waveform(
-            params, q_ref=case.q_ref, fmt=fmt, **case.observation()
-        )
+        result = bg32.ucb_waveform(params, q_ref=case.q_ref, **case.observation())
         return jnp.stack(channels_of(result))
 
     def double(native):
         result = bg.ucb_waveform(
-            native, q=float(case.carrier), fmt=fmt, **case.double_observation()
+            native, q=float(case.carrier), **case.double_observation()
         )
         return jnp.stack(channels_of(result))
 
@@ -67,9 +65,14 @@ def test_forward_jacobian_matches_float64(name, fmt):
     assert relative_l2 <= 1e-3
 
 
+#: One year at 10 mHz, ten years late.
+CASE = source(1.0, 1e-2, 10.0, (1, -1), length=8)
+STATIC = {"BW": CASE.bandwidth, "response_samples": CASE.samples}
+
+
 def test_physical_jacobian_matches_float64():
     """The physical adapter's Jacobian, with the frequency offset in hertz."""
-    case = JACOBIAN_SOURCES["one year at 10 mHz, late"]
+    case = CASE
     theta, double_theta = physical(case)
 
     def single(values):
@@ -86,10 +89,6 @@ def test_physical_jacobian_matches_float64():
     for column in range(8):
         relative_l2, _ = errors(jacobian[..., column], reference[..., column])
         assert relative_l2 <= 1e-3, f"column {column}: {relative_l2:.3g}"
-
-
-CASE = JACOBIAN_SOURCES["one year at 10 mHz, late"]
-STATIC = {"BW": CASE.bandwidth, "response_samples": CASE.samples}
 
 
 def test_jit_with_every_array_argument_traced():
@@ -175,9 +174,11 @@ def test_vmap_over_params():
         assert_accurate(channels(member), channels(case.double()), f"source {index}")
 
 
-@pytest.mark.parametrize("jit", [False, True], ids=["vmap", "jit of vmap"])
-def test_vmap_over_reference_bins(jit):
-    """One offset vector against several reference bins: different sources."""
+def test_vmap_over_reference_bins():
+    """One offset vector against several reference bins: different sources.
+
+    Batched eagerly and inside ``jax.jit``.
+    """
     shifts = np.array([0, 7, -1000, 123_456], dtype=np.int32)
     q_refs = np.int32(CASE.q_ref) + shifts
 
@@ -185,17 +186,21 @@ def test_vmap_over_reference_bins(jit):
         return bg32.ucb_waveform(CASE.params, q_ref=q_ref, **CASE.observation())
 
     batched = jax.vmap(evaluate)
-    batch = (jax.jit(batched) if jit else batched)(q_refs)
-    assert batch["qmin"].dtype == np.int32
-    for index, q_ref in enumerate(q_refs):
-        case = dataclasses.replace(CASE, q_ref=int(q_ref))
-        member = {key: value[index] for key, value in batch.items()}
-        assert int(member["qmin"]) == case.carrier - case.bandwidth // 2
-        np.testing.assert_array_equal(
-            member["freq_bin_indices"],
-            case.carrier - case.bandwidth // 2 + np.arange(case.bandwidth),
-        )
-        assert_accurate(channels(member), channels(case.double()), f"q_ref {q_ref}")
+    for label, function in (("vmap", batched), ("jit of vmap", jax.jit(batched))):
+        batch = function(q_refs)
+        assert batch["qmin"].dtype == np.int32, label
+        for index, q_ref in enumerate(q_refs):
+            case = dataclasses.replace(CASE, q_ref=int(q_ref))
+            member = {key: value[index] for key, value in batch.items()}
+            assert int(member["qmin"]) == case.carrier - case.bandwidth // 2, label
+            np.testing.assert_array_equal(
+                member["freq_bin_indices"],
+                case.carrier - case.bandwidth // 2 + np.arange(case.bandwidth),
+                err_msg=label,
+            )
+            assert_accurate(
+                channels(member), channels(case.double()), f"{label}, q_ref {q_ref}"
+            )
 
 
 def test_vmap_over_params_and_reference_bins_in_every_entry_point():

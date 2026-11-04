@@ -26,20 +26,21 @@ def test_canonical_order_is_the_documented_one():
 
 
 def test_array_roundtrip(params):
-    assert GBParams.from_array(params.to_array()) == pytest.approx(tuple(params))
+    restored = GBParams.from_array(params.to_array())
+    assert tuple(float(x) for x in restored) == tuple(float(x) for x in params)
 
 
 def test_array_slots_follow_the_canonical_order(params):
     theta = params.to_array()
     for i, name in enumerate(PARAMETER_NAMES):
-        assert float(theta[i]) == pytest.approx(float(getattr(params, name)))
+        assert float(theta[i]) == float(getattr(params, name)), name
 
 
 def test_batched_roundtrip(params):
     catalogue = jnp.stack([params.to_array()] * 4)
     restored = GBParams.from_array(catalogue)
     assert restored.amp.shape == (4,)
-    assert np.allclose(restored.to_array(), catalogue)
+    assert np.array_equal(restored.to_array(), catalogue)
 
 
 def test_scalars_broadcast_against_arrays():
@@ -60,7 +61,7 @@ def test_from_array_passes_through_existing_params(params):
     assert GBParams.from_array(params) is params
 
 
-@pytest.mark.parametrize("shape", [(7,), (9,), (4, 3), ()])
+@pytest.mark.parametrize("shape", [(9,), ()], ids=["trailing-axis", "scalar"])
 def test_wrong_shape_is_rejected(shape):
     with pytest.raises(ValueError, match="trailing axis"):
         GBParams.from_array(jnp.zeros(shape))

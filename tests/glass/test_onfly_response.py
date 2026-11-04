@@ -11,18 +11,17 @@ import pytest
 from binary_galactica.glass.onfly import tdi_response
 
 
-@pytest.mark.parametrize("nparams", [7, 8, 9])
-@pytest.mark.parametrize("cached", [False, True])
-def test_reference_phase_reconstruction_and_derivatives(nparams, cached):
+def test_reference_phase_reconstruction_and_derivatives():
+    """Eight parameters on the analytic orbit: the default waveform's path."""
     from binary_galactica.glass.onfly import reference_phase_shift
-    from binary_galactica.glass.orbit import analytic_orbits
 
+    nparams = 8
     duration = jnp.array(31457280.0)
     params = jnp.array(
-        [duration * 0.03, -0.3, 5.1, np.log(1e-22), -0.8, 1.2, 2.1, 1300.0, 90.0]
-    )[:nparams]
+        [duration * 0.03, -0.3, 5.1, np.log(1e-22), -0.8, 1.2, 2.1, 1300.0]
+    )
     times = jnp.array([0.0, 12345.0, 2.7e7, 1.0e8])
-    positions = analytic_orbits(times) if cached else None
+    positions = None
 
     def original(p, t, observation):
         return tdi_response(p, t, observation, positions)
@@ -58,11 +57,6 @@ def test_reference_phase_reconstruction_and_derivatives(nparams, cached):
             jax.jvp(reconstructed, primals, tangent)[1],
             jax.jvp(original, primals, tangent)[1],
         )
-    if nparams == 9 and not cached:
-        compare(
-            jax.hessian(lambda p: reconstructed(p, times, duration).real.sum())(params),
-            jax.hessian(lambda p: original(p, times, duration).real.sum())(params),
-        )
 
 
 def test_independent_c_delayed_response():
@@ -90,9 +84,8 @@ def test_independent_c_delayed_response():
         )
 
 
-@pytest.mark.parametrize("count", [7, 8, 9])
-def test_phase_independence_and_jax_composition(count):
-    params = jnp.array([1200.0, 0.3, 2.1, -1.0, 0.4, 0.7, 0.9, 0.12, 0.03])[:count]
+def test_phase_independence_and_jax_composition():
+    params = jnp.array([1200.0, 0.3, 2.1, -1.0, 0.4, 0.7, 0.9, 0.12])
     times = jnp.array([0.0, 1234.0, 32103.0, 1.0e5])
     compiled = jax.jit(tdi_response)
     response = compiled(params, times, 1.0e6)
@@ -111,6 +104,11 @@ def test_phase_independence_and_jax_composition(count):
 
 
 def test_aligned_arm_removable_limit_and_derivatives():
+    """Arm 0-1 lies along the propagation direction: ``1 +/- k.n`` vanishes.
+
+    The paired differences must keep the value and its forward derivatives
+    finite there, and the value continuous on both sides of the limit.
+    """
     from binary_galactica.glass.constants import LARM
 
     positions = jnp.array(
@@ -118,17 +116,23 @@ def test_aligned_arm_removable_limit_and_derivatives():
     )[:, None, :]
     params = jnp.array([5000.0, 0.0, 0.0, 0.0, 0.4, 0.7, 0.9, 0.12, 0.03])
 
+    # Compiled, as in the waveform; eager dispatch of the response is slower.
+    @jax.jit
     def fn(p):
         return tdi_response(p, jnp.array([12000.0]), 1.0e6, positions)
 
     exact = fn(params)
     assert np.isfinite(exact).all()
     assert np.isfinite(jax.jacfwd(lambda p: fn(p).real)(params)).all()
-    assert np.isfinite(jax.hessian(lambda p: fn(p).real.sum())(params)).all()
-    np.testing.assert_allclose(fn(params.at[2].set(1e-7)), exact, rtol=2e-6, atol=1e-8)
+    for longitude in (-1e-7, 1e-7):
+        np.testing.assert_allclose(
+            fn(params.at[2].set(longitude)), exact, rtol=2e-6, atol=1e-8
+        )
 
 
-@pytest.mark.parametrize("frequency", [1e-4, 0.005, 0.03])
+# 0.1 mHz: the long-wavelength regime (series branch of the link sinc);
+# 30 mHz: above the transfer frequency, where link placement matters.
+@pytest.mark.parametrize("frequency", [1e-4, 0.03])
 def test_equal_arm_monochromatic_normalization_against_reversed_links(frequency):
     from binary_galactica.glass.constants import CLIGHT, FSTAR, LARM
     from binary_galactica.glass.orbit import arm_vectors

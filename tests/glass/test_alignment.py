@@ -79,31 +79,26 @@ def test_rejects_too_short_a_parameter_vector(injection):
         ucb_alignment(np.zeros(7), injection["T"], 1024)
 
 
-@pytest.mark.parametrize("params", [1.0, np.zeros((1, 8)), np.zeros((8, 8))])
-def test_alignment_rejects_nonvector_parameters(params, injection):
+def test_alignment_rejects_nonvector_parameters(injection):
+    # A batch of one has eight entries in its last axis, so only the
+    # dimension guard rejects it.
     with pytest.raises(ValueError, match="one-dimensional"):
-        ucb_alignment(params, injection["T"], 1024)
+        ucb_alignment(np.zeros((1, 8)), injection["T"], 1024)
 
 
-@pytest.mark.parametrize(
-    "segment_qmin", [True, np.bool_(True), 1.5, 2.0, np.nan, np.inf]
-)
-def test_alignment_requires_an_integer_segment_origin(
-    segment_qmin, injection, glass_params
-):
+def test_alignment_requires_an_integer_segment_origin(injection, glass_params):
+    # The integer check's conditions are covered on ucb_bandwidth's N.
     with pytest.raises(ValueError, match="segment_qmin must be an integer"):
-        ucb_alignment(glass_params, injection["T"], 1024, segment_qmin=segment_qmin)
+        ucb_alignment(glass_params, injection["T"], 1024, segment_qmin=True)
 
 
-@pytest.mark.parametrize("integer_type", [int, np.int32, np.int64, np.uint64])
-def test_alignment_accepts_integer_grid_and_segment_values(
-    integer_type, injection, glass_params
-):
+def test_alignment_accepts_integer_grid_and_segment_values(injection, glass_params):
+    # Unsigned NumPy integers are the hazardous case: imin is negative here.
     aligned = ucb_alignment(
         glass_params,
         injection["T"],
-        integer_type(16),
-        segment_qmin=integer_type(8000),
+        np.uint64(16),
+        segment_qmin=np.uint64(8000),
     )
     assert aligned.BW == 32  # Preserve GLASS's floor on short grids.
     assert aligned.imin == -132

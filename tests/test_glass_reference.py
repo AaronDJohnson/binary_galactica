@@ -34,36 +34,59 @@ def load_reference_cases():
         ]
 
 
-REFERENCE_CASES = load_reference_cases()
+#: The C cases compared on every run, one per regime of the 36-case corpus
+#: (whose checksum load_reference_cases verifies in full). Each parameter
+#: count is paired with each output format; between them they also span the
+#: three durations and bandwidths, a zero and a nonzero epoch, both signs of
+#: each frequency derivative, 1-10 mHz, and all six varied orientations.
+COMPARED = (
+    "varied_north_7p_four_years_bw96_sangria",  # nearly face-on
+    "varied_south_7p_quarter_year_bw32_phase",  # t0 = 0
+    "5mhz_7p_bw32_frequency",
+    "carrier_roundtrip_below_integer",  # carrier rounding on either side
+    "carrier_just_above_integer",  # of an integer bin
+    "varied_north_8p_negative_chirp_year_bw96_phase",
+    "varied_south_8p_positive_chirp_quarter_year_bw512_frequency",  # edge-on
+    "varied_equatorial_9p_four_years_bw512_sangria",  # falling fddot
+    "varied_oblique_9p_negative_chirp_year_bw32_phase",  # rising fddot
+    "10mhz_9p_bw512_frequency",  # highest frequency
+)
+COMPARED_CASES = [
+    (case, arrays) for case, arrays in load_reference_cases() if case["id"] in COMPARED
+]
 
 
-def test_reference_corpus_covers_varied_sources():
-    """Keep the C comparison from shrinking back to a single orientation."""
-    varied = [case for case, _ in REFERENCE_CASES if case["id"].startswith("varied_")]
-    sources = {tuple(case["params"][1:7]) for case in varied}
-    assert len(sources) >= 6
+def test_compared_cases_span_the_reference_regimes():
+    """Keep the C comparison from shrinking back to a single regime."""
+    cases = [case for case, _ in COMPARED_CASES]
+    assert sorted(case["id"] for case in cases) == sorted(COMPARED)
+    formats = ("sangria", "phase", "frequency")
+    assert {(len(case["params"]), case["fmt"]) for case in cases} == {
+        (count, fmt) for count in (7, 8, 9) for fmt in formats
+    }
+    assert {case["BW"] for case in cases} == {32, 96, 512}
+    assert {case["T"] for case in cases} == {7_884_000.0, 31_536_000.0, 126_144_000.0}
+    epochs = [case["t0"] for case in cases]
+    assert min(epochs) == 0 < max(epochs)
+    for index in (7, 8):  # fdot and fddot
+        values = [
+            case["params"][index] for case in cases if len(case["params"]) > index
+        ]
+        assert min(values) < 0 < max(values)
+    frequencies = [case["params"][0] / case["T"] for case in cases]
+    assert min(frequencies) < 2e-3 and max(frequencies) >= 1e-2
+    varied = {
+        tuple(case["params"][1:7]) for case in cases if case["id"].startswith("varied_")
+    }
+    assert len(varied) == 6
     for index in range(6):
-        assert len({source[index] for source in sources}) >= 6
-    for source in sources:
-        formats = {
-            case["fmt"] for case in varied if tuple(case["params"][1:7]) == source
-        }
-        assert formats == {"sangria", "phase", "frequency"}
-    assert {len(case["params"]) for case in varied} == {7, 8, 9}
-    assert {case["BW"] for case in varied} == {32, 96, 512}
-    assert {case["T"] for case in varied} == {7_884_000.0, 31_536_000.0, 126_144_000.0}
-    chirps = [case["params"][7] for case in varied if len(case["params"]) >= 8]
-    assert min(chirps) < 0 < max(chirps)
-    second_derivatives = [
-        case["params"][8] for case in varied if len(case["params"]) == 9
-    ]
-    assert min(second_derivatives) < 0 < max(second_derivatives)
+        assert len({source[index] for source in varied}) == 6
 
 
 @pytest.mark.parametrize(
     "case,reference",
-    REFERENCE_CASES,
-    ids=[case["id"] for case, _ in REFERENCE_CASES],
+    COMPARED_CASES,
+    ids=[case["id"] for case, _ in COMPARED_CASES],
 )
 def test_native_waveform_matches_glass_c(case, reference):
     # A missing backend or fixture is a failure, never an optional skipped test.

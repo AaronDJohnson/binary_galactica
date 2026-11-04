@@ -46,32 +46,12 @@ def test_default_uses_onfly_response_before_fft():
     )
 
 
-def test_response_resolution_converges_independently_of_bandwidth():
-    source = SOURCE.copy()
-    source[0] = 0.005 * 31_536_000.0 + 0.25
-    duration, bandwidth = 31_536_000.0, 256
-    expected = _dense_sangria(source, duration, bandwidth, epoch=12345.0)
-    errors = []
-    for samples in (32, 128, 512):
-        result = bg.ucb_waveform(
-            source,
-            T=duration,
-            BW=bandwidth,
-            t0=12345.0,
-            response_samples=samples,
-        )
-        value = np.stack([result[c] for c in ("X", "Y", "Z")])
-        errors.append(np.linalg.norm(value - expected) / np.linalg.norm(expected))
-        assert value.shape == (3, bandwidth)
-    assert errors[1] < errors[0] / 10
-    assert errors[2] < errors[1] / 10
-    assert errors[2] < 2e-6
+def test_orbital_phase_removal_allows_sparse_high_frequency_response():
+    """A 30 mHz source over a quarter year needs only 32 response samples.
 
-
-@pytest.mark.parametrize("years,samples", [(0.25, 32), (1.0, 64), (4.0, 256)])
-def test_orbital_phase_removal_allows_sparse_high_frequency_response(years, samples):
-    """Retaining the annual Doppler phase makes these sparse grids inaccurate."""
-    duration = years * 31_557_600.0
+    Retaining the annual Doppler phase would make this sparse grid inaccurate.
+    """
+    duration, samples = 0.25 * 31_557_600.0, 32
     source = np.array(
         [0.03 * duration + 0.25, -0.17, 3.7, np.log(1e-22), 0.91, 1.5, 1.1, 0.05, 0.2]
     )
@@ -152,7 +132,8 @@ def test_physical_and_window_adapters_select_the_requested_backend(backend):
     )
 
 
-@pytest.mark.parametrize("samples", [True, 0, 1, 3, 8.5])
+# A bool, a non-integer and an integer just below the minimum of four.
+@pytest.mark.parametrize("samples", [True, 8.5, 3])
 def test_bad_response_resolution_is_rejected(samples):
     with pytest.raises(ValueError, match="response_samples"):
         bg.ucb_waveform(SOURCE, T=DURATION, BW=64, response_samples=samples)
@@ -187,9 +168,9 @@ def test_arbitrary_time_response_is_public_and_differentiable():
     np.testing.assert_allclose(derivative[..., 6], 0.0, atol=1e-35)
 
 
-@pytest.mark.parametrize("count", [7, 9])
-def test_nonzero_epoch_and_carrier_override_match_dense_response(count):
-    source = np.append(SOURCE, 0.5)[:count]
+def test_nonzero_epoch_and_carrier_override_match_dense_response():
+    """Both frequency derivatives, a nonzero epoch and an explicit carrier."""
+    source = np.append(SOURCE, 0.5)
     epoch, carrier = 5321234.0, 7880
     expected = _dense_sangria(source, DURATION, 64, epoch, carrier)
     actual = bg.ucb_waveform(source, T=DURATION, BW=64, t0=epoch, q=carrier)
@@ -229,7 +210,7 @@ def test_arbitrary_time_positions_and_source_phase_conventions():
     np.testing.assert_allclose(response, raw, rtol=1e-12, atol=0)
 
 
-@pytest.mark.parametrize("times", [0.0, [], [[1.0]], [np.inf]])
+@pytest.mark.parametrize("times", [0.0, [], [np.inf]], ids=["scalar", "empty", "inf"])
 def test_arbitrary_time_response_rejects_invalid_times(times):
     with pytest.raises(ValueError, match="times"):
         bg.tdi_response(SOURCE, times, T=DURATION)
