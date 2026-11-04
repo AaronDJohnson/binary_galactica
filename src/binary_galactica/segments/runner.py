@@ -48,7 +48,9 @@ def _impulse() -> Any:
     return impulse
 
 
-def glass_ladder(ntemps: int, step: float = 1.2, hottest: float = 1.0e12) -> NDArray[np.float64]:
+def glass_ladder(
+    ntemps: int, step: float = 1.2, hottest: float = 1.0e12
+) -> NDArray[np.float64]:
     """Return GLASS's ladder ``step**i`` with the hottest chain at ``hottest``."""
     ladder = step ** np.arange(int(ntemps), dtype=np.float64)
     if ntemps > 1:
@@ -71,7 +73,9 @@ class ChainArchive:
                 f"{self.directory} already holds archived turns; use a new directory"
             )
 
-    def append(self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike) -> None:
+    def append(
+        self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike
+    ) -> None:
         """Write one turn's cold samples ``(n, D)``, counts and likelihoods."""
         np.savez_compressed(
             self.directory / f"turn_{int(turn):05d}.npz",
@@ -138,14 +142,18 @@ class SegmentRunner:
         impulse = _impulse()
         self.k_max = start.shape[0] if self.fixed_count else segment.k_max
         if start.shape[0] > self.k_max:
-            raise ValueError(f"{start.shape[0]} start sources exceed k_max={self.k_max}")
+            raise ValueError(
+                f"{start.shape[0]} start sources exceed k_max={self.k_max}"
+            )
         k_min = self.k_max if self.fixed_count else 0
         self.prior = segment.prior(T)
         self.log_prior = SegmentPrior(self.prior, self.k_max, k_min)
         self.likelihood: SegmentLikelihood | None = None
         if not prior_only:
             if reference is None:
-                raise ValueError("a runner with a likelihood needs the reference covariance")
+                raise ValueError(
+                    "a runner with a likelihood needs the reference covariance"
+                )
             self.likelihood = SegmentLikelihood.for_segment(
                 segment, T=T, t0=t0, config=config, k_max=self.k_max
             )
@@ -171,7 +179,9 @@ class SegmentRunner:
             vectorized=True,
             jax=True,
             ntemps=config.ntemps,
-            ladder=glass_ladder(config.ntemps, config.ladder_step, config.hottest_temperature),
+            ladder=glass_ladder(
+                config.ntemps, config.ladder_step, config.hottest_temperature
+            ),
             am_weight=config.am_weight,
             scam_weight=config.scam_weight,
             de_weight=config.de_weight,
@@ -199,7 +209,9 @@ class SegmentRunner:
     def _draw(self, rng: np.random.Generator) -> NDArray[np.float64]:
         return self.prior.sample(rng)
 
-    def _lnlike(self, x: NDArray[np.float64], k: NDArray[np.intp]) -> NDArray[np.float64]:
+    def _lnlike(
+        self, x: NDArray[np.float64], k: NDArray[np.intp]
+    ) -> NDArray[np.float64]:
         if self.likelihood is None:
             return np.zeros(len(x))
         return self.likelihood(x, k)
@@ -246,25 +258,39 @@ class SegmentRunner:
                     qs.append(src[0])
                     evalues.append(dec[0])
                     evectors.append(dec[1])
-            self.bank.store(c, np.array(qs), np.array(evalues).reshape(-1, 8),
-                            np.array(evectors).reshape(-1, 8, 8))
+            self.bank.store(
+                c,
+                np.array(qs),
+                np.array(evalues).reshape(-1, 8),
+                np.array(evectors).reshape(-1, 8, 8),
+            )
 
-    def advance(self, residual: ArrayLike | None = None, c: ArrayLike | None = None) -> None:
+    def advance(
+        self, residual: ArrayLike | None = None, c: ArrayLike | None = None
+    ) -> None:
         """Run one Gibbs turn on this turn's ``(2, n_bins)`` residual and variance."""
         if self.likelihood is not None:
             if residual is None or c is None:
                 raise ValueError("advance needs the residual and its covariance")
             self.likelihood.set_data(residual, c)
         self.refresh_fisher()
-        self.sampler.sample(self._x, self.config.steps_per_turn, thin=self.config.thin,
-                            initial_k=self._k)
+        self.sampler.sample(
+            self._x,
+            self.config.steps_per_turn,
+            thin=self.config.thin,
+            initial_k=self._k,
+        )
         width = 8 * self.k_max
         state = np.asarray(self.sampler.state.positions)
         self._x = np.array(state[:, :width])
         self._k = state[:, width].astype(np.int64)
         chain = self.sampler.load_chain()
-        self.archive.append(self.turn, samples=chain["samples"][0], k=chain["k"][0],
-                            lnlike=chain["lnlike"][0])
+        self.archive.append(
+            self.turn,
+            samples=chain["samples"][0],
+            k=chain["k"][0],
+            lnlike=chain["lnlike"][0],
+        )
         for path in (self.outdir / "impulse").glob("chain_*"):
             path.unlink()
         # Free impulse's (ntemps, steps, D) ring buffer; every sample() call rebuilds it.

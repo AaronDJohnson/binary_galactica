@@ -57,12 +57,16 @@ class FisherBank:
         self._evalues = [np.empty((0, 8)) for _ in range(n)]
         self._evectors = [np.empty((0, 8, 8)) for _ in range(n)]
 
-    def store(self, chain: int, q: ArrayLike, evalues: ArrayLike, evectors: ArrayLike) -> None:
+    def store(
+        self, chain: int, q: ArrayLike, evalues: ArrayLike, evectors: ArrayLike
+    ) -> None:
         """Replace one chain's decompositions."""
         q = np.asarray(q, dtype=np.float64).reshape(-1)
         self._q[chain] = q
         self._evalues[chain] = np.asarray(evalues, dtype=np.float64).reshape(q.size, 8)
-        self._evectors[chain] = np.asarray(evectors, dtype=np.float64).reshape(q.size, 8, 8)
+        self._evectors[chain] = np.asarray(evectors, dtype=np.float64).reshape(
+            q.size, 8, 8
+        )
 
     def count(self, chain: int) -> int:
         """Return the number of decompositions stored for a chain."""

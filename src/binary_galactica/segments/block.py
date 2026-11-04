@@ -89,6 +89,7 @@ class UCBBlock:
     of step) raise before anything changes and leave the block usable.
 
     Register with ``Wheel.add(..., data_domain="frequency")``.
+
     """
 
     def __init__(
@@ -116,11 +117,16 @@ class UCBBlock:
         self.n_freq = self.num_time_samples // 2 + 1
         self.start_native = ldc_to_native(start_sources, self.T)
         self.start_names = _names(start_sources, self.start_native.shape[0])
-        self.table = build_segment_table(self.start_native, T=self.T, n_freq=self.n_freq,
-                                         config=self.config)
+        self.table = build_segment_table(
+            self.start_native, T=self.T, n_freq=self.n_freq, config=self.config
+        )
         # Validate the reference before anything is written, so a rejected one
         # leaves no half-written run directory behind.
-        c_ref = None if reference_covariance is None else self._diagonals(reference_covariance)
+        c_ref = (
+            None
+            if reference_covariance is None
+            else self._diagonals(reference_covariance)
+        )
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.config.write(self.outdir / "config.json")
         self.table.write(self.outdir / "segment_table.json")
@@ -187,7 +193,9 @@ class UCBBlock:
         if getattr(cov, "data_domain", None) != "frequency" or not hasattr(
             cov, "covariance_matrix"
         ):
-            raise TypeError("noise_covariance must be a frequency-domain DataCovariance")
+            raise TypeError(
+                "noise_covariance must be a frequency-domain DataCovariance"
+            )
         if tuple(cov.channel_names) != self.channels:
             raise ValueError("covariance channels differ from the data channels")
         m = np.asarray(cov.covariance_matrix)
@@ -211,7 +219,9 @@ class UCBBlock:
             own = self.owned_start[seg.index]
             if not own:
                 continue
-            lik = SegmentLikelihood.for_segment(seg, T=self.T, t0=self.t0, config=self.config)
+            lik = SegmentLikelihood.for_segment(
+                seg, T=self.T, t0=self.t0, config=self.config
+            )
             lik.set_reference(c_ref[:, seg.bin_lo : seg.bin_hi])
             keep = []
             for i, rho in zip(own, lik.snr(self.start_native[own])):
@@ -225,10 +235,16 @@ class UCBBlock:
     # ---- model ------------------------------------------------------------
 
     def _render(self, seg: Segment, sources: NDArray[np.float64]) -> Contribution:
-        return render_sources(sources, T=self.T, t0=self.t0, BW=seg.bw,
-                              n_channels=len(self.channels), n_freq=self.n_freq,
-                              backend=self.config.backend,
-                              response_samples=self.config.response_samples)
+        return render_sources(
+            sources,
+            T=self.T,
+            t0=self.t0,
+            BW=seg.bw,
+            n_channels=len(self.channels),
+            n_freq=self.n_freq,
+            backend=self.config.backend,
+            response_samples=self.config.response_samples,
+        )
 
     def _start_sources(self) -> dict[int, NDArray[np.float64]]:
         return {
@@ -242,21 +258,25 @@ class UCBBlock:
             part.add_to(model)
         return model
 
-    def _template(self, model: NDArray[np.complex128]) -> dict[str, NDArray[np.complex128]]:
+    def _template(
+        self, model: NDArray[np.complex128]
+    ) -> dict[str, NDArray[np.complex128]]:
         return {ch: model[i].copy() for i, ch in enumerate(self.channels)}
 
     def _parameters(self, sources: dict[int, NDArray[np.float64]]) -> dict[str, Any]:
         segments = []
         for seg in self.table.segments:
             x = sources[seg.index].reshape(-1, 8)
-            segments.append({
-                "index": seg.index,
-                "lo": seg.lo,
-                "hi": seg.hi,
-                "count": int(x.shape[0]),
-                "native": x.copy(),
-                "ldc": native_to_ldc(x, self.T),
-            })
+            segments.append(
+                {
+                    "index": seg.index,
+                    "lo": seg.lo,
+                    "hi": seg.hi,
+                    "count": int(x.shape[0]),
+                    "native": x.copy(),
+                    "ldc": native_to_ldc(x, self.T),
+                }
+            )
         return {"turn": self.turn, "segments": segments}
 
     def initial_block_state(self, data: Any) -> Any:
@@ -274,9 +294,14 @@ class UCBBlock:
                 "UCBBlock with reference_covariance= (e.g. the initial noise covariance)"
             )
         sources = self._start_sources()
-        contrib = {seg.index: self._render(seg, sources[seg.index]) for seg in self.table.segments}
-        return data.block_state(self._template(self._model_of(contrib)),
-                                parameters=self._parameters(sources))
+        contrib = {
+            seg.index: self._render(seg, sources[seg.index])
+            for seg in self.table.segments
+        }
+        return data.block_state(
+            self._template(self._model_of(contrib)),
+            parameters=self._parameters(sources),
+        )
 
     def _start(self, rng: np.random.Generator) -> None:
         assert self.c_ref is not None
@@ -297,8 +322,10 @@ class UCBBlock:
                 seed=int(rng.integers(2**32)),
                 reference=self.c_ref[:, seg.bin_lo : seg.bin_hi],
             )
-        self._contrib = {seg.index: self._render(seg, self._sources[seg.index])
-                         for seg in self.table.segments}
+        self._contrib = {
+            seg.index: self._render(seg, self._sources[seg.index])
+            for seg in self.table.segments
+        }
         self._model = self._model_of(self._contrib)
 
     def cold_chain(self, index: int) -> dict[str, NDArray[Any]] | None:
@@ -352,7 +379,12 @@ class UCBBlock:
         data = conditional_residual
         self._check_data(data)
         c = self._diagonals(noise_covariance)
-        r = np.stack([np.asarray(data.channel_data[ch], dtype=np.complex128) for ch in ("A", "E")])
+        r = np.stack(
+            [
+                np.asarray(data.channel_data[ch], dtype=np.complex128)
+                for ch in ("A", "E")
+            ]
+        )
         # Everything above only reads its inputs. From here on segments change
         # state one by one, so a failure leaves the block unusable.
         try:
@@ -360,11 +392,15 @@ class UCBBlock:
         except BaseException:
             self._failed = True
             raise
-        return data.block_state(self._template(model),
-                                parameters=self._parameters(self._sources))
+        return data.block_state(
+            self._template(model), parameters=self._parameters(self._sources)
+        )
 
     def _turn(
-        self, r: NDArray[np.complex128], c: NDArray[np.float64], rng: np.random.Generator
+        self,
+        r: NDArray[np.complex128],
+        c: NDArray[np.float64],
+        rng: np.random.Generator,
     ) -> NDArray[np.complex128]:
         """Apply the cut and start the runners if needed, sweep, and return the model."""
         if self.c_ref is None:
@@ -379,7 +415,9 @@ class UCBBlock:
                     continue
                 lo, hi = seg.bin_lo, seg.bin_hi
                 own = self._contrib[seg.index].window(lo, hi)[:2]
-                runner.advance(r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi])
+                runner.advance(
+                    r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi]
+                )
                 cold = runner.cold_sources()
                 keep = cold[seg.owns(cold[:, 0])]
                 new = self._render(seg, keep)

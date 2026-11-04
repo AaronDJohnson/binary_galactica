@@ -7,7 +7,12 @@ from binary_galactica.segments import UCBBlockConfig
 
 def test_defaults_follow_the_spec():
     cfg = UCBBlockConfig()
-    assert (cfg.n_target, cfg.steps_per_turn, cfg.ntemps, cfg.k_max_floor) == (10, 1000, 12, 10)
+    assert (cfg.n_target, cfg.steps_per_turn, cfg.ntemps, cfg.k_max_floor) == (
+        10,
+        1000,
+        12,
+        10,
+    )
     assert cfg.backend == "onfly"
     weights = cfg.within_model_weights()
     assert weights["fisher"] == pytest.approx(0.5)
@@ -74,8 +79,12 @@ def test_band_bins_accept_numpy_integers():
 def test_numpy_integers_become_plain_ints_and_round_trip(tmp_path):
     import numpy as np
 
-    cfg = UCBBlockConfig(n_target=np.int32(5), response_samples=np.int64(64),
-                         ntemps=np.int64(3), hottest_temperature=10.0)
+    cfg = UCBBlockConfig(
+        n_target=np.int32(5),
+        response_samples=np.int64(64),
+        ntemps=np.int64(3),
+        hottest_temperature=10.0,
+    )
     for name in ("n_target", "ntemps", "response_samples"):
         assert type(getattr(cfg, name)) is int
     cfg.write(tmp_path / "c.json")

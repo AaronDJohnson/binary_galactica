@@ -24,8 +24,9 @@ construction, so only that grid compiles rather than every automatic branch.
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -60,15 +61,27 @@ class _Kernels:
     fisher: Callable[..., Any]
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _kernels(
-    BW: int, n_pad: int, k_max: int, backend: str, fmt: str, response_samples: int | None
+    BW: int,
+    n_pad: int,
+    k_max: int,
+    backend: str,
+    fmt: str,
+    response_samples: int | None,
 ) -> _Kernels:
     zero = jnp.zeros((), dtype=jnp.complex128)
 
     def place(p, T, t0, bin_lo):
-        w = ucb_waveform(p, T=T, BW=BW, t0=t0, fmt=fmt, backend=backend,
-                         response_samples=response_samples)
+        w = ucb_waveform(
+            p,
+            T=T,
+            BW=BW,
+            t0=t0,
+            fmt=fmt,
+            backend=backend,
+            response_samples=response_samples,
+        )
         c = GLASS_TO_CONTINUOUS(T)
         idx = jnp.asarray(w["freq_bin_indices"] - bin_lo, dtype=jnp.int32)
         # Send every out-of-window index to one positive out-of-range slot, as
@@ -128,7 +141,9 @@ def _inverse(c: ArrayLike, shape: tuple[int, int]) -> NDArray[np.float64]:
     return inv
 
 
-def _response_samples(T: float, backend: str, response_samples: int | None) -> int | None:
+def _response_samples(
+    T: float, backend: str, response_samples: int | None
+) -> int | None:
     """Resolve the on-fly automatic grid for a concrete ``T`` (glass's own policy)."""
     if backend != "onfly" or response_samples is not None:
         return response_samples
@@ -137,7 +152,9 @@ def _response_samples(T: float, backend: str, response_samples: int | None) -> i
 
 
 def _is_int(value: Any) -> bool:
-    return isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.bool_))
+    return isinstance(value, (int, np.integer)) and not isinstance(
+        value, (bool, np.bool_)
+    )
 
 
 class SegmentLikelihood:
@@ -188,7 +205,12 @@ class SegmentLikelihood:
         resolved = _response_samples(self.T, backend, response_samples)
         self.response_samples = None if resolved is None else int(resolved)
         self.key: tuple[int, int, int, str, str, int | None] = (
-            int(BW), self.n_pad, self.k_max, backend, fmt, self.response_samples
+            int(BW),
+            self.n_pad,
+            self.k_max,
+            backend,
+            fmt,
+            self.response_samples,
         )
         self.kernels = _kernels(*self.key)
         self._residual: jax.Array | None = None

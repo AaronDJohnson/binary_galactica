@@ -188,7 +188,12 @@ from binary_galactica.segments import UCBBlockConfig
 
 def test_defaults_follow_the_spec():
     cfg = UCBBlockConfig()
-    assert (cfg.n_target, cfg.steps_per_turn, cfg.ntemps, cfg.k_max_floor) == (10, 1000, 12, 10)
+    assert (cfg.n_target, cfg.steps_per_turn, cfg.ntemps, cfg.k_max_floor) == (
+        10,
+        1000,
+        12,
+        10,
+    )
     assert cfg.backend == "fourier"
     weights = cfg.within_model_weights()
     assert weights["fisher"] == pytest.approx(0.5)
@@ -754,7 +759,9 @@ def test_bright_verification_binaries_match():
     for name in ("HPLib", "SDSSJ0651", "V407Vul"):
         j = names.index(name)
         for backend in ("fourier", "onfly"):
-            result = conventions_gate.match_source(native[j], spectra, T, n_freq, backend)
+            result = conventions_gate.match_source(
+                native[j], spectra, T, n_freq, backend
+            )
             assert result["match"] > 0.999, (name, backend, result)
             scale = complex(*result["scale"])
             assert abs(scale - 1.0) < 2e-3, (name, backend, result)
@@ -820,7 +827,9 @@ def grid(path: Path = DEFAULT_PATH) -> tuple[int, float]:
         return int(ds.shape[0]), float(t[1] - t[0])
 
 
-def load_xyz(stream: str, path: Path = DEFAULT_PATH) -> tuple[dict[str, np.ndarray], float]:
+def load_xyz(
+    stream: str, path: Path = DEFAULT_PATH
+) -> tuple[dict[str, np.ndarray], float]:
     """Return ``({"X", "Y", "Z"} -> samples, dt)`` for one stream."""
     with h5py.File(path, "r") as f:
         data = f[_key(stream)][:, 0]
@@ -968,8 +977,12 @@ def bright_isolated(population, T, n_freq, count, path):
     picked: list[int] = []
     for i in np.argsort(snr)[::-1][:2000]:
         bw = ucb_bw(
-            f[i], cat["FrequencyDerivative"][i], np.sin(cat["EclipticLatitude"][i]),
-            a[i], T, n_freq,
+            f[i],
+            cat["FrequencyDerivative"][i],
+            np.sin(cat["EclipticLatitude"][i]),
+            a[i],
+            T,
+            n_freq,
         )
         lo, hi = np.searchsorted(f_sorted, [f[i] - bw / T, f[i] + bw / T])
         rival = np.sort(snr_sorted[lo:hi])[-2] if hi - lo > 1 else 0.0
@@ -992,8 +1005,10 @@ def run(path: Path, count: int) -> dict:
     report: dict = {"T": T, "dt": dt, "populations": {}}
     for population in ("vgb", "dgb", "igb"):
         spectra = sangria.aet_spectra(*sangria.load_xyz(population, path))
-        index = None if population == "vgb" else bright_isolated(
-            population, T, n_freq, count, path
+        index = (
+            None
+            if population == "vgb"
+            else bright_isolated(population, T, n_freq, count, path)
         )
         rows = sangria.load_catalogue(
             population, ("Name", *CATALOGUE_FIELDS), path, index=index
@@ -1022,9 +1037,7 @@ def run(path: Path, count: int) -> dict:
         for e in entries
         if e["neighbours_in_window"] == 0
     ]
-    report["worst_match"] = {
-        b: min(e[b]["match"] for e in isolated) for b in BACKENDS
-    }
+    report["worst_match"] = {b: min(e[b]["match"] for e in isolated) for b in BACKENDS}
     return report
 
 
@@ -1166,15 +1179,23 @@ def _check_rules(table):
 
 def test_doppler_and_padding_rule():
     f, fdot = 4e-3, 2e-16
-    expected = 2 * T * ((4 + 2 * np.pi * f * 1.49597870700e11 / 299792458.0)
-                        / 3.15581497632e7 + fdot * T)
+    expected = (
+        2
+        * T
+        * (
+            (4 + 2 * np.pi * f * 1.49597870700e11 / 299792458.0) / 3.15581497632e7
+            + fdot * T
+        )
+    )
     assert doppler_bins(f, fdot, T) == pytest.approx(expected, rel=1e-12)
     assert padding_bins(f, -fdot, T) == math.ceil(2 * expected)
 
 
 def test_sparse_sources_fill_n_target():
     qs = 120_000 + 80.0 * np.arange(205) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     _check_rules(table)
     counts = [len(seg.owned) for seg in table.segments]
     assert all(c == 10 for c in counts[:-1]) and 0 < counts[-1] <= 10
@@ -1183,7 +1204,9 @@ def test_sparse_sources_fill_n_target():
 
 def test_ownership_is_half_open_and_unique():
     qs = 120_000 + 80.0 * np.arange(60) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     owners = table.owners(qs)
     assert np.all(owners >= 0)
     for i, q in enumerate(qs):
@@ -1231,24 +1254,33 @@ def test_explicit_band_lists_outside_sources():
 
 def test_window_touching_dc_raises():
     with pytest.raises(ValueError, match="grid"):
-        build_segment_table(_sources([3.5]), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+        build_segment_table(
+            _sources([3.5]), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+        )
 
 
 def test_source_outside_prior_raises():
     with pytest.raises(ValueError, match="prior"):
         build_segment_table(
-            _sources([120_000.5], lnA=-60.0), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+            _sources([120_000.5], lnA=-60.0),
+            T=T,
+            n_freq=N_FREQ,
+            config=UCBBlockConfig(),
         )
 
 
 def test_empty_start_set_needs_band():
     with pytest.raises(ValueError, match="band_bins"):
-        build_segment_table(np.empty((0, 8)), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+        build_segment_table(
+            np.empty((0, 8)), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+        )
 
 
 def test_json_round_trip(tmp_path):
     qs = 120_000 + 80.0 * np.arange(30) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     path = tmp_path / "segment_table.json"
     table.write(path)
     assert SegmentTable.read(path) == table
@@ -1384,9 +1416,7 @@ class SegmentTable:
             "T": self.T,
             "n_freq": self.n_freq,
             "outside": list(self.outside),
-            "segments": [
-                {**asdict(s), "owned": list(s.owned)} for s in self.segments
-            ],
+            "segments": [{**asdict(s), "owned": list(s.owned)} for s in self.segments],
         }
 
     @classmethod
@@ -1412,7 +1442,9 @@ class SegmentTable:
         return cls.from_dict(json.loads(Path(path).read_text()))
 
 
-def _tile(qs: NDArray[np.float64], lo: int, hi: int, n_target: int, min_w: int) -> list[int]:
+def _tile(
+    qs: NDArray[np.float64], lo: int, hi: int, n_target: int, min_w: int
+) -> list[int]:
     """Return interior edges from the greedy midpoint rule over sorted ``qs``."""
     edges = [lo]
     cursor = lo
@@ -1479,8 +1511,9 @@ def build_segment_table(
     inside = (q >= band_lo) & (q < band_hi)
     members = np.nonzero(inside)[0]
     outside = tuple(int(i) for i in np.nonzero(~inside)[0])
-    edges = _tile(np.sort(q[members]), band_lo, band_hi, config.n_target,
-                  config.min_interior_bins)
+    edges = _tile(
+        np.sort(q[members]), band_lo, band_hi, config.n_target, config.min_interior_bins
+    )
 
     while True:
         owned = _owned(edges, q, members)
@@ -1503,7 +1536,9 @@ def build_segment_table(
         del edges[max(bad, neighbour)]
 
     segments = []
-    for s, ((a, b), own, pad) in enumerate(zip(zip(edges[:-1], edges[1:]), owned, pads)):
+    for s, ((a, b), own, pad) in enumerate(
+        zip(zip(edges[:-1], edges[1:]), owned, pads)
+    ):
         n_bins = (b - a) + 2 * pad
         if a - pad < 1 or b + pad > n_freq - 1:
             raise ValueError(
@@ -1532,8 +1567,9 @@ def build_segment_table(
                 f"start sources {outside_prior} lie outside the prior of segment {s}"
             )
         segments.append(seg)
-    return SegmentTable(T=float(T), n_freq=int(n_freq), segments=tuple(segments),
-                        outside=outside)
+    return SegmentTable(
+        T=float(T), n_freq=int(n_freq), segments=tuple(segments), outside=outside
+    )
 
 
 __all__ = [
@@ -1619,7 +1655,15 @@ import pytest
 from binary_galactica.glass import ae_noise, template_on_window
 from binary_galactica.segments import SegmentLikelihood, quantize_bins
 
-from .support import DT, N_FREQ, N_TIME, SANGRIA, T_SHORT, native_source, requires_sangria
+from .support import (
+    DT,
+    N_FREQ,
+    N_TIME,
+    SANGRIA,
+    T_SHORT,
+    native_source,
+    requires_sangria,
+)
 
 BIN_LO, N_BINS, BW = 2900, 120, 64
 SOURCES = np.array([native_source(2949.12), native_source(2960.4, lnA=-48.5)])
@@ -1631,11 +1675,21 @@ def _c():
 
 
 def _lik(k_max=3, snr_min=5.0):
-    lik = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW,
-                            k_max=k_max, backend="fourier", snr_min=snr_min)
+    lik = SegmentLikelihood(
+        T=T_SHORT,
+        t0=0.0,
+        bin_lo=BIN_LO,
+        n_bins=N_BINS,
+        BW=BW,
+        k_max=k_max,
+        backend="fourier",
+        snr_min=snr_min,
+    )
     rng = np.random.default_rng(0)
     c = _c()
-    r = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
+    r = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
     lik.set_data(r, c)
     lik.set_reference(c)
     return lik, r, c
@@ -1648,8 +1702,11 @@ def _row(sources, k_max=3, fill=np.nan):
 
 
 def _independent(src):
-    return np.asarray(template_on_window(src, T=T_SHORT, bin_lo=BIN_LO, n_bins=N_BINS,
-                                         BW=BW, backend="fourier"))
+    return np.asarray(
+        template_on_window(
+            src, T=T_SHORT, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW, backend="fourier"
+        )
+    )
 
 
 def test_quantize_bins_ladder():
@@ -1698,8 +1755,9 @@ def test_snr_matches_independent_inner_product_and_fisher():
         assert lik.snr(src[None])[0] == pytest.approx(rho, rel=1e-10)
     F = lik.fisher_matrices(SOURCES)
     assert F.shape == (2, 8, 8)
-    np.testing.assert_allclose(F, np.swapaxes(F, 1, 2), rtol=1e-10,
-                               atol=1e-10 * np.max(np.abs(F)))
+    np.testing.assert_allclose(
+        F, np.swapaxes(F, 1, 2), rtol=1e-10, atol=1e-10 * np.max(np.abs(F))
+    )
     np.testing.assert_allclose(F[:, 3, 3], lik.snr(SOURCES) ** 2, rtol=1e-8)
     assert np.all(np.linalg.eigvalsh(F) > -1e-8 * F[:, 3, 3][:, None])
 
@@ -1730,9 +1788,14 @@ def test_matches_enchilada_quadratic_form():
     cov[BIN_LO : BIN_LO + N_BINS, 1, 1] = c[1]
     mask = np.zeros(N_FREQ, dtype=bool)
     mask[BIN_LO : BIN_LO + N_BINS] = True
-    dc = enchilada.DataCovariance(cov, channel_names=("A", "E"), sample_rate_hz=1 / DT,
-                                  num_time_samples=N_TIME, data_domain="frequency",
-                                  active_mask=mask)
+    dc = enchilada.DataCovariance(
+        cov,
+        channel_names=("A", "E"),
+        sample_rate_hz=1 / DT,
+        num_time_samples=N_TIME,
+        data_domain="frequency",
+        active_mask=mask,
+    )
     full = {ch: np.zeros(N_FREQ, dtype=complex) for ch in "AE"}
     for i, ch in enumerate("AE"):
         full[ch][BIN_LO : BIN_LO + N_BINS] = r[i] - h[i]
@@ -1834,13 +1897,25 @@ class _Kernels:
 
 @functools.lru_cache(maxsize=None)
 def _kernels(
-    BW: int, n_pad: int, k_max: int, backend: str, fmt: str, response_samples: int | None
+    BW: int,
+    n_pad: int,
+    k_max: int,
+    backend: str,
+    fmt: str,
+    response_samples: int | None,
 ) -> _Kernels:
     zero = jnp.zeros((), dtype=jnp.complex128)
 
     def place(p, T, t0, bin_lo):
-        w = ucb_waveform(p, T=T, BW=BW, t0=t0, fmt=fmt, backend=backend,
-                         response_samples=response_samples)
+        w = ucb_waveform(
+            p,
+            T=T,
+            BW=BW,
+            t0=t0,
+            fmt=fmt,
+            backend=backend,
+            response_samples=response_samples,
+        )
         c = GLASS_TO_CONTINUOUS(T)
         idx = jnp.asarray(w["freq_bin_indices"] - bin_lo, dtype=jnp.int32)
         # Send every out-of-window index to one positive out-of-range slot, as
@@ -2119,7 +2194,9 @@ class _Layout:
 def _stats(row, rng, chain=0):
     view = np.asarray(row, dtype=float).view()
     view.flags.writeable = False
-    return SimpleNamespace(current_sample=view, layout=_Layout, rng=rng, chain_index=chain)
+    return SimpleNamespace(
+        current_sample=view, layout=_Layout, rng=rng, chain_index=chain
+    )
 
 
 def _covering_bank(rng):
@@ -2153,8 +2230,10 @@ def test_segment_prior_matches_box_prior():
     x[1, :8] = PRIOR.sample(rng)
     out = sp(x, np.array([2, 1]))
     expected = -np.log(4) + np.array(
-        [PRIOR.log_prior(x[0, :8]) + PRIOR.log_prior(x[0, 8:16]),
-         PRIOR.log_prior(x[1, :8])]
+        [
+            PRIOR.log_prior(x[0, :8]) + PRIOR.log_prior(x[0, 8:16]),
+            PRIOR.log_prior(x[1, :8]),
+        ]
     )
     np.testing.assert_allclose(out, expected, rtol=1e-14)
     bad = x.copy()
@@ -2175,7 +2254,9 @@ def test_floor_eigenvalues_bounds_unit_steps():
 
 def test_bank_lookup_nearest_within_range():
     bank = FisherBank(2, match_bins=4.0)
-    bank.store(1, np.array([1010.0, 1020.0]), np.ones((2, 8)), np.tile(np.eye(8), (2, 1, 1)))
+    bank.store(
+        1, np.array([1010.0, 1020.0]), np.ones((2, 8)), np.tile(np.eye(8), (2, 1, 1))
+    )
     assert bank.lookup(1, 1013.9) == 0
     assert bank.lookup(1, 1016.0) == 1
     assert bank.lookup(1, 1030.0) is None
@@ -2196,7 +2277,11 @@ def test_move_contract(name):
     row[-1] = 1
     for _ in range(50):
         out, qxy = move(_stats(row, rng))
-        assert out[-1] == 1 and np.all(np.isnan(out[8:-1])) and np.all(np.isfinite(out[:8]))
+        assert (
+            out[-1] == 1
+            and np.all(np.isnan(out[8:-1]))
+            and np.all(np.isfinite(out[:8]))
+        )
         assert not np.shares_memory(out, row)
 
 
@@ -2258,7 +2343,9 @@ def test_moves_register_on_rjptsampler(tmp_path):
         sampler.add_custom_jump(move, 1.0)
     sampler.sample(PRIOR.sample(rng, size=K_MAX).ravel(), 200, initial_k=K_MAX)
     rates = sampler.proposal_acceptance_rates()
-    assert {"FisherMove", "PriorRedrawMove", "FmShiftMove", "PsiPhiMove"} <= set(str(rates))
+    assert {"FisherMove", "PriorRedrawMove", "FmShiftMove", "PsiPhiMove"} <= set(
+        str(rates)
+    )
 ```
 
 The last assertion turns the acceptance report (a nested dict) into a string. It only checks that each move name appears, without assuming the report's nesting.
@@ -2310,7 +2397,9 @@ class SegmentPrior:
         comps = rows.reshape(rows.shape[0], self.k_max, 8)
         wrapped = self.prior.wrap(comps)
         with np.errstate(invalid="ignore"):
-            inside = np.all((wrapped >= self.prior.lo) & (wrapped <= self.prior.hi), axis=-1)
+            inside = np.all(
+                (wrapped >= self.prior.lo) & (wrapped <= self.prior.hi), axis=-1
+            )
         active = np.arange(self.k_max)[None, :] < ks[:, None]
         ok = np.all(inside | ~active, axis=1) & (ks >= self.k_min) & (ks <= self.k_max)
         return np.where(ok, self.log_pk + ks * self.log_component, -np.inf)
@@ -2381,12 +2470,16 @@ class FisherBank:
         self._evalues = [np.empty((0, 8)) for _ in range(n)]
         self._evectors = [np.empty((0, 8, 8)) for _ in range(n)]
 
-    def store(self, chain: int, q: ArrayLike, evalues: ArrayLike, evectors: ArrayLike) -> None:
+    def store(
+        self, chain: int, q: ArrayLike, evalues: ArrayLike, evectors: ArrayLike
+    ) -> None:
         """Replace one chain's decompositions."""
         q = np.asarray(q, dtype=np.float64).reshape(-1)
         self._q[chain] = q
         self._evalues[chain] = np.asarray(evalues, dtype=np.float64).reshape(q.size, 8)
-        self._evectors[chain] = np.asarray(evectors, dtype=np.float64).reshape(q.size, 8, 8)
+        self._evectors[chain] = np.asarray(evectors, dtype=np.float64).reshape(
+            q.size, 8, 8
+        )
 
     def count(self, chain: int) -> int:
         """Return the number of decompositions stored for a chain."""
@@ -2580,9 +2673,14 @@ def _window(seed=0, offset=0.0):
     f = (SEG.bin_lo + np.arange(n)) / T_SHORT
     c = np.stack([0.5 * T_SHORT * ae_noise(f)] * 2)
     rng = np.random.default_rng(seed)
-    noise = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
-    h = np.asarray(template_on_window(SOURCE, T=T_SHORT, bin_lo=SEG.bin_lo, n_bins=n,
-                                      BW=SEG.bw, backend="fourier"))
+    noise = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
+    h = np.asarray(
+        template_on_window(
+            SOURCE, T=T_SHORT, bin_lo=SEG.bin_lo, n_bins=n, BW=SEG.bw, backend="fourier"
+        )
+    )
     return noise + h + offset * np.sqrt(c), c
 
 
@@ -2612,12 +2710,21 @@ def test_archive_round_trip(tmp_path):
 def test_fixed_count_smoke(tmp_path):
     rj_impulse()
     r, c = _window()
-    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
-                           config=_config(birth_death=False), outdir=tmp_path, seed=1,
-                           reference=c)
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(birth_death=False),
+        outdir=tmp_path,
+        seed=1,
+        reference=c,
+    )
     runner.advance(r, c)
     assert runner.ks.tolist() == [1, 1]
-    assert np.all(np.isfinite(runner.cold_sources())) and runner.cold_sources().shape == (1, 8)
+    assert np.all(
+        np.isfinite(runner.cold_sources())
+    ) and runner.cold_sources().shape == (1, 8)
     assert runner.bank.count(0) == 1 and runner.bank.count(1) == 1
     chain = runner.archive.load()
     assert chain["samples"].shape == (50, 8)
@@ -2628,9 +2735,16 @@ def test_fixed_count_smoke(tmp_path):
 def test_residual_change_recomputes_likelihoods(tmp_path):
     rj_impulse()
     r, c = _window()
-    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
-                           config=_config(steps_per_turn=5), outdir=tmp_path, seed=2,
-                           reference=c)
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(steps_per_turn=5),
+        outdir=tmp_path,
+        seed=2,
+        reference=c,
+    )
     runner.advance(r, c)
     r2, _ = _window(offset=50.0)
     runner.advance(r2, c)
@@ -2642,8 +2756,16 @@ def test_prior_only_count_is_uniform(tmp_path):
     rj_impulse()
     stats = pytest.importorskip("scipy.stats")
     cfg = _config(ntemps=1, steps_per_turn=20_000, thin=10)
-    runner = SegmentRunner(SEG, np.empty((0, 8)), T=T_SHORT, t0=0.0, config=cfg,
-                           outdir=tmp_path, seed=3, prior_only=True)
+    runner = SegmentRunner(
+        SEG,
+        np.empty((0, 8)),
+        T=T_SHORT,
+        t0=0.0,
+        config=cfg,
+        outdir=tmp_path,
+        seed=3,
+        prior_only=True,
+    )
     runner.advance()
     chain = runner.archive.load()
     freq = np.bincount(chain["k"], minlength=4) / chain["k"].size
@@ -2655,9 +2777,16 @@ def test_prior_only_count_is_uniform(tmp_path):
 
 def test_fixed_count_needs_sources(tmp_path):
     with pytest.raises(ValueError, match="start source"):
-        SegmentRunner(SEG, np.empty((0, 8)), T=T_SHORT, t0=0.0,
-                      config=_config(birth_death=False), outdir=tmp_path, seed=4,
-                      prior_only=True)
+        SegmentRunner(
+            SEG,
+            np.empty((0, 8)),
+            T=T_SHORT,
+            t0=0.0,
+            config=_config(birth_death=False),
+            outdir=tmp_path,
+            seed=4,
+            prior_only=True,
+        )
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -2719,7 +2848,9 @@ def _impulse() -> Any:
     return impulse
 
 
-def glass_ladder(ntemps: int, step: float = 1.2, hottest: float = 1.0e12) -> NDArray[np.float64]:
+def glass_ladder(
+    ntemps: int, step: float = 1.2, hottest: float = 1.0e12
+) -> NDArray[np.float64]:
     """Return GLASS's ladder ``step**i`` with the hottest chain at ``hottest``."""
     ladder = step ** np.arange(int(ntemps), dtype=np.float64)
     if ntemps > 1:
@@ -2734,7 +2865,9 @@ class ChainArchive:
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
 
-    def append(self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike) -> None:
+    def append(
+        self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike
+    ) -> None:
         """Write one turn's cold samples ``(n, D)``, counts and likelihoods."""
         np.savez_compressed(
             self.directory / f"turn_{int(turn):05d}.npz",
@@ -2796,14 +2929,18 @@ class SegmentRunner:
         impulse = _impulse()
         self.k_max = start.shape[0] if self.fixed_count else segment.k_max
         if start.shape[0] > self.k_max:
-            raise ValueError(f"{start.shape[0]} start sources exceed k_max={self.k_max}")
+            raise ValueError(
+                f"{start.shape[0]} start sources exceed k_max={self.k_max}"
+            )
         k_min = self.k_max if self.fixed_count else 0
         self.prior = segment.prior(T)
         self.log_prior = SegmentPrior(self.prior, self.k_max, k_min)
         self.likelihood: SegmentLikelihood | None = None
         if not prior_only:
             if reference is None:
-                raise ValueError("a runner with a likelihood needs the reference covariance")
+                raise ValueError(
+                    "a runner with a likelihood needs the reference covariance"
+                )
             self.likelihood = SegmentLikelihood.for_segment(
                 segment, T=T, t0=t0, config=config, k_max=self.k_max
             )
@@ -2829,7 +2966,9 @@ class SegmentRunner:
             vectorized=True,
             jax=True,
             ntemps=config.ntemps,
-            ladder=glass_ladder(config.ntemps, config.ladder_step, config.hottest_temperature),
+            ladder=glass_ladder(
+                config.ntemps, config.ladder_step, config.hottest_temperature
+            ),
             am_weight=config.am_weight,
             scam_weight=config.scam_weight,
             de_weight=config.de_weight,
@@ -2857,7 +2996,9 @@ class SegmentRunner:
     def _draw(self, rng: np.random.Generator) -> NDArray[np.float64]:
         return self.prior.sample(rng)
 
-    def _lnlike(self, x: NDArray[np.float64], k: NDArray[np.intp]) -> NDArray[np.float64]:
+    def _lnlike(
+        self, x: NDArray[np.float64], k: NDArray[np.intp]
+    ) -> NDArray[np.float64]:
         if self.likelihood is None:
             return np.zeros(len(x))
         return self.likelihood(x, k)
@@ -2897,25 +3038,39 @@ class SegmentRunner:
                     qs.append(src[0])
                     evalues.append(dec[0])
                     evectors.append(dec[1])
-            self.bank.store(c, np.array(qs), np.array(evalues).reshape(-1, 8),
-                            np.array(evectors).reshape(-1, 8, 8))
+            self.bank.store(
+                c,
+                np.array(qs),
+                np.array(evalues).reshape(-1, 8),
+                np.array(evectors).reshape(-1, 8, 8),
+            )
 
-    def advance(self, residual: ArrayLike | None = None, c: ArrayLike | None = None) -> None:
+    def advance(
+        self, residual: ArrayLike | None = None, c: ArrayLike | None = None
+    ) -> None:
         """Run one Gibbs turn on this turn's ``(2, n_bins)`` residual and variance."""
         if self.likelihood is not None:
             if residual is None or c is None:
                 raise ValueError("advance needs the residual and its covariance")
             self.likelihood.set_data(residual, c)
         self.refresh_fisher()
-        self.sampler.sample(self._x, self.config.steps_per_turn, thin=self.config.thin,
-                            initial_k=self._k)
+        self.sampler.sample(
+            self._x,
+            self.config.steps_per_turn,
+            thin=self.config.thin,
+            initial_k=self._k,
+        )
         width = 8 * self.k_max
         state = np.asarray(self.sampler.state.positions)
         self._x = np.array(state[:, :width])
         self._k = state[:, width].astype(np.int64)
         chain = self.sampler.load_chain()
-        self.archive.append(self.turn, samples=chain["samples"][0], k=chain["k"][0],
-                            lnlike=chain["lnlike"][0])
+        self.archive.append(
+            self.turn,
+            samples=chain["samples"][0],
+            k=chain["k"][0],
+            lnlike=chain["lnlike"][0],
+        )
         for path in (self.outdir / "impulse").glob("chain_*"):
             path.unlink()
         self.turn += 1
@@ -2999,8 +3154,14 @@ class _Data(SimpleNamespace):
 
 def _grid(channels=CHANNELS, domain="frequency", data=None):
     data = data or {ch: np.zeros(N_FREQ, dtype=complex) for ch in channels}
-    return _Data(channel_names=channels, num_time_samples=N_TIME, sample_rate_hz=1 / DT,
-                 start_time_gps=0.0, data_domain=domain, channel_data=data)
+    return _Data(
+        channel_names=channels,
+        num_time_samples=N_TIME,
+        sample_rate_hz=1 / DT,
+        start_time_gps=0.0,
+        data_domain=domain,
+        channel_data=data,
+    )
 
 
 def _cov(channels=CHANNELS):
@@ -3011,20 +3172,31 @@ def _cov(channels=CHANNELS):
         m[:, i, i] = 0.5 * T_SHORT * ae_noise(f)
     mask = np.ones(N_FREQ, dtype=bool)
     mask[0] = False
-    return SimpleNamespace(data_domain="frequency", covariance_matrix=m,
-                           channel_names=channels, active_mask=mask)
+    return SimpleNamespace(
+        data_domain="frequency",
+        covariance_matrix=m,
+        channel_names=channels,
+        active_mask=mask,
+    )
 
 
 def _rows(qs=QS, amplitudes=None):
     amplitudes = amplitudes or [np.exp(-48.0)] * len(qs)
-    rows = np.concatenate([ldc_rows(Frequency=q / T_SHORT, Amplitude=a)
-                           for q, a in zip(qs, amplitudes)])
+    rows = np.concatenate(
+        [ldc_rows(Frequency=q / T_SHORT, Amplitude=a) for q, a in zip(qs, amplitudes)]
+    )
     return rows
 
 
 def _config(**kw):
-    base = {"band_bins": (2930, 2980), "n_target": 1, "min_interior_bins": 8,
-            "steps_per_turn": 10, "ntemps": 2, "hottest_temperature": 10.0}
+    base = {
+        "band_bins": (2930, 2980),
+        "n_target": 1,
+        "min_interior_bins": 8,
+        "steps_per_turn": 10,
+        "ntemps": 2,
+        "hottest_temperature": 10.0,
+    }
     base.update(kw)
     return UCBBlockConfig(**base)
 
@@ -3056,9 +3228,15 @@ def fake_runner(monkeypatch):
 
 def test_rejects_unsupported_inputs(tmp_path, fake_runner):
     with pytest.raises(ValueError, match="channels"):
-        UCBBlock(grid=_grid(("X", "Y", "Z")), start_sources=_rows(), outdir=tmp_path,
-                 config=_config())
-    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+        UCBBlock(
+            grid=_grid(("X", "Y", "Z")),
+            start_sources=_rows(),
+            outdir=tmp_path,
+            config=_config(),
+        )
+    block = UCBBlock(
+        grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config()
+    )
     rng = np.random.default_rng(0)
     with pytest.raises(ValueError, match="frequency"):
         block.sample(_grid(domain="time"), _cov(), None, rng=rng)
@@ -3075,8 +3253,13 @@ def test_writes_run_files(tmp_path, fake_runner):
 
 def test_drops_weak_start_sources(tmp_path, fake_runner):
     rows = _rows(amplitudes=[np.exp(-48.0), 1e-23, np.exp(-48.0)])
-    block = UCBBlock(grid=_grid(), start_sources=rows, outdir=tmp_path, config=_config(),
-                     reference_covariance=_cov())
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=rows,
+        outdir=tmp_path,
+        config=_config(),
+        reference_covariance=_cov(),
+    )
     dropped = json.loads((tmp_path / "dropped_start_sources.json").read_text())
     assert [d["index"] for d in dropped] == [1]
     assert dropped[0]["reason"] == "snr below cut" and dropped[0]["snr"] < 5
@@ -3085,20 +3268,28 @@ def test_drops_weak_start_sources(tmp_path, fake_runner):
 
 def test_sweep_order_and_conditional_residual(tmp_path, fake_runner):
     # Zero data: segment 1 must then see exactly minus its neighbours' sources.
-    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    block = UCBBlock(
+        grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config()
+    )
     block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
     assert [s for s, _ in fake_runner.calls] == [0, 2, 1]
     seg = block.table.segments[1]
     others = sum(
-        render_sources(block.start_native[[i]], T=T_SHORT, t0=0.0,
-                       BW=block.table.segments[i].bw, n_channels=3, n_freq=N_FREQ
-                       ).window(seg.bin_lo, seg.bin_hi)[:2]
+        render_sources(
+            block.start_native[[i]],
+            T=T_SHORT,
+            t0=0.0,
+            BW=block.table.segments[i].bw,
+            n_channels=3,
+            n_freq=N_FREQ,
+        ).window(seg.bin_lo, seg.bin_hi)[:2]
         for i in (0, 2)
     )
     assert np.max(np.abs(others)) > 0
     scale = np.max(np.abs(others))
-    np.testing.assert_allclose(fake_runner.calls[2][1], -others, rtol=1e-12,
-                               atol=1e-12 * scale)
+    np.testing.assert_allclose(
+        fake_runner.calls[2][1], -others, rtol=1e-12, atol=1e-12 * scale
+    )
 
 
 def test_publishes_owned_sources_only(tmp_path, fake_runner):
@@ -3107,7 +3298,9 @@ def test_publishes_owned_sources_only(tmp_path, fake_runner):
         src[0] = segment.bin_lo + 0.5
         return src[None]
 
-    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    block = UCBBlock(
+        grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config()
+    )
     fake_runner.extra = padding_source
     state = block.sample(_grid(), _cov(), None, rng=np.random.default_rng(2))
     counts = [s["count"] for s in state.parameters["segments"]]
@@ -3118,16 +3311,25 @@ def test_publishes_owned_sources_only(tmp_path, fake_runner):
 
 
 def test_initial_block_state_renders_the_start_set(tmp_path, fake_runner):
-    block = UCBBlock(grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config())
+    block = UCBBlock(
+        grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config()
+    )
     state = block.initial_block_state(_grid())
     expected = sum(
-        render_sources(block.start_native[[i]], T=T_SHORT, t0=0.0,
-                       BW=block.table.segments[i].bw, n_channels=3, n_freq=N_FREQ
-                       ).window(0, N_FREQ)
+        render_sources(
+            block.start_native[[i]],
+            T=T_SHORT,
+            t0=0.0,
+            BW=block.table.segments[i].bw,
+            n_channels=3,
+            n_freq=N_FREQ,
+        ).window(0, N_FREQ)
         for i in range(3)
     )
     for j, ch in enumerate(CHANNELS):
-        np.testing.assert_allclose(state.template[ch], expected[j], rtol=1e-12, atol=1e-30)
+        np.testing.assert_allclose(
+            state.template[ch], expected[j], rtol=1e-12, atol=1e-30
+        )
 
 
 def test_check_block(tmp_path):
@@ -3135,19 +3337,26 @@ def test_check_block(tmp_path):
     from enchilada.testing import check_block
 
     rj_impulse()
-    kwargs = {"sample_rate_hz": 1 / DT, "tdi_generation": "1.5",
-              "physical_observable": "fractional_frequency", "channel_names": CHANNELS,
-              "num_time_samples": N_TIME, "data_domain": "frequency"}
-    grid = enchilada.L1Data({ch: np.zeros(N_FREQ, dtype=complex) for ch in CHANNELS},
-                            **kwargs)
+    kwargs = {
+        "sample_rate_hz": 1 / DT,
+        "tdi_generation": "1.5",
+        "physical_observable": "fractional_frequency",
+        "channel_names": CHANNELS,
+        "num_time_samples": N_TIME,
+        "data_domain": "frequency",
+    }
+    grid = enchilada.L1Data(
+        {ch: np.zeros(N_FREQ, dtype=complex) for ch in CHANNELS}, **kwargs
+    )
 
     class _Noise:
         def psd(self, f):
             return ae_noise(f)
 
     cov = enchilada.DataCovariance.from_psd(grid, _Noise())
-    config = UCBBlockConfig(band_bins=(2920, 2984), steps_per_turn=10, ntemps=2,
-                            hottest_temperature=10.0)
+    config = UCBBlockConfig(
+        band_bins=(2920, 2984), steps_per_turn=10, ntemps=2, hottest_temperature=10.0
+    )
     rows = _rows(qs=(2952.3,))
     block = UCBBlock(grid=grid, start_sources=rows, outdir=tmp_path, config=config)
     signal = block.initial_block_state(grid).template
@@ -3155,14 +3364,20 @@ def test_check_block(tmp_path):
     data = {}
     for i, ch in enumerate(CHANNELS):
         var = cov.covariance_matrix[:, i, i].real
-        noise = np.sqrt(var / 2) * (rng.standard_normal(N_FREQ) + 1j * rng.standard_normal(N_FREQ))
+        noise = np.sqrt(var / 2) * (
+            rng.standard_normal(N_FREQ) + 1j * rng.standard_normal(N_FREQ)
+        )
         noise[0] = 0.0
         noise[-1] = np.sqrt(var[-1]) * rng.standard_normal()
         data[ch] = signal[ch] + noise
     observed = enchilada.L1Data(data, **kwargs)
-    check_block(block, observed, num_cycles=2,
-                initial_block_state=block.initial_block_state(observed),
-                initial_noise_covariance=cov)
+    check_block(
+        block,
+        observed,
+        num_cycles=2,
+        initial_block_state=block.initial_block_state(observed),
+        initial_noise_covariance=cov,
+    )
     assert block.turn == 2
     assert len(list((tmp_path / "segment_00000" / "cold").glob("turn_*.npz"))) == 2
 ```
@@ -3227,15 +3442,26 @@ class Contribution:
         out = np.zeros((self.values.shape[0], bin_hi - bin_lo), dtype=np.complex128)
         lo, hi = max(bin_lo, self.bin_lo), min(bin_hi, self.bin_hi)
         if hi > lo:
-            out[:, lo - bin_lo : hi - bin_lo] = self.values[:, lo - self.bin_lo : hi - self.bin_lo]
+            out[:, lo - bin_lo : hi - bin_lo] = self.values[
+                :, lo - self.bin_lo : hi - self.bin_lo
+            ]
         return out
 
 
 @functools.lru_cache(maxsize=None)
-def _renderer(BW: int, backend: str, fmt: str, response_samples: int | None) -> Callable[..., Any]:
+def _renderer(
+    BW: int, backend: str, fmt: str, response_samples: int | None
+) -> Callable[..., Any]:
     def one(p, T, t0):
-        w = ucb_waveform(p, T=T, BW=BW, t0=t0, fmt=fmt, backend=backend,
-                         response_samples=response_samples)
+        w = ucb_waveform(
+            p,
+            T=T,
+            BW=BW,
+            t0=t0,
+            fmt=fmt,
+            backend=backend,
+            response_samples=response_samples,
+        )
         c = GLASS_TO_CONTINUOUS(T)
         t = (w["X"] + w["Y"] + w["Z"]) * INV_SQ3
         return w["freq_bin_indices"], c * jnp.stack([w["A"], w["E"], t])
@@ -3385,8 +3611,9 @@ class UCBBlock:
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.start_native = ldc_to_native(start_sources, self.T)
         self.start_names = _names(start_sources, self.start_native.shape[0])
-        self.table = build_segment_table(self.start_native, T=self.T, n_freq=self.n_freq,
-                                         config=self.config)
+        self.table = build_segment_table(
+            self.start_native, T=self.T, n_freq=self.n_freq, config=self.config
+        )
         self.config.write(self.outdir / "config.json")
         self.table.write(self.outdir / "segment_table.json")
         self.dropped: list[dict[str, Any]] = [
@@ -3438,7 +3665,9 @@ class UCBBlock:
         if getattr(cov, "data_domain", None) != "frequency" or not hasattr(
             cov, "covariance_matrix"
         ):
-            raise TypeError("noise_covariance must be a frequency-domain DataCovariance")
+            raise TypeError(
+                "noise_covariance must be a frequency-domain DataCovariance"
+            )
         if tuple(cov.channel_names) != self.channels:
             raise ValueError("covariance channels differ from the data channels")
         m = np.asarray(cov.covariance_matrix)
@@ -3462,7 +3691,9 @@ class UCBBlock:
             own = self.owned_start[seg.index]
             if not own:
                 continue
-            lik = SegmentLikelihood.for_segment(seg, T=self.T, t0=self.t0, config=self.config)
+            lik = SegmentLikelihood.for_segment(
+                seg, T=self.T, t0=self.t0, config=self.config
+            )
             lik.set_reference(c_ref[:, seg.bin_lo : seg.bin_hi])
             keep = []
             for i, rho in zip(own, lik.snr(self.start_native[own])):
@@ -3476,10 +3707,16 @@ class UCBBlock:
     # ---- model ------------------------------------------------------------
 
     def _render(self, seg: Segment, sources: NDArray[np.float64]) -> Contribution:
-        return render_sources(sources, T=self.T, t0=self.t0, BW=seg.bw,
-                              n_channels=len(self.channels), n_freq=self.n_freq,
-                              backend=self.config.backend,
-                              response_samples=self.config.response_samples)
+        return render_sources(
+            sources,
+            T=self.T,
+            t0=self.t0,
+            BW=seg.bw,
+            n_channels=len(self.channels),
+            n_freq=self.n_freq,
+            backend=self.config.backend,
+            response_samples=self.config.response_samples,
+        )
 
     def _start_sources(self) -> dict[int, NDArray[np.float64]]:
         return {
@@ -3493,29 +3730,38 @@ class UCBBlock:
             part.add_to(model)
         return model
 
-    def _template(self, model: NDArray[np.complex128]) -> dict[str, NDArray[np.complex128]]:
+    def _template(
+        self, model: NDArray[np.complex128]
+    ) -> dict[str, NDArray[np.complex128]]:
         return {ch: model[i].copy() for i, ch in enumerate(self.channels)}
 
     def _parameters(self, sources: dict[int, NDArray[np.float64]]) -> dict[str, Any]:
         segments = []
         for seg in self.table.segments:
             x = sources[seg.index].reshape(-1, 8)
-            segments.append({
-                "index": seg.index,
-                "lo": seg.lo,
-                "hi": seg.hi,
-                "count": int(x.shape[0]),
-                "native": x.copy(),
-                "ldc": native_to_ldc(x, self.T),
-            })
+            segments.append(
+                {
+                    "index": seg.index,
+                    "lo": seg.lo,
+                    "hi": seg.hi,
+                    "count": int(x.shape[0]),
+                    "native": x.copy(),
+                    "ldc": native_to_ldc(x, self.T),
+                }
+            )
         return {"turn": self.turn, "segments": segments}
 
     def initial_block_state(self, data: Any) -> Any:
         """Return the start set's published state on ``data``'s grid."""
         sources = self._start_sources()
-        contrib = {seg.index: self._render(seg, sources[seg.index]) for seg in self.table.segments}
-        return data.block_state(self._template(self._model_of(contrib)),
-                                parameters=self._parameters(sources))
+        contrib = {
+            seg.index: self._render(seg, sources[seg.index])
+            for seg in self.table.segments
+        }
+        return data.block_state(
+            self._template(self._model_of(contrib)),
+            parameters=self._parameters(sources),
+        )
 
     def _start(self, rng: np.random.Generator) -> None:
         assert self.c_ref is not None
@@ -3536,8 +3782,10 @@ class UCBBlock:
                 seed=int(rng.integers(2**32)),
                 reference=self.c_ref[:, seg.bin_lo : seg.bin_hi],
             )
-        self._contrib = {seg.index: self._render(seg, self._sources[seg.index])
-                         for seg in self.table.segments}
+        self._contrib = {
+            seg.index: self._render(seg, self._sources[seg.index])
+            for seg in self.table.segments
+        }
         self._model = self._model_of(self._contrib)
 
     # ---- Block protocol ---------------------------------------------------
@@ -3559,7 +3807,12 @@ class UCBBlock:
         if self._runners is None:
             self._start(rng)
         assert self._runners is not None and self._model is not None
-        r = np.stack([np.asarray(data.channel_data[ch], dtype=np.complex128) for ch in ("A", "E")])
+        r = np.stack(
+            [
+                np.asarray(data.channel_data[ch], dtype=np.complex128)
+                for ch in ("A", "E")
+            ]
+        )
         for parity in (0, 1):
             for seg in self.table.segments[parity::2]:
                 runner = self._runners[seg.index]
@@ -3567,7 +3820,9 @@ class UCBBlock:
                     continue
                 lo, hi = seg.bin_lo, seg.bin_hi
                 own = self._contrib[seg.index].window(lo, hi)[:2]
-                runner.advance(r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi])
+                runner.advance(
+                    r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi]
+                )
                 cold = runner.cold_sources()
                 keep = cold[(cold[:, 0] >= seg.lo) & (cold[:, 0] < seg.hi)]
                 new = self._render(seg, keep)
@@ -3577,8 +3832,9 @@ class UCBBlock:
                 self._sources[seg.index] = keep
         self._model = self._model_of(self._contrib)
         self.turn += 1
-        return data.block_state(self._template(self._model),
-                                parameters=self._parameters(self._sources))
+        return data.block_state(
+            self._template(self._model), parameters=self._parameters(self._sources)
+        )
 
 
 __all__ = ["CHANNEL_SETS", "UCBBlock"]
@@ -3705,8 +3961,9 @@ def analytic_snrs(freq: np.ndarray, amp: np.ndarray, T: float) -> np.ndarray:
     return analytic_snr(amp, ae_noise(freq), np.sin(freq / FSTAR), np.sqrt(T))
 
 
-def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
-                   populations=("dgb", "igb")) -> np.ndarray:
+def catalogue_rows(
+    path: Path, *, T: float, band=None, snr_min=None, populations=("dgb", "igb")
+) -> np.ndarray:
     """Return dgb/igb rows in ``band`` (bins) above ``snr_min``, sorted by frequency."""
     dtype = [("Name", "U32")] + [(name, "f8") for name in CATALOGUE_FIELDS]
     parts = []
@@ -3718,10 +3975,13 @@ def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
             keep &= (q >= band[0]) & (q < band[1])
         if snr_min is not None:
             keep &= analytic_snrs(cat["Frequency"], cat["Amplitude"], T) >= snr_min
-        rows = sangria.load_catalogue(population, ("Name", *CATALOGUE_FIELDS), path,
-                                      index=np.nonzero(keep)[0])
+        rows = sangria.load_catalogue(
+            population, ("Name", *CATALOGUE_FIELDS), path, index=np.nonzero(keep)[0]
+        )
         out = np.zeros(rows.shape[0], dtype=dtype)
-        out["Name"] = [x.decode() if isinstance(x, bytes) else str(x) for x in rows["Name"]]
+        out["Name"] = [
+            x.decode() if isinstance(x, bytes) else str(x) for x in rows["Name"]
+        ]
         for name in CATALOGUE_FIELDS:
             out[name] = rows[name]
         parts.append(out)
@@ -3729,7 +3989,9 @@ def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
     return rows[np.argsort(rows["Frequency"], kind="stable")]
 
 
-def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = 500) -> dict:
+def running_median_variance(
+    spectra: dict, lo: int, hi: int, half_width: int = 500
+) -> dict:
     """Return each channel's coefficient variance on ``[lo, hi)``.
 
     The estimate is the running median of ``|r|^2`` divided by ``ln 2``, the
@@ -3750,10 +4012,15 @@ def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
     """Return a frequency-domain enchilada L1Data of the given spectra."""
     import enchilada
 
-    return enchilada.L1Data({ch: spectra[ch] for ch in channels}, sample_rate_hz=1.0 / dt,
-                            tdi_generation="1.5", physical_observable="fractional_frequency",
-                            channel_names=channels, num_time_samples=n,
-                            data_domain="frequency")
+    return enchilada.L1Data(
+        {ch: spectra[ch] for ch in channels},
+        sample_rate_hz=1.0 / dt,
+        tdi_generation="1.5",
+        physical_observable="fractional_frequency",
+        channel_names=channels,
+        num_time_samples=n,
+        data_domain="frequency",
+    )
 
 
 def covariance(data, variances: dict, lo: int, hi: int):
@@ -3776,9 +4043,14 @@ def covariance(data, variances: dict, lo: int, hi: int):
         m[:, i, i] = diag
     mask = np.ones(n_freq, dtype=bool)
     mask[0] = False
-    return enchilada.DataCovariance(m, channel_names=data.channel_names,
-                                    sample_rate_hz=data.fs, num_time_samples=data.N,
-                                    data_domain="frequency", active_mask=mask)
+    return enchilada.DataCovariance(
+        m,
+        channel_names=data.channel_names,
+        sample_rate_hz=data.fs,
+        num_time_samples=data.N,
+        data_domain="frequency",
+        active_mask=mask,
+    )
 
 
 def run_block(block, data, cov, turns: int, seed: int):
@@ -3793,7 +4065,9 @@ def run_block(block, data, cov, turns: int, seed: int):
     return state, seconds
 
 
-def recovery(chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0):
+def recovery(
+    chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0
+):
     """Return, for each injection, how often a cold-chain source sits within ``tol`` bins.
 
     Also returns the histogram of the count after burn-in.
@@ -3809,13 +4083,17 @@ def recovery(chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: fl
         j = np.argmin(d, axis=1)
         near = d[rows, j]
         hit = near < tol
-        out.append({
-            "q": float(inj[0]),
-            "lnA": float(inj[3]),
-            "recovered": float(hit.mean()) if hit.size else 0.0,
-            "median_dq": float(np.median(near[hit])) if hit.any() else None,
-            "median_dlnA": float(np.median(comps[rows, j, 3][hit] - inj[3])) if hit.any() else None,
-        })
+        out.append(
+            {
+                "q": float(inj[0]),
+                "lnA": float(inj[3]),
+                "recovered": float(hit.mean()) if hit.size else 0.0,
+                "median_dq": float(np.median(near[hit])) if hit.any() else None,
+                "median_dlnA": float(np.median(comps[rows, j, 3][hit] - inj[3]))
+                if hit.any()
+                else None,
+            }
+        )
     return out, np.bincount(ks).tolist()
 ```
 
@@ -3853,36 +4131,68 @@ N_FREQ = 3_153_601
 
 def injection(f0: float = 3e-3, lnA: float = -50.0) -> np.ndarray:
     """Return the injected native source."""
-    return np.array([f0 * T + 0.3, 0.2, 1.1, lnA, 0.3, 0.7, 2.0, ucb_fdot(0.3, f0) * T**2])
+    return np.array(
+        [f0 * T + 0.3, 0.2, 1.1, lnA, 0.3, 0.7, 2.0, ucb_fdot(0.3, f0) * T**2]
+    )
 
 
-def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11, outdir=None):
+def run(
+    *, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11, outdir=None
+):
     """Run the check and return the report."""
     src = injection()
     q = int(np.floor(src[0]))
-    config = UCBBlockConfig(band_bins=(q - 40, q + 40), birth_death=False,
-                            steps_per_turn=steps, ntemps=ntemps)
+    config = UCBBlockConfig(
+        band_bins=(q - 40, q + 40),
+        birth_death=False,
+        steps_per_turn=steps,
+        ntemps=ntemps,
+    )
     seg = build_segment_table(src[None], T=T, n_freq=N_FREQ, config=config).segments[0]
     f = (seg.bin_lo + np.arange(seg.n_bins)) / T
     c = np.stack([0.5 * T * ae_noise(f)] * 2)
     rng = np.random.default_rng(seed)
-    noise = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
-    h = np.asarray(template_on_window(src, T=T, bin_lo=seg.bin_lo, n_bins=seg.n_bins,
-                                      BW=seg.bw, backend=config.backend))
-    outdir = Path(outdir) if outdir is not None else Path(tempfile.mkdtemp(prefix="isolated-"))
-    runner = SegmentRunner(seg, src[None], T=T, t0=0.0, config=config, outdir=outdir,
-                           seed=seed, reference=c)
+    noise = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
+    h = np.asarray(
+        template_on_window(
+            src,
+            T=T,
+            bin_lo=seg.bin_lo,
+            n_bins=seg.n_bins,
+            BW=seg.bw,
+            backend=config.backend,
+        )
+    )
+    outdir = (
+        Path(outdir)
+        if outdir is not None
+        else Path(tempfile.mkdtemp(prefix="isolated-"))
+    )
+    runner = SegmentRunner(
+        seg,
+        src[None],
+        T=T,
+        t0=0.0,
+        config=config,
+        outdir=outdir,
+        seed=seed,
+        reference=c,
+    )
     start = time.perf_counter()
     for _ in range(turns):
         runner.advance(h + noise, c)
     seconds = time.perf_counter() - start
     chain = runner.archive.load()
-    x = chain["samples"][int(0.25 * chain["k"].size):]
+    x = chain["samples"][int(0.25 * chain["k"].size) :]
     d = x - src
     for i, period in runs.PERIODS.items():
         d[:, i] = (d[:, i] + period / 2) % period - period / 2
     mean, std = d.mean(axis=0), d.std(axis=0)
-    sigma = np.sqrt(np.diag(np.linalg.inv(runner.likelihood.fisher_matrices(src[None])[0])))
+    sigma = np.sqrt(
+        np.diag(np.linalg.inv(runner.likelihood.fisher_matrices(src[None])[0]))
+    )
     ratio = std / sigma
     checks = {
         "mean_within_4_std": bool(np.all(np.abs(mean / std) < 4)),
@@ -3917,9 +4227,13 @@ def main() -> None:
     path = runs.write_report("segments-isolated.json", report)
     names = ["f0T", "sinb", "lam", "lnA", "cosi", "psi", "phi0", "fdotT2"]
     for i, name in enumerate(names):
-        print(f"{name:7s} offset={report['mean_offset'][i]:+.3e} std={report['std'][i]:.3e} "
-              f"fisher={report['fisher_sigma'][i]:.3e} ratio={report['width_ratio'][i]:.2f}")
-    print(f"snr={report['snr']:.1f}  {report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}")
+        print(
+            f"{name:7s} offset={report['mean_offset'][i]:+.3e} std={report['std'][i]:.3e} "
+            f"fisher={report['fisher_sigma'][i]:.3e} ratio={report['width_ratio'][i]:.2f}"
+        )
+    print(
+        f"snr={report['snr']:.1f}  {report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}"
+    )
     ok = all(report["checks"].values())
     print("PASS" if ok else f"FAIL {report['checks']}")
     sys.exit(0 if ok else 1)
@@ -4032,10 +4346,15 @@ from binary_galactica.segments import (
     ldc_to_native,
 )
 
-NPZ = Path(os.environ.get(
-    "BG_SEGMENT767",
-    str(Path.home() / "Documents/lisa/gbnoisefit/vendor/sangria_segment_767/segment_767.npz"),
-))
+NPZ = Path(
+    os.environ.get(
+        "BG_SEGMENT767",
+        str(
+            Path.home()
+            / "Documents/lisa/gbnoisefit/vendor/sangria_segment_767/segment_767.npz"
+        ),
+    )
+)
 MARGIN = 300
 
 
@@ -4055,8 +4374,15 @@ def start_rows(path: Path, T: float) -> np.ndarray:
     return rows[sorted(picked)]
 
 
-def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
-        path: Path = sangria.DEFAULT_PATH) -> dict:
+def run(
+    mode: str,
+    *,
+    turns: int,
+    steps: int,
+    seed: int,
+    outdir: Path,
+    path: Path = sangria.DEFAULT_PATH,
+) -> dict:
     """Run one mode and return its report."""
     n, dt = sangria.grid(path)
     T = n * dt
@@ -4067,14 +4393,29 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
     data = runs.frequency_data(spectra, n, dt)
     lo, hi = band[0] - MARGIN, band[1] + MARGIN
     cov = runs.covariance(data, runs.running_median_variance(spectra, lo, hi), lo, hi)
-    config = UCBBlockConfig(band_bins=band, n_target=len(rows),
-                            birth_death=(mode == "rj"), steps_per_turn=steps)
-    block = UCBBlock(grid=data, start_sources=rows, outdir=outdir / mode, config=config,
-                     reference_covariance=cov)
+    config = UCBBlockConfig(
+        band_bins=band,
+        n_target=len(rows),
+        birth_death=(mode == "rj"),
+        steps_per_turn=steps,
+    )
+    block = UCBBlock(
+        grid=data,
+        start_sources=rows,
+        outdir=outdir / mode,
+        config=config,
+        reference_covariance=cov,
+    )
     _, seconds = runs.run_block(block, data, cov, turns, seed)
     native = ldc_to_native(rows, T)
-    report = {"mode": mode, "band": band, "segments": len(block.table.segments),
-              "dropped": block.dropped, "seconds_per_turn": seconds, "sources": []}
+    report = {
+        "mode": mode,
+        "band": band,
+        "segments": len(block.table.segments),
+        "dropped": block.dropped,
+        "seconds_per_turn": seconds,
+        "sources": [],
+    }
     for seg in block.table.segments:
         lik = SegmentLikelihood.for_segment(seg, T=T, t0=0.0, config=config)
         lik.set_reference(block.c_ref[:, seg.bin_lo : seg.bin_hi])
@@ -4087,7 +4428,9 @@ def run(mode: str, *, turns: int, steps: int, seed: int, outdir: Path,
         report.setdefault("count_histogram", []).append(counts)
     floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
     report["criterion"] = {"snr_at_least": floor, "recovered_at_least": need}
-    report["pass"] = all(s["recovered"] >= need for s in report["sources"] if s["snr"] >= floor)
+    report["pass"] = all(
+        s["recovered"] >= need for s in report["sources"] if s["snr"] >= floor
+    )
     return report
 
 
@@ -4100,14 +4443,18 @@ def main() -> None:
     parser.add_argument("--outdir", type=Path, default=None)
     args = parser.parse_args()
     outdir = args.outdir or Path(tempfile.mkdtemp(prefix="segment767-"))
-    report = run(args.mode, turns=args.turns, steps=args.steps, seed=args.seed, outdir=outdir)
+    report = run(
+        args.mode, turns=args.turns, steps=args.steps, seed=args.seed, outdir=outdir
+    )
     out = runs.PERFORMANCE / "segments-767.json"
     merged = json.loads(out.read_text()) if out.exists() else {}
     merged[args.mode] = report
     runs.write_report("segments-767.json", merged)
     for s in report["sources"]:
-        print(f"q={s['q']:.2f} snr={s['snr']:6.1f} recovered={s['recovered']:.2f} "
-              f"dq={s['median_dq']} dlnA={s['median_dlnA']}")
+        print(
+            f"q={s['q']:.2f} snr={s['snr']:6.1f} recovered={s['recovered']:.2f} "
+            f"dq={s['median_dq']} dlnA={s['median_dlnA']}"
+        )
     print("counts:", report["count_histogram"], " dropped:", len(report["dropped"]))
     print(f"run directory: {outdir}")
     print("PASS" if report["pass"] else "FAIL")
@@ -4211,12 +4558,19 @@ import numpy as np
 import runs
 import sangria
 
-from binary_galactica.segments import ChainArchive, UCBBlock, UCBBlockConfig, padding_bins
+from binary_galactica.segments import (
+    ChainArchive,
+    UCBBlock,
+    UCBBlockConfig,
+    padding_bins,
+)
 
-GLASS_DIR = Path(os.environ.get(
-    "BG_GLASS_DIR",
-    str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
-))
+GLASS_DIR = Path(
+    os.environ.get(
+        "BG_GLASS_DIR",
+        str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
+    )
+)
 MARGIN = 300
 
 
@@ -4227,7 +4581,9 @@ def glass_segments(count: int, fmin=3e-3, fmax=5e-3, nmin=8, nmax=15):
     det = pd.read_hdf(GLASS_DIR / "UCB.h5", "detections")
     det = det[(det["Frequency"] >= fmin) & (det["Frequency"] < fmax)]
     sizes = det.groupby("segment").size()
-    chosen = sorted(int(s) for s in sizes[(sizes >= nmin) & (sizes <= nmax)].index)[:count]
+    chosen = sorted(int(s) for s in sizes[(sizes >= nmin) & (sizes <= nmax)].index)[
+        :count
+    ]
     return det, chosen
 
 
@@ -4249,7 +4605,9 @@ def _counterpart(chain: dict, q: float, burn: float = 0.25, tol: float = 2.0):
     return comps[rows, j][hit], float(hit.mean()) if hit.size else 0.0
 
 
-def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path):
+def compare_segment(
+    seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path
+):
     """Run the block on one GLASS segment's band and compare every detection."""
     rows_g = det[det["segment"] == seg_index]
     q = rows_g["Frequency"].to_numpy() * T
@@ -4259,15 +4617,23 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
         grow = pad + 1 - (hi - lo)
         lo, hi = lo - grow // 2, hi + grow - grow // 2
     start = runs.catalogue_rows(path, T=T, band=(lo, hi), snr_min=7.0)
-    config = UCBBlockConfig(band_bins=(lo, hi), n_target=max(len(start), 1),
-                            steps_per_turn=steps)
+    config = UCBBlockConfig(
+        band_bins=(lo, hi), n_target=max(len(start), 1), steps_per_turn=steps
+    )
     a, b = lo - MARGIN, hi + MARGIN
     cov = runs.covariance(data, runs.running_median_variance(spectra, a, b), a, b)
-    block = UCBBlock(grid=data, start_sources=start, outdir=outdir / f"glass_{seg_index}",
-                     config=config, reference_covariance=cov)
+    block = UCBBlock(
+        grid=data,
+        start_sources=start,
+        outdir=outdir / f"glass_{seg_index}",
+        config=config,
+        reference_covariance=cov,
+    )
     runs.run_block(block, data, cov, turns, seed)
-    chains = [ChainArchive(block.outdir / f"segment_{s.index:05d}" / "cold").load()
-              for s in block.table.segments]
+    chains = [
+        ChainArchive(block.outdir / f"segment_{s.index:05d}" / "cold").load()
+        for s in block.table.segments
+    ]
     owners = block.table.owners(q)
     inj_q = start["Frequency"] * T
     out = []
@@ -4278,26 +4644,43 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
             ours, frac = _counterpart(chains[owner], float(np.median(gf)) * T)
         else:
             ours, frac = np.empty((0, 8)), 0.0
-        entry = {"name": name, "glass_snr": float(row["SNR"]), "found_fraction": frac,
-                 "glass_f": [float(np.median(gf)), float(np.std(gf))],
-                 "glass_lnA": [float(np.median(glnA)), float(np.std(glnA))]}
+        entry = {
+            "name": name,
+            "glass_snr": float(row["SNR"]),
+            "found_fraction": frac,
+            "glass_f": [float(np.median(gf)), float(np.std(gf))],
+            "glass_lnA": [float(np.median(glnA)), float(np.std(glnA))],
+        }
         if len(ours) > 1:
             of, olnA = ours[:, 0] / T, ours[:, 3]
             entry["block_f"] = [float(np.median(of)), float(np.std(of))]
             entry["block_lnA"] = [float(np.median(olnA)), float(np.std(olnA))]
             entry["sep_f"] = abs(entry["block_f"][0] - entry["glass_f"][0]) / np.hypot(
-                entry["block_f"][1], entry["glass_f"][1])
-            entry["sep_lnA"] = abs(entry["block_lnA"][0] - entry["glass_lnA"][0]) / np.hypot(
-                entry["block_lnA"][1], entry["glass_lnA"][1])
+                entry["block_f"][1], entry["glass_f"][1]
+            )
+            entry["sep_lnA"] = abs(
+                entry["block_lnA"][0] - entry["glass_lnA"][0]
+            ) / np.hypot(entry["block_lnA"][1], entry["glass_lnA"][1])
         if len(inj_q):
             j = int(np.argmin(np.abs(inj_q - qd)))
-            entry["injection"] = {"name": str(start["Name"][j]), "f": float(start["Frequency"][j]),
-                                  "lnA": float(np.log(start["Amplitude"][j]))}
-        entry["overlap"] = bool(frac >= 0.5 and entry.get("sep_f", np.inf) < 3
-                                and entry.get("sep_lnA", np.inf) < 3)
+            entry["injection"] = {
+                "name": str(start["Name"][j]),
+                "f": float(start["Frequency"][j]),
+                "lnA": float(np.log(start["Amplitude"][j])),
+            }
+        entry["overlap"] = bool(
+            frac >= 0.5
+            and entry.get("sep_f", np.inf) < 3
+            and entry.get("sep_lnA", np.inf) < 3
+        )
         out.append(entry)
-    return {"segment": seg_index, "band": [lo, hi], "start_sources": len(start),
-            "dropped": len(block.dropped), "detections": out}
+    return {
+        "segment": seg_index,
+        "band": [lo, hi],
+        "start_sources": len(start),
+        "dropped": len(block.dropped),
+        "detections": out,
+    }
 
 
 def main() -> None:
@@ -4314,19 +4697,40 @@ def main() -> None:
     data = runs.frequency_data(spectra, n, dt)
     det, chosen = glass_segments(args.segments)
     outdir = Path(tempfile.mkdtemp(prefix="glass-compare-"))
-    results = [compare_segment(s, det, spectra, data, T=T, turns=args.turns,
-                               steps=args.steps, seed=args.seed + s, outdir=outdir,
-                               path=args.path) for s in chosen]
+    results = [
+        compare_segment(
+            s,
+            det,
+            spectra,
+            data,
+            T=T,
+            turns=args.turns,
+            steps=args.steps,
+            seed=args.seed + s,
+            outdir=outdir,
+            path=args.path,
+        )
+        for s in chosen
+    ]
     bright = [d for r in results for d in r["detections"] if d["glass_snr"] >= 10]
     fraction = float(np.mean([d["overlap"] for d in bright])) if bright else 0.0
-    report = {"T_block": T, "T_glass": 31_457_280.0, "segments": results,
-              "bright_overlap_fraction": fraction, "pass": fraction >= 0.8}
+    report = {
+        "T_block": T,
+        "T_glass": 31_457_280.0,
+        "segments": results,
+        "bright_overlap_fraction": fraction,
+        "pass": fraction >= 0.8,
+    }
     runs.write_report("segments-glass-compare.json", report)
     for r in results:
-        print(f"GLASS segment {r['segment']} band {r['band']} start={r['start_sources']}")
+        print(
+            f"GLASS segment {r['segment']} band {r['band']} start={r['start_sources']}"
+        )
         for d in r["detections"]:
-            print(f"  {d['name']} snr={d['glass_snr']:6.1f} found={d['found_fraction']:.2f} "
-                  f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']}")
+            print(
+                f"  {d['name']} snr={d['glass_snr']:6.1f} found={d['found_fraction']:.2f} "
+                f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']}"
+            )
     print(f"bright overlap fraction {fraction:.2f}; run directory: {outdir}")
     print("PASS" if report["pass"] else "FAIL")
     sys.exit(0 if report["pass"] else 1)
@@ -4423,8 +4827,12 @@ from binary_galactica.segments import (
 
 def _stats(values) -> dict:
     v = np.asarray(values, dtype=np.float64)
-    return {"min": float(v.min()), "median": float(np.median(v)), "max": float(v.max()),
-            "mean": float(v.mean())}
+    return {
+        "min": float(v.min()),
+        "median": float(np.median(v)),
+        "max": float(v.max()),
+        "mean": float(v.mean()),
+    }
 
 
 def run(sample: int, steps: int, seed: int, path: Path) -> dict:
@@ -4465,21 +4873,40 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
             lik = SegmentLikelihood.for_segment(seg, T=T, t0=0.0, config=config)
             lik.set_reference(c)
             own = own[lik.snr(own) >= config.snr_min]
-        runner = SegmentRunner(seg, own, T=T, t0=0.0, config=config, outdir=work / f"seg{s}",
-                               seed=seed + int(s), reference=c)
+        runner = SegmentRunner(
+            seg,
+            own,
+            T=T,
+            t0=0.0,
+            config=config,
+            outdir=work / f"seg{s}",
+            seed=seed + int(s),
+            reference=c,
+        )
         t1 = time.perf_counter()
         runner.advance(r, c)
         first = time.perf_counter() - t1
         t2 = time.perf_counter()
         runner.advance(r, c)
         steady = time.perf_counter() - t2
-        timings.append({"segment": int(s), "bw": seg.bw, "n_pad": quantize_bins(seg.n_bins),
-                        "k_max": seg.k_max, "owned": len(own), "first_turn_s": first,
-                        "steady_turn_s": steady, "per_step_s": steady / steps})
+        timings.append(
+            {
+                "segment": int(s),
+                "bw": seg.bw,
+                "n_pad": quantize_bins(seg.n_bins),
+                "k_max": seg.k_max,
+                "owned": len(own),
+                "first_turn_s": first,
+                "steady_turn_s": steady,
+                "per_step_s": steady / steps,
+            }
+        )
     x = np.array([[1.0, ntemps * t["k_max"] * t["bw"]] for t in timings])
     y = np.array([t["per_step_s"] for t in timings])
     coef = np.linalg.lstsq(x, y, rcond=None)[0]
-    work_units = np.array([ntemps * seg.k_max * seg.bw for seg in segs], dtype=np.float64)
+    work_units = np.array(
+        [ntemps * seg.k_max * seg.bw for seg in segs], dtype=np.float64
+    )
     predicted = float(np.sum(coef[0] + coef[1] * work_units) * full_steps)
     return {
         "T": T,
@@ -4498,7 +4925,10 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
         "memory_bytes": memory,
         "archive_bytes_per_turn": archive,
         "timings": timings,
-        "fit_seconds_per_step": {"intercept": float(coef[0]), "per_template_bin": float(coef[1])},
+        "fit_seconds_per_step": {
+            "intercept": float(coef[0]),
+            "per_template_bin": float(coef[1]),
+        },
         "steps_per_turn_predicted": full_steps,
         "predicted_turn_s": predicted,
     }
@@ -4513,16 +4943,24 @@ def main() -> None:
     args = parser.parse_args()
     report = run(args.sample, args.steps, args.seed, args.path)
     path = runs.write_report("segments-dry-run.json", report)
-    print(f"{report['start_sources']} start sources -> {report['n_segments']} segments, "
-          f"{report['compile_keys']} compile keys")
+    print(
+        f"{report['start_sources']} start sources -> {report['n_segments']} segments, "
+        f"{report['compile_keys']} compile keys"
+    )
     print(f"width {report['width']}  pad {report['pad']}  K {report['k_max']}")
-    print(f"memory ~{report['memory_bytes'] / 2**30:.2f} GiB, archive "
-          f"~{report['archive_bytes_per_turn'] / 2**30:.2f} GiB per turn (uncompressed)")
+    print(
+        f"memory ~{report['memory_bytes'] / 2**30:.2f} GiB, archive "
+        f"~{report['archive_bytes_per_turn'] / 2**30:.2f} GiB per turn (uncompressed)"
+    )
     for t in report["timings"]:
-        print(f"  seg {t['segment']:5d} BW={t['bw']:4d} K={t['k_max']:3d} "
-              f"cold {t['first_turn_s']:.1f}s warm {t['steady_turn_s']:.2f}s")
-    print(f"predicted full-band turn at {report['steps_per_turn_predicted']} steps: "
-          f"{report['predicted_turn_s'] / 3600:.1f} h")
+        print(
+            f"  seg {t['segment']:5d} BW={t['bw']:4d} K={t['k_max']:3d} "
+            f"cold {t['first_turn_s']:.1f}s warm {t['steady_turn_s']:.2f}s"
+        )
+    print(
+        f"predicted full-band turn at {report['steps_per_turn_predicted']} steps: "
+        f"{report['predicted_turn_s'] / 3600:.1f} h"
+    )
     print(f"wrote {path}")
 
 

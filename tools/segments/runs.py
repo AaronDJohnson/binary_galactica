@@ -17,8 +17,9 @@ PERFORMANCE = Path(__file__).resolve().parents[1] / "performance"
 CHANNELS = ("A", "E", "T")
 HALF_WIDTH = 500  # running_median_variance's half_width
 START_SNR = 7.0  # analytic SNR floor of the start set
-NOISE_REFERENCE = ("running median of obs-mbhb-vgb minus catalogue sources with analytic "
-                   "SNR >= 7")
+NOISE_REFERENCE = (
+    "running median of obs-mbhb-vgb minus catalogue sources with analytic SNR >= 7"
+)
 MARGIN = 300  # bins either side of a band kept for the running-median window
 
 
@@ -43,8 +44,9 @@ def analytic_snrs(freq: np.ndarray, amp: np.ndarray, T: float) -> np.ndarray:
     return analytic_snr(amp, ae_noise(freq), np.sin(freq / FSTAR), np.sqrt(T))
 
 
-def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
-                   populations=("dgb", "igb")) -> np.ndarray:
+def catalogue_rows(
+    path: Path, *, T: float, band=None, snr_min=None, populations=("dgb", "igb")
+) -> np.ndarray:
     """Return dgb/igb rows in ``band`` (bins) above ``snr_min``, sorted by frequency."""
     dtype = [("Name", "U32")] + [(name, "f8") for name in CATALOGUE_FIELDS]
     parts = []
@@ -56,10 +58,13 @@ def catalogue_rows(path: Path, *, T: float, band=None, snr_min=None,
             keep &= (q >= band[0]) & (q < band[1])
         if snr_min is not None:
             keep &= analytic_snrs(cat["Frequency"], cat["Amplitude"], T) >= snr_min
-        rows = sangria.load_catalogue(population, ("Name", *CATALOGUE_FIELDS), path,
-                                      index=np.nonzero(keep)[0])
+        rows = sangria.load_catalogue(
+            population, ("Name", *CATALOGUE_FIELDS), path, index=np.nonzero(keep)[0]
+        )
         out = np.zeros(rows.shape[0], dtype=dtype)
-        out["Name"] = [x.decode() if isinstance(x, bytes) else str(x) for x in rows["Name"]]
+        out["Name"] = [
+            x.decode() if isinstance(x, bytes) else str(x) for x in rows["Name"]
+        ]
         for name in CATALOGUE_FIELDS:
             out[name] = rows[name]
         parts.append(out)
@@ -94,11 +99,15 @@ def inner_segments(block, core):
         raise ValueError("fewer than three segments: widen span")
     for edge in (segs[0], segs[-1]):
         if core[0] < edge.hi and core[1] > edge.lo:
-            raise ValueError(f"core {tuple(core)} overlaps edge segment {edge.index}; widen span")
+            raise ValueError(
+                f"core {tuple(core)} overlaps edge segment {edge.index}; widen span"
+            )
     return list(segs[1:-1])
 
 
-def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = HALF_WIDTH) -> dict:
+def running_median_variance(
+    spectra: dict, lo: int, hi: int, half_width: int = HALF_WIDTH
+) -> dict:
     """Return each channel's coefficient variance on ``[lo, hi)``.
 
     The estimate is the running median of ``|r|^2`` divided by ``ln 2``, the
@@ -115,8 +124,16 @@ def running_median_variance(spectra: dict, lo: int, hi: int, half_width: int = H
     return out
 
 
-def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min: float | None = START_SNR,
-                     BW: int = 512) -> tuple[dict, np.ndarray]:
+def residual_spectra(
+    spectra: dict,
+    path,
+    *,
+    T: float,
+    lo: int,
+    hi: int,
+    snr_min: float | None = START_SNR,
+    BW: int = 512,
+) -> tuple[dict, np.ndarray]:
     """Return ``spectra`` minus every dgb/igb catalogue source with analytic SNR >= ``snr_min``
     whose bin lies in ``[lo, hi)``, plus the subtracted rows.
 
@@ -128,13 +145,21 @@ def residual_spectra(spectra: dict, path, *, T: float, lo: int, hi: int, snr_min
     """
     channels = tuple(spectra)
     if channels not in (("A", "E"), ("A", "E", "T")):
-        raise ValueError(f"spectra channels must be ('A', 'E') or ('A', 'E', 'T'), got {channels}")
+        raise ValueError(
+            f"spectra channels must be ('A', 'E') or ('A', 'E', 'T'), got {channels}"
+        )
     n_freq = len(spectra["A"])
     rows = catalogue_rows(path, T=T, band=(lo, hi), snr_min=snr_min)
     model = np.zeros((len(channels), n_freq), dtype=np.complex128)
     if len(rows):
-        contrib = render_sources(ldc_to_native(rows, T), T=T, t0=0.0, BW=BW,
-                                 n_channels=len(channels), n_freq=n_freq)
+        contrib = render_sources(
+            ldc_to_native(rows, T),
+            T=T,
+            t0=0.0,
+            BW=BW,
+            n_channels=len(channels),
+            n_freq=n_freq,
+        )
         contrib.add_to(model)
     row = {ch: i for i, ch in enumerate(channels)}
     resid = {ch: np.array(spectra[ch]) - model[row[ch]] for ch in channels}
@@ -145,10 +170,15 @@ def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
     """Return a frequency-domain enchilada L1Data of the given spectra."""
     import enchilada
 
-    return enchilada.L1Data({ch: spectra[ch] for ch in channels}, sample_rate_hz=1.0 / dt,
-                            tdi_generation="1.5", physical_observable="fractional_frequency",
-                            channel_names=channels, num_time_samples=n,
-                            data_domain="frequency")
+    return enchilada.L1Data(
+        {ch: spectra[ch] for ch in channels},
+        sample_rate_hz=1.0 / dt,
+        tdi_generation="1.5",
+        physical_observable="fractional_frequency",
+        channel_names=channels,
+        num_time_samples=n,
+        data_domain="frequency",
+    )
 
 
 def instrument_variance(f, T: float):
@@ -185,9 +215,14 @@ def covariance(data, variances: dict, lo: int, hi: int):
         m[:, i, i] = diag
     mask = np.ones(n_freq, dtype=bool)
     mask[0] = False
-    return enchilada.DataCovariance(m, channel_names=data.channel_names,
-                                    sample_rate_hz=data.fs, num_time_samples=data.N,
-                                    data_domain="frequency", active_mask=mask)
+    return enchilada.DataCovariance(
+        m,
+        channel_names=data.channel_names,
+        sample_rate_hz=data.fs,
+        num_time_samples=data.N,
+        data_domain="frequency",
+        active_mask=mask,
+    )
 
 
 def run_block(block, data, cov, turns: int, seed: int):
@@ -202,7 +237,9 @@ def run_block(block, data, cov, turns: int, seed: int):
     return state, seconds
 
 
-def recovery(chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0):
+def recovery(
+    chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0
+):
     """Return, for each injection, how often a cold-chain source sits within ``tol`` bins.
 
     Matching is one-to-one within each sample: injection-component pairs are
@@ -231,12 +268,17 @@ def recovery(chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: fl
     rows = np.arange(n_s)
     for i, row in enumerate(inj):
         hit = near[:, i] < tol
-        out.append({
-            "q": float(row[0]),
-            "lnA": float(row[3]),
-            "recovered": float(hit.mean()) if hit.size else 0.0,
-            "median_dq": float(np.median(near[hit, i])) if hit.any() else None,
-            "median_dlnA": float(np.median(comps[rows, match[:, i], 3][hit] - row[3]))
-            if hit.any() else None,
-        })
+        out.append(
+            {
+                "q": float(row[0]),
+                "lnA": float(row[3]),
+                "recovered": float(hit.mean()) if hit.size else 0.0,
+                "median_dq": float(np.median(near[hit, i])) if hit.any() else None,
+                "median_dlnA": float(
+                    np.median(comps[rows, match[:, i], 3][hit] - row[3])
+                )
+                if hit.any()
+                else None,
+            }
+        )
     return out, np.bincount(ks).tolist()

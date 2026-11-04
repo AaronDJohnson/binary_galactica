@@ -34,8 +34,12 @@ from binary_galactica.segments import (
 
 def _stats(values) -> dict:
     v = np.asarray(values, dtype=np.float64)
-    return {"min": float(v.min()), "median": float(np.median(v)), "max": float(v.max()),
-            "mean": float(v.mean())}
+    return {
+        "min": float(v.min()),
+        "median": float(np.median(v)),
+        "max": float(v.max()),
+        "mean": float(v.mean()),
+    }
 
 
 def run(sample: int, steps: int, seed: int, path: Path) -> dict:
@@ -67,9 +71,15 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
 
     spectra = sangria.aet_spectra(*sangria.combine(["obs"], ["mbhb", "vgb"], path))
     if sample < 3:
-        raise ValueError("--sample must be at least 3 (evenly spaced picks plus the heaviest mid-band two)")
-    cost = np.array([seg.k_max * quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64)
-    heavy = [int(i) for i in np.argsort(-cost[:-1])[:2]]  # heaviest by K * n_pad, tail excluded
+        raise ValueError(
+            "--sample must be at least 3 (evenly spaced picks plus the heaviest mid-band two)"
+        )
+    cost = np.array(
+        [seg.k_max * quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64
+    )
+    heavy = [
+        int(i) for i in np.argsort(-cost[:-1])[:2]
+    ]  # heaviest by K * n_pad, tail excluded
     even = np.linspace(0, len(segs) - 1, sample - 2).round().astype(int)
     pick = np.unique(np.concatenate([even, heavy]))
     work = Path(tempfile.mkdtemp(prefix="dry-run-"))
@@ -85,8 +95,16 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
             lik = SegmentLikelihood.for_segment(seg, T=T, t0=0.0, config=config)
             lik.set_reference(c)
             own = own[lik.snr(own) >= config.snr_min]
-        runner = SegmentRunner(seg, own, T=T, t0=0.0, config=config, outdir=work / f"seg{s}",
-                               seed=seed + int(s), reference=c)
+        runner = SegmentRunner(
+            seg,
+            own,
+            T=T,
+            t0=0.0,
+            config=config,
+            outdir=work / f"seg{s}",
+            seed=seed + int(s),
+            reference=c,
+        )
         t1 = time.perf_counter()
         runner.advance(r, c)
         first = time.perf_counter() - t1
@@ -95,13 +113,25 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
         steady = time.perf_counter() - t2
         archived = sum(p.stat().st_size for p in runner.archive.files())
         rates = runner.sampler.proposal_acceptance_rates()
-        timings.append({"segment": int(s), "frequency_hz": 0.5 * (seg.lo + seg.hi) / T,
-                        f"measured_archive_bytes_per_turn_at_{steps}_steps": archived // 2,
-                        "acceptance": {name: {"calls": r["calls"], "rate": r["rate"]}
-                                       for name, r in rates.items() if r["calls"]},
-                        "bw": seg.bw, "n_pad": quantize_bins(seg.n_bins),
-                        "k_max": seg.k_max, "owned": len(own), "first_turn_s": first,
-                        "steady_turn_s": steady, "per_step_s": steady / steps})
+        timings.append(
+            {
+                "segment": int(s),
+                "frequency_hz": 0.5 * (seg.lo + seg.hi) / T,
+                f"measured_archive_bytes_per_turn_at_{steps}_steps": archived // 2,
+                "acceptance": {
+                    name: {"calls": r["calls"], "rate": r["rate"]}
+                    for name, r in rates.items()
+                    if r["calls"]
+                },
+                "bw": seg.bw,
+                "n_pad": quantize_bins(seg.n_bins),
+                "k_max": seg.k_max,
+                "owned": len(own),
+                "first_turn_s": first,
+                "steady_turn_s": steady,
+                "per_step_s": steady / steps,
+            }
+        )
     from scipy.optimize import nnls
 
     n_pads = np.array([quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64)
@@ -125,17 +155,25 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
     bulk_t = [t for t in timings if t["n_pad"] < thr]
     hv_t = [t for t in timings if t["n_pad"] >= thr]
     bulk_rate = float(np.mean([t["per_step_s"] / t["k_max"] for t in bulk_t]))
-    nearest = [min(hv_t, key=lambda t: abs(np.log(t["n_pad"] / n)))
-               for n in n_pads[heavy_mask]]
-    heavy_step = sum(t["per_step_s"] * k / t["k_max"] for t, k in zip(nearest, ks_all[heavy_mask]))
+    nearest = [
+        min(hv_t, key=lambda t: abs(np.log(t["n_pad"] / n))) for n in n_pads[heavy_mask]
+    ]
+    heavy_step = sum(
+        t["per_step_s"] * k / t["k_max"] for t, k in zip(nearest, ks_all[heavy_mask])
+    )
     models["bulk_k_scaled_plus_measured_heavy"] = float(
-        (bulk_rate * ks_all[~heavy_mask].sum() + heavy_step) * full_steps)
+        (bulk_rate * ks_all[~heavy_mask].sum() + heavy_step) * full_steps
+    )
     tail_t = [t for t in timings if t["n_pad"] == n_pads.max()]
-    tail_step = float(np.mean([t["per_step_s"] for t in tail_t])) if tail_t else float("nan")
+    tail_step = (
+        float(np.mean([t["per_step_s"] for t in tail_t])) if tail_t else float("nan")
+    )
     # Model 3 (earlier, kept for comparison): a + b*ntemps*K*BW, unconstrained.
     x = np.stack([np.ones_like(tk), ntemps * tk * tb], axis=1)
     c3 = np.linalg.lstsq(x, y, rcond=None)[0]
-    models["ntemps_k_bw_lstsq"] = float(np.sum(c3[0] + c3[1] * ntemps * ks_all * bws) * full_steps)
+    models["ntemps_k_bw_lstsq"] = float(
+        np.sum(c3[0] + c3[1] * ntemps * ks_all * bws) * full_steps
+    )
     tail_s = float(per_seg[tail].sum() * full_steps)
     predicted = models["k_npad_nnls"]
     return {
@@ -154,16 +192,23 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
         "owned": _stats([len(seg.owned) for seg in segs]),
         "memory_bytes": memory,
         "memory_counted": "chain positions+counts and Fisher bank at k_max sources per chain, "
-                          "float64, summed over segments; impulse short_chain, JAX executables and the "
-                          "tool's full-band spectra excluded",
+        "float64, summed over segments; impulse short_chain, JAX executables and the "
+        "tool's full-band spectra excluded",
         "archive_bytes_per_turn": archive,
         "archive_note": "archive_bytes_per_turn is an uncompressed upper bound at 1000 steps, "
-                        "thin 1; the measured_* per-sample keys are at the sampled step count",
+        "thin 1; the measured_* per-sample keys are at the sampled step count",
         "timings": timings,
-        "fit_seconds_per_step": {"per_slot": float(coef[0]), "per_slot_window_bin": float(coef[1])},
-        "tail": {"segments": int(tail.sum()), "n_pad": float(n_pads.max()),
-                 "predicted_turn_s": tail_s, "share_of_total": tail_s / predicted,
-                 "measured_per_step_s": tail_step},
+        "fit_seconds_per_step": {
+            "per_slot": float(coef[0]),
+            "per_slot_window_bin": float(coef[1]),
+        },
+        "tail": {
+            "segments": int(tail.sum()),
+            "n_pad": float(n_pads.max()),
+            "predicted_turn_s": tail_s,
+            "share_of_total": tail_s / predicted,
+            "measured_per_step_s": tail_step,
+        },
         "predicted_turn_s_by_model": models,
         "predicted_turn_s_range": [min(models.values()), max(models.values())],
         "steps_per_turn_predicted": full_steps,
@@ -180,22 +225,32 @@ def main() -> None:
     args = parser.parse_args()
     report = run(args.sample, args.steps, args.seed, args.path)
     path = runs.write_report("segments-dry-run.json", report)
-    print(f"{report['start_sources']} start sources -> {report['n_segments']} segments, "
-          f"{report['compile_keys']} compile keys")
+    print(
+        f"{report['start_sources']} start sources -> {report['n_segments']} segments, "
+        f"{report['compile_keys']} compile keys"
+    )
     print(f"width {report['width']}  pad {report['pad']}  K {report['k_max']}")
-    print(f"memory ~{report['memory_bytes'] / 2**30:.2f} GiB, archive "
-          f"~{report['archive_bytes_per_turn'] / 2**30:.2f} GiB per turn (uncompressed)")
+    print(
+        f"memory ~{report['memory_bytes'] / 2**30:.2f} GiB, archive "
+        f"~{report['archive_bytes_per_turn'] / 2**30:.2f} GiB per turn (uncompressed)"
+    )
     for t in report["timings"]:
-        print(f"  seg {t['segment']:5d} f={t['frequency_hz']*1e3:.3f}mHz BW={t['bw']:4d} K={t['k_max']:3d} "
-              f"cold {t['first_turn_s']:.1f}s warm {t['steady_turn_s']:.2f}s")
+        print(
+            f"  seg {t['segment']:5d} f={t['frequency_hz'] * 1e3:.3f}mHz BW={t['bw']:4d} K={t['k_max']:3d} "
+            f"cold {t['first_turn_s']:.1f}s warm {t['steady_turn_s']:.2f}s"
+        )
     lo, hi = report["predicted_turn_s_range"]
-    print(f"predicted full-band turn at {report['steps_per_turn_predicted']} steps: "
-          f"{lo / 3600:.1f}-{hi / 3600:.1f} h across models")
+    print(
+        f"predicted full-band turn at {report['steps_per_turn_predicted']} steps: "
+        f"{lo / 3600:.1f}-{hi / 3600:.1f} h across models"
+    )
     for name, v in report["predicted_turn_s_by_model"].items():
         print(f"  {name}: {v / 3600:.2f} h")
     tl = report["tail"]
-    print(f"  tail ({tl['segments']} seg, n_pad {tl['n_pad']:.0f}): {tl['predicted_turn_s'] / 60:.0f} min "
-          f"per turn, {100 * tl['share_of_total']:.0f}% of the k_npad_nnls total")
+    print(
+        f"  tail ({tl['segments']} seg, n_pad {tl['n_pad']:.0f}): {tl['predicted_turn_s'] / 60:.0f} min "
+        f"per turn, {100 * tl['share_of_total']:.0f}% of the k_npad_nnls total"
+    )
     print(f"wrote {path}")
 
 

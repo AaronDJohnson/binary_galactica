@@ -5,7 +5,15 @@ from binary_galactica.glass import ae_noise, template_on_window
 from binary_galactica.glass.constants import YEAR
 from binary_galactica.segments import SegmentLikelihood, quantize_bins
 
-from .support import DT, N_FREQ, N_TIME, SANGRIA, T_SHORT, native_source, requires_sangria
+from .support import (
+    DT,
+    N_FREQ,
+    N_TIME,
+    SANGRIA,
+    T_SHORT,
+    native_source,
+    requires_sangria,
+)
 
 BIN_LO, N_BINS, BW = 2900, 120, 64
 SOURCES = np.array([native_source(2949.12), native_source(2960.4, lnA=-48.5)])
@@ -17,11 +25,21 @@ def _c():
 
 
 def _lik(k_max=3, snr_min=5.0):
-    lik = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW,
-                            k_max=k_max, backend="onfly", snr_min=snr_min)
+    lik = SegmentLikelihood(
+        T=T_SHORT,
+        t0=0.0,
+        bin_lo=BIN_LO,
+        n_bins=N_BINS,
+        BW=BW,
+        k_max=k_max,
+        backend="onfly",
+        snr_min=snr_min,
+    )
     rng = np.random.default_rng(0)
     c = _c()
-    r = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
+    r = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
     lik.set_data(r, c)
     lik.set_reference(c)
     return lik, r, c
@@ -34,8 +52,11 @@ def _row(sources, k_max=3, fill=np.nan):
 
 
 def _independent(src):
-    return np.asarray(template_on_window(src, T=T_SHORT, bin_lo=BIN_LO, n_bins=N_BINS,
-                                         BW=BW, backend="onfly"))
+    return np.asarray(
+        template_on_window(
+            src, T=T_SHORT, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW, backend="onfly"
+        )
+    )
 
 
 def test_quantize_bins_ladder():
@@ -84,8 +105,9 @@ def test_snr_matches_independent_inner_product_and_fisher():
         assert lik.snr(src[None])[0] == pytest.approx(rho, rel=1e-10)
     F = lik.fisher_matrices(SOURCES)
     assert F.shape == (2, 8, 8)
-    np.testing.assert_allclose(F, np.swapaxes(F, 1, 2), rtol=1e-10,
-                               atol=1e-10 * np.max(np.abs(F)))
+    np.testing.assert_allclose(
+        F, np.swapaxes(F, 1, 2), rtol=1e-10, atol=1e-10 * np.max(np.abs(F))
+    )
     np.testing.assert_allclose(F[:, 3, 3], lik.snr(SOURCES) ** 2, rtol=1e-8)
     assert np.all(np.linalg.eigvalsh(F) > -1e-8 * F[:, 3, 3][:, None])
 
@@ -104,8 +126,9 @@ def test_compile_key_sharing():
     # after the second segment rather than asserting an absolute count.
     liks, compiled = [], []
     for bin_lo, n_bins in ((1000, 100), (5000, 120)):
-        lik = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=bin_lo, n_bins=n_bins, BW=64,
-                                k_max=2, snr_min=0.0)
+        lik = SegmentLikelihood(
+            T=T_SHORT, t0=0.0, bin_lo=bin_lo, n_bins=n_bins, BW=64, k_max=2, snr_min=0.0
+        )
         f = (bin_lo + np.arange(n_bins)) / T_SHORT
         cov = np.stack([0.5 * T_SHORT * ae_noise(f)] * 2)
         lik.set_data(np.zeros(cov.shape, dtype=complex), cov)
@@ -124,14 +147,29 @@ def test_compile_key_sharing():
 
 def test_automatic_response_grid_is_resolved_at_construction():
     long_T = 1.5 * YEAR
-    for T, bin_lo, q, count in ((T_SHORT, BIN_LO, 2949.12, 32), (long_T, 94000, 94040.4, 256)):
-        lik = SegmentLikelihood(T=T, t0=0.0, bin_lo=bin_lo, n_bins=N_BINS, BW=BW, k_max=3)
+    for T, bin_lo, q, count in (
+        (T_SHORT, BIN_LO, 2949.12, 32),
+        (long_T, 94000, 94040.4, 256),
+    ):
+        lik = SegmentLikelihood(
+            T=T, t0=0.0, bin_lo=bin_lo, n_bins=N_BINS, BW=BW, k_max=3
+        )
         assert lik.key[-1] == count
         src = native_source(q)
-        ref = np.asarray(template_on_window(src, T=T, bin_lo=bin_lo, n_bins=N_BINS, BW=BW,
-                                            backend="onfly", response_samples=None))
-        np.testing.assert_allclose(lik.templates(src[None])[0], ref, rtol=0,
-                                   atol=1e-13 * np.max(np.abs(ref)))
+        ref = np.asarray(
+            template_on_window(
+                src,
+                T=T,
+                bin_lo=bin_lo,
+                n_bins=N_BINS,
+                BW=BW,
+                backend="onfly",
+                response_samples=None,
+            )
+        )
+        np.testing.assert_allclose(
+            lik.templates(src[None])[0], ref, rtol=0, atol=1e-13 * np.max(np.abs(ref))
+        )
 
 
 @pytest.mark.parametrize("q", [2880.3, 3030.6])
@@ -142,8 +180,9 @@ def test_templates_across_window_edges(q):
     src = native_source(q)
     ref = _independent(src)
     assert 0 < np.count_nonzero(ref[0]) < N_BINS
-    np.testing.assert_allclose(lik.templates(src[None])[0], ref, rtol=0,
-                               atol=1e-13 * np.max(np.abs(ref)))
+    np.testing.assert_allclose(
+        lik.templates(src[None])[0], ref, rtol=0, atol=1e-13 * np.max(np.abs(ref))
+    )
     got = lik(_row(src[None])[None], np.array([1]))[0]
     assert got == pytest.approx(-np.sum(np.abs(r - ref) ** 2 / c), rel=1e-10)
 
@@ -185,9 +224,16 @@ def test_covariance_zero_or_inf_excludes_and_nan_or_negative_raises():
 
 def test_construction_and_call_validation():
     base = dict(T=T_SHORT, t0=0.0, bin_lo=BIN_LO, n_bins=N_BINS, BW=BW, k_max=3)
-    for bad in ({"BW": 63}, {"BW": 0}, {"backend": "taylor"}, {"fmt": "xyz"},
-                {"response_samples": 3}, {"response_samples": True},
-                {"t0": np.nan}, {"t0": np.inf}):
+    for bad in (
+        {"BW": 63},
+        {"BW": 0},
+        {"backend": "taylor"},
+        {"fmt": "xyz"},
+        {"response_samples": 3},
+        {"response_samples": True},
+        {"t0": np.nan},
+        {"t0": np.inf},
+    ):
         with pytest.raises(ValueError):
             SegmentLikelihood(**{**base, **bad})
     lik, _, _ = _lik()
@@ -208,9 +254,14 @@ def test_matches_enchilada_quadratic_form():
     cov[BIN_LO : BIN_LO + N_BINS, 1, 1] = c[1]
     mask = np.zeros(N_FREQ, dtype=bool)
     mask[BIN_LO : BIN_LO + N_BINS] = True
-    dc = enchilada.DataCovariance(cov, channel_names=("A", "E"), sample_rate_hz=1 / DT,
-                                  num_time_samples=N_TIME, data_domain="frequency",
-                                  active_mask=mask)
+    dc = enchilada.DataCovariance(
+        cov,
+        channel_names=("A", "E"),
+        sample_rate_hz=1 / DT,
+        num_time_samples=N_TIME,
+        data_domain="frequency",
+        active_mask=mask,
+    )
     full = {ch: np.zeros(N_FREQ, dtype=complex) for ch in "AE"}
     for i, ch in enumerate("AE"):
         full[ch][BIN_LO : BIN_LO + N_BINS] = r[i] - h[i]

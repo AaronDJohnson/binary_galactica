@@ -30,7 +30,9 @@ def injection(f0: float = 3e-3, lnA: float = -50.0) -> np.ndarray:
     """Return the injected native source."""
     from binary_galactica.glass import ucb_fdot
 
-    return np.array([f0 * T + 0.3, 0.2, 1.1, lnA, 0.3, 0.7, 2.0, ucb_fdot(0.3, f0) * T**2])
+    return np.array(
+        [f0 * T + 0.3, 0.2, 1.1, lnA, 0.3, 0.7, 2.0, ucb_fdot(0.3, f0) * T**2]
+    )
 
 
 def fold_offsets(d: np.ndarray) -> np.ndarray:
@@ -49,27 +51,59 @@ def fold_offsets(d: np.ndarray) -> np.ndarray:
     return d
 
 
-def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11, outdir=None):
+def run(
+    *, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11, outdir=None
+):
     """Run the check and return the report."""
     import runs  # enables x64 before the package is used  # noqa: F401
 
     from binary_galactica.glass import ae_noise, template_on_window
-    from binary_galactica.segments import SegmentRunner, UCBBlockConfig, build_segment_table
+    from binary_galactica.segments import (
+        SegmentRunner,
+        UCBBlockConfig,
+        build_segment_table,
+    )
 
     src = injection()
     q = int(np.floor(src[0]))
-    config = UCBBlockConfig(band_bins=(q - 40, q + 40), birth_death=False,
-                            steps_per_turn=steps, ntemps=ntemps)
+    config = UCBBlockConfig(
+        band_bins=(q - 40, q + 40),
+        birth_death=False,
+        steps_per_turn=steps,
+        ntemps=ntemps,
+    )
     seg = build_segment_table(src[None], T=T, n_freq=N_FREQ, config=config).segments[0]
     f = (seg.bin_lo + np.arange(seg.n_bins)) / T
     c = np.stack([0.5 * T * ae_noise(f)] * 2)
     rng = np.random.default_rng(seed)
-    noise = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
-    h = np.asarray(template_on_window(src, T=T, bin_lo=seg.bin_lo, n_bins=seg.n_bins,
-                                      BW=seg.bw, backend=config.backend))
-    outdir = Path(outdir) if outdir is not None else Path(tempfile.mkdtemp(prefix="isolated-"))
-    runner = SegmentRunner(seg, src[None], T=T, t0=0.0, config=config, outdir=outdir,
-                           seed=seed, reference=c)
+    noise = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
+    h = np.asarray(
+        template_on_window(
+            src,
+            T=T,
+            bin_lo=seg.bin_lo,
+            n_bins=seg.n_bins,
+            BW=seg.bw,
+            backend=config.backend,
+        )
+    )
+    outdir = (
+        Path(outdir)
+        if outdir is not None
+        else Path(tempfile.mkdtemp(prefix="isolated-"))
+    )
+    runner = SegmentRunner(
+        seg,
+        src[None],
+        T=T,
+        t0=0.0,
+        config=config,
+        outdir=outdir,
+        seed=seed,
+        reference=c,
+    )
     turn_seconds = []
     for _ in range(turns):
         start = time.perf_counter()
@@ -79,7 +113,7 @@ def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11,
     # Turn 0 includes the JIT compile; the steady-state rate excludes it.
     steady = turn_seconds[1:] or turn_seconds
     chain = runner.archive.load()
-    x = chain["samples"][int(0.25 * chain["k"].size):]
+    x = chain["samples"][int(0.25 * chain["k"].size) :]
     d = x - src
     d = fold_offsets(d)
     mean, std = d.mean(axis=0), d.std(axis=0)
@@ -97,7 +131,9 @@ def run(*, turns: int = 20, steps: int = 1000, ntemps: int = 12, seed: int = 11,
     trunc_ratio = std / trunc_sigma
     checks = {
         "mean_within_4_std": bool(np.all(np.abs((mean - trunc_mean) / std) < 4)),
-        "widths_match_truncated_fisher": bool(np.all((trunc_ratio > 0.6) & (trunc_ratio < 1.6))),
+        "widths_match_truncated_fisher": bool(
+            np.all((trunc_ratio > 0.6) & (trunc_ratio < 1.6))
+        ),
     }
     return {
         "injection": src,
@@ -135,10 +171,14 @@ def main() -> None:
     path = runs.write_report("segments-isolated.json", report)
     names = ["f0T", "sinb", "lam", "lnA", "cosi", "psi", "phi0", "fdotT2"]
     for i, name in enumerate(names):
-        print(f"{name:7s} offset={report['mean_offset'][i]:+.3e} std={report['std'][i]:.3e} "
-              f"fisher={report['fisher_sigma'][i]:.3e} ratio={report['width_ratio'][i]:.2f} "
-              f"trunc-ratio={report['truncated_width_ratio'][i]:.2f}")
-    print(f"snr={report['snr']:.1f}  {report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}")
+        print(
+            f"{name:7s} offset={report['mean_offset'][i]:+.3e} std={report['std'][i]:.3e} "
+            f"fisher={report['fisher_sigma'][i]:.3e} ratio={report['width_ratio'][i]:.2f} "
+            f"trunc-ratio={report['truncated_width_ratio'][i]:.2f}"
+        )
+    print(
+        f"snr={report['snr']:.1f}  {report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}"
+    )
     ok = all(report["checks"].values())
     print("PASS" if ok else f"FAIL {report['checks']}")
     sys.exit(0 if ok else 1)

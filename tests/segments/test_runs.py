@@ -40,7 +40,9 @@ def test_inner_segments():
     with pytest.raises(ValueError):
         runs.inner_segments(block, (12, 35))
     with pytest.raises(ValueError):
-        runs.inner_segments(SimpleNamespace(table=SimpleNamespace(segments=segs[:2])), (0, 1))
+        runs.inner_segments(
+            SimpleNamespace(table=SimpleNamespace(segments=segs[:2])), (0, 1)
+        )
 
 
 @requires_sangria
@@ -55,8 +57,9 @@ def test_residual_spectra_removes_noise_free_sources():
     lo, hi = 113500, 113560
     # the dgb stream has no noise, so subtracting every catalogue row in a wider band
     # (the template wings reach past [lo, hi)) must leave almost nothing in [lo, hi)
-    resid, rows = runs.residual_spectra(spectra, SANGRIA, T=T, lo=lo - 40, hi=hi + 40,
-                                        snr_min=None)
+    resid, rows = runs.residual_spectra(
+        spectra, SANGRIA, T=T, lo=lo - 40, hi=hi + 40, snr_min=None
+    )
     assert len(rows) > 5
     for ch in ("A", "E"):
         power_in = np.sum(np.abs(spectra[ch][lo:hi]) ** 2)
@@ -80,7 +83,8 @@ def test_noise_only_stream_matches_instrument_variance():
     n, dt = sangria.grid(SANGRIA)
     T = n * dt
     spectra = sangria.aet_spectra(
-        *sangria.combine(["obs"], ["dgb", "igb", "vgb", "mbhb"], SANGRIA))
+        *sangria.combine(["obs"], ["dgb", "igb", "vgb", "mbhb"], SANGRIA)
+    )
     for f0 in (2e-3, 5e-3, 8e-3, 12.7e-3):
         q0 = int(f0 * T)
         lo, hi = q0 - 200, q0 + 200
@@ -94,7 +98,10 @@ def test_noise_only_stream_matches_instrument_variance():
 def test_residual_spectra_rejects_unknown_channels():
     import runs
 
-    for bad in ({"A": np.zeros(8)}, {"E": np.zeros(8), "A": np.zeros(8)},
-                {"A": np.zeros(8), "E": np.zeros(8), "X": np.zeros(8)}):
+    for bad in (
+        {"A": np.zeros(8)},
+        {"E": np.zeros(8), "A": np.zeros(8)},
+        {"A": np.zeros(8), "E": np.zeros(8), "X": np.zeros(8)},
+    ):
         with pytest.raises(ValueError):
             runs.residual_spectra(bad, "unused", T=1.0, lo=1, hi=4)

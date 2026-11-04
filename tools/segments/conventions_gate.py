@@ -90,7 +90,8 @@ def match_source(native, spectra, T, n_freq, backend, min_bw=GATE_MIN_BW):
 def bright_isolated(population, T, n_freq, count, path):
     """Return ``(indices, skipped)``: the brightest sources with no rival above
     5% SNR and ``f < MAX_BRIGHT_HZ``, and ``(name, f)`` of catalogue sources
-    above the cap that outrank the picks (the stream carries no power there)."""
+    above the cap that outrank the picks (the stream carries no power there).
+    """
     fields = ("Frequency", "FrequencyDerivative", "Amplitude", "EclipticLatitude")
     cat = sangria.load_catalogue(population, fields, path)
     f, a = cat["Frequency"], cat["Amplitude"]
@@ -104,8 +105,12 @@ def bright_isolated(population, T, n_freq, count, path):
         bw = max(
             GATE_MIN_BW,
             ucb_bw(
-                f[i], cat["FrequencyDerivative"][i], np.sin(cat["EclipticLatitude"][i]),
-                a[i], T, n_freq,
+                f[i],
+                cat["FrequencyDerivative"][i],
+                np.sin(cat["EclipticLatitude"][i]),
+                a[i],
+                T,
+                n_freq,
             ),
         )
         lo, hi = np.searchsorted(f_sorted, [f[i] - bw / T, f[i] + bw / T])
@@ -118,7 +123,8 @@ def bright_isolated(population, T, n_freq, count, path):
     if high.size:
         names = sangria.load_catalogue(population, ("Name",), path, index=high)["Name"]
         skipped = [
-            (int(n), float(f[i])) for n, i in zip(np.ravel(names), sorted(high.tolist()))
+            (int(n), float(f[i]))
+            for n, i in zip(np.ravel(names), sorted(high.tolist()))
         ]
     return sorted(picked), skipped
 
@@ -177,9 +183,7 @@ def run(path: Path, count: int) -> dict:
         for e in entries
         if e["neighbours_in_window"] == 0
     ]
-    report["worst_match"] = {
-        b: min(e[b]["match"] for e in isolated) for b in BACKENDS
-    }
+    report["worst_match"] = {b: min(e[b]["match"] for e in isolated) for b in BACKENDS}
     return report
 
 

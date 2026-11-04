@@ -35,7 +35,9 @@ class SegmentPrior:
         comps = rows.reshape(rows.shape[0], self.k_max, 8)
         wrapped = self.prior.wrap(comps)
         with np.errstate(invalid="ignore"):
-            inside = np.all((wrapped >= self.prior.lo) & (wrapped <= self.prior.hi), axis=-1)
+            inside = np.all(
+                (wrapped >= self.prior.lo) & (wrapped <= self.prior.hi), axis=-1
+            )
         active = np.arange(self.k_max)[None, :] < ks[:, None]
         ok = np.all(inside | ~active, axis=1) & (ks >= self.k_min) & (ks <= self.k_max)
         return np.where(ok, self.log_pk + ks * self.log_component, -np.inf)

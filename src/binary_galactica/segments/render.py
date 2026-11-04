@@ -10,8 +10,9 @@ on-fly response grid is resolved from the concrete ``T`` before compiling.
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -50,15 +51,26 @@ class Contribution:
         out = np.zeros((self.values.shape[0], bin_hi - bin_lo), dtype=np.complex128)
         lo, hi = max(bin_lo, self.bin_lo), min(bin_hi, self.bin_hi)
         if hi > lo:
-            out[:, lo - bin_lo : hi - bin_lo] = self.values[:, lo - self.bin_lo : hi - self.bin_lo]
+            out[:, lo - bin_lo : hi - bin_lo] = self.values[
+                :, lo - self.bin_lo : hi - self.bin_lo
+            ]
         return out
 
 
-@functools.lru_cache(maxsize=None)
-def _renderer(BW: int, backend: str, fmt: str, response_samples: int | None) -> Callable[..., Any]:
+@functools.cache
+def _renderer(
+    BW: int, backend: str, fmt: str, response_samples: int | None
+) -> Callable[..., Any]:
     def one(p, T, t0):
-        w = ucb_waveform(p, T=T, BW=BW, t0=t0, fmt=fmt, backend=backend,
-                         response_samples=response_samples)
+        w = ucb_waveform(
+            p,
+            T=T,
+            BW=BW,
+            t0=t0,
+            fmt=fmt,
+            backend=backend,
+            response_samples=response_samples,
+        )
         c = GLASS_TO_CONTINUOUS(T)
         t = (w["X"] + w["Y"] + w["Z"]) * INV_SQ3
         return w["freq_bin_indices"], c * jnp.stack([w["A"], w["E"], t])
@@ -99,9 +111,9 @@ def render_sources(
         return Contribution.empty(n_channels)
     resolved = _response_samples(float(T), backend, response_samples)
     batch = np.concatenate([x, np.repeat(x[:1], quantize_bins(n) - n, axis=0)])
-    idx, vals = _renderer(int(BW), backend, fmt, None if resolved is None else int(resolved))(
-        jnp.asarray(batch), jnp.float64(T), jnp.float64(t0)
-    )
+    idx, vals = _renderer(
+        int(BW), backend, fmt, None if resolved is None else int(resolved)
+    )(jnp.asarray(batch), jnp.float64(T), jnp.float64(t0))
     idx = np.asarray(idx)[:n]
     vals = np.asarray(vals)[:n, :n_channels]
     if not (np.all(np.isfinite(idx)) and np.all(np.isfinite(vals))):

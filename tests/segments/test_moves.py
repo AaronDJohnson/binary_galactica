@@ -40,7 +40,9 @@ class _Layout:
 def _stats(row, rng, chain=0):
     view = np.asarray(row, dtype=float).view()
     view.flags.writeable = False
-    return SimpleNamespace(current_sample=view, layout=_Layout, rng=rng, chain_index=chain)
+    return SimpleNamespace(
+        current_sample=view, layout=_Layout, rng=rng, chain_index=chain
+    )
 
 
 def _covering_bank(rng):
@@ -94,8 +96,10 @@ def test_segment_prior_matches_box_prior():
     x[1, :8] = PRIOR.sample(rng)
     out = sp(x, np.array([2, 1]))
     expected = -np.log(4) + np.array(
-        [PRIOR.log_prior(x[0, :8]) + PRIOR.log_prior(x[0, 8:16]),
-         PRIOR.log_prior(x[1, :8])]
+        [
+            PRIOR.log_prior(x[0, :8]) + PRIOR.log_prior(x[0, 8:16]),
+            PRIOR.log_prior(x[1, :8]),
+        ]
     )
     np.testing.assert_allclose(out, expected, rtol=1e-14)
     bad = x.copy()
@@ -116,7 +120,9 @@ def test_floor_eigenvalues_bounds_unit_steps():
 
 def test_bank_lookup_nearest_within_range():
     bank = FisherBank(2, match_bins=4.0)
-    bank.store(1, np.array([1010.0, 1020.0]), np.ones((2, 8)), np.tile(np.eye(8), (2, 1, 1)))
+    bank.store(
+        1, np.array([1010.0, 1020.0]), np.ones((2, 8)), np.tile(np.eye(8), (2, 1, 1))
+    )
     assert bank.lookup(1, 1013.9) == 0
     assert bank.lookup(1, 1016.0) == 1
     assert bank.lookup(1, 1030.0) is None
@@ -137,7 +143,11 @@ def test_move_contract(name):
     row[-1] = 1
     for _ in range(50):
         out, qxy = move(_stats(row, rng))
-        assert out[-1] == 1 and np.all(np.isnan(out[8:-1])) and np.all(np.isfinite(out[:8]))
+        assert (
+            out[-1] == 1
+            and np.all(np.isnan(out[8:-1]))
+            and np.all(np.isfinite(out[:8]))
+        )
         assert not np.shares_memory(out, row)
 
 

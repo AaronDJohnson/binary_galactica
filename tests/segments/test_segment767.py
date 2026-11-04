@@ -6,8 +6,8 @@ from .support import SANGRIA, requires_sangria
 
 @requires_sangria
 def test_start_rows_match_the_npz():
-    import segment767
     import sangria
+    import segment767
 
     if not segment767.NPZ.exists():
         pytest.skip("Segment767 npz not found; set BG_SEGMENT767")

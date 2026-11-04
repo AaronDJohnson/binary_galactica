@@ -51,7 +51,9 @@ def grid(path: Path = DEFAULT_PATH) -> tuple[int, float]:
         return int(ds.shape[0]), float(t[1] - t[0])
 
 
-def load_xyz(stream: str, path: Path = DEFAULT_PATH) -> tuple[dict[str, np.ndarray], float]:
+def load_xyz(
+    stream: str, path: Path = DEFAULT_PATH
+) -> tuple[dict[str, np.ndarray], float]:
     """Return ``({"X", "Y", "Z"} -> samples, dt)`` for one stream."""
     import h5py
 

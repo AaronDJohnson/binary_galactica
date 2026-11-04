@@ -37,15 +37,23 @@ def _check_rules(table):
 
 def test_doppler_and_padding_rule():
     f, fdot = 4e-3, 2e-16
-    expected = 2 * T * ((4 + 2 * np.pi * f * 1.49597870700e11 / 299792458.0)
-                        / 3.15581497632e7 + fdot * T)
+    expected = (
+        2
+        * T
+        * (
+            (4 + 2 * np.pi * f * 1.49597870700e11 / 299792458.0) / 3.15581497632e7
+            + fdot * T
+        )
+    )
     assert doppler_bins(f, fdot, T) == pytest.approx(expected, rel=1e-12)
     assert padding_bins(f, -fdot, T) == math.ceil(2 * expected)
 
 
 def test_sparse_sources_fill_n_target():
     qs = 120_000 + 80.0 * np.arange(205) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     _check_rules(table)
     counts = [len(seg.owned) for seg in table.segments]
     assert all(c == 10 for c in counts[:-1]) and 0 < counts[-1] <= 10
@@ -54,7 +62,9 @@ def test_sparse_sources_fill_n_target():
 
 def test_ownership_is_half_open_and_unique():
     qs = 120_000 + 80.0 * np.arange(60) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     owners = table.owners(qs)
     assert np.all(owners >= 0)
     for i, q in enumerate(qs):
@@ -105,13 +115,18 @@ def test_explicit_band_lists_outside_sources():
 
 def test_window_touching_dc_raises():
     with pytest.raises(ValueError, match="grid"):
-        build_segment_table(_sources([3.5]), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+        build_segment_table(
+            _sources([3.5]), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+        )
 
 
 def test_source_outside_prior_raises():
     with pytest.raises(ValueError, match="prior"):
         build_segment_table(
-            _sources([120_000.5], lnA=-60.0), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+            _sources([120_000.5], lnA=-60.0),
+            T=T,
+            n_freq=N_FREQ,
+            config=UCBBlockConfig(),
         )
 
 
@@ -136,12 +151,16 @@ def test_too_narrow_explicit_band_raises():
 
 def test_empty_start_set_needs_band():
     with pytest.raises(ValueError, match="band_bins"):
-        build_segment_table(np.empty((0, 8)), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+        build_segment_table(
+            np.empty((0, 8)), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+        )
 
 
 def test_json_round_trip(tmp_path):
     qs = 120_000 + 80.0 * np.arange(30) + 0.37
-    table = build_segment_table(_sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    table = build_segment_table(
+        _sources(qs), T=T, n_freq=N_FREQ, config=UCBBlockConfig()
+    )
     path = tmp_path / "segment_table.json"
     table.write(path)
     assert SegmentTable.read(path) == table
@@ -151,5 +170,12 @@ def test_segment_owns_scalars_and_arrays():
     import numpy as np
 
     seg = Segment(index=0, lo=10, hi=20, pad=3, bw=16, k_max=10, owned=())
-    assert seg.owns(10.0) and seg.owns(19.9) and not seg.owns(20.0) and not seg.owns(9.9)
-    assert list(seg.owns(np.array([9.0, 10.0, 15.0, 20.0]))) == [False, True, True, False]
+    assert (
+        seg.owns(10.0) and seg.owns(19.9) and not seg.owns(20.0) and not seg.owns(9.9)
+    )
+    assert list(seg.owns(np.array([9.0, 10.0, 15.0, 20.0]))) == [
+        False,
+        True,
+        True,
+        False,
+    ]

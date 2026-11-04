@@ -27,10 +27,12 @@ from binary_galactica.segments import UCBBlock, UCBBlockConfig
 HALF_WIDTH = runs.HALF_WIDTH
 NOISE_REFERENCE = runs.NOISE_REFERENCE
 
-GLASS_DIR = Path(os.environ.get(
-    "BG_GLASS_DIR",
-    str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
-))
+GLASS_DIR = Path(
+    os.environ.get(
+        "BG_GLASS_DIR",
+        str(Path.home() / "Documents/lisa/project-catalog/data/old/glass_h5_files"),
+    )
+)
 MARGIN = runs.MARGIN
 SPAN = 300
 
@@ -42,7 +44,9 @@ def glass_segments(count: int, fmin=3e-3, fmax=5e-3, nmin=8, nmax=20):
     det = pd.read_hdf(GLASS_DIR / "UCB.h5", "detections")
     det = det[(det["Frequency"] >= fmin) & (det["Frequency"] < fmax)]
     sizes = det.groupby("segment").size()
-    chosen = sorted(int(s) for s in sizes[(sizes >= nmin) & (sizes <= nmax)].index)[:count]
+    chosen = sorted(int(s) for s in sizes[(sizes >= nmin) & (sizes <= nmax)].index)[
+        :count
+    ]
     return det, chosen
 
 
@@ -71,14 +75,19 @@ def _nearest_catalogue(path, T, q, start):
         return None
     j = int(np.argmin(np.abs(rows["Frequency"] * T - q)))
     r = rows[j]
-    return {"name": str(r["Name"]), "f": float(r["Frequency"]),
-            "lnA": float(np.log(r["Amplitude"])),
-            "analytic_snr": float(runs.analytic_snrs(r["Frequency"], r["Amplitude"], T)),
-            "distance_bins": float(r["Frequency"] * T - q),
-            "in_start_set": bool(r["Name"] in set(start["Name"]))}
+    return {
+        "name": str(r["Name"]),
+        "f": float(r["Frequency"]),
+        "lnA": float(np.log(r["Amplitude"])),
+        "analytic_snr": float(runs.analytic_snrs(r["Frequency"], r["Amplitude"], T)),
+        "distance_bins": float(r["Frequency"] * T - q),
+        "in_start_set": bool(r["Name"] in set(start["Name"])),
+    }
 
 
-def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path):
+def compare_segment(
+    seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path
+):
     """Run the block on one GLASS segment's band and compare every detection."""
     rows_g = det[det["segment"] == seg_index]
     q = rows_g["Frequency"].to_numpy() * T
@@ -86,14 +95,25 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
     band, start = runs.target_band(path, T=T, core=core, span=SPAN)
     config = UCBBlockConfig(band_bins=band, steps_per_turn=steps)
     a, b = band[0] - MARGIN, band[1] + MARGIN
-    resid, _ = runs.residual_spectra(spectra, path, T=T, lo=a - HALF_WIDTH, hi=b + HALF_WIDTH)
-    cov = runs.covariance(data, runs.running_median_variance(resid, a, b, HALF_WIDTH), a, b)
-    block = UCBBlock(grid=data, start_sources=start, outdir=outdir / f"glass_{seg_index}",
-                     config=config, reference_covariance=cov)
+    resid, _ = runs.residual_spectra(
+        spectra, path, T=T, lo=a - HALF_WIDTH, hi=b + HALF_WIDTH
+    )
+    cov = runs.covariance(
+        data, runs.running_median_variance(resid, a, b, HALF_WIDTH), a, b
+    )
+    block = UCBBlock(
+        grid=data,
+        start_sources=start,
+        outdir=outdir / f"glass_{seg_index}",
+        config=config,
+        reference_covariance=cov,
+    )
     segs = block.table.segments
     if segs[0].bin_lo < a or segs[-1].bin_hi > b:
-        raise RuntimeError(f"padded band {segs[0].bin_lo}..{segs[-1].bin_hi} exceeds "
-                           f"the running-median range {a}..{b}")
+        raise RuntimeError(
+            f"padded band {segs[0].bin_lo}..{segs[-1].bin_hi} exceeds "
+            f"the running-median range {a}..{b}"
+        )
     runs.inner_segments(block, core)
     t_start = time.time()
     _, seconds = runs.run_block(block, data, cov, turns, seed)
@@ -111,34 +131,54 @@ def compare_segment(seg_index, det, spectra, data, *, T, turns, steps, seed, out
             ours, frac = _counterpart(chain, float(np.median(gf)) * T)
         else:
             ours, frac = np.empty((0, 8)), 0.0
-        entry = {"name": name, "glass_snr": float(row["SNR"]), "found_fraction": frac,
-                 "owner_segment": int(segs[owner].index) if owner >= 0 else None,
-                 "glass_f": [float(np.median(gf)), float(np.std(gf))],
-                 "glass_lnA": [float(np.median(glnA)), float(np.std(glnA))]}
+        entry = {
+            "name": name,
+            "glass_snr": float(row["SNR"]),
+            "found_fraction": frac,
+            "owner_segment": int(segs[owner].index) if owner >= 0 else None,
+            "glass_f": [float(np.median(gf)), float(np.std(gf))],
+            "glass_lnA": [float(np.median(glnA)), float(np.std(glnA))],
+        }
         if len(ours) > 1:
             of, olnA = ours[:, 0] / T, ours[:, 3]
             entry["block_f"] = [float(np.median(of)), float(np.std(of))]
             entry["block_lnA"] = [float(np.median(olnA)), float(np.std(olnA))]
             entry["sep_f"] = abs(entry["block_f"][0] - entry["glass_f"][0]) / np.hypot(
-                entry["block_f"][1], entry["glass_f"][1])
-            entry["sep_lnA"] = abs(entry["block_lnA"][0] - entry["glass_lnA"][0]) / np.hypot(
-                entry["block_lnA"][1], entry["glass_lnA"][1])
+                entry["block_f"][1], entry["glass_f"][1]
+            )
+            entry["sep_lnA"] = abs(
+                entry["block_lnA"][0] - entry["glass_lnA"][0]
+            ) / np.hypot(entry["block_lnA"][1], entry["glass_lnA"][1])
         if len(inj_q):
             j = int(np.argmin(np.abs(inj_q - qd)))
             inj_name = str(start["Name"][j])
-            entry["injection"] = {"name": inj_name, "f": float(start["Frequency"][j]),
-                                  "lnA": float(np.log(start["Amplitude"][j])),
-                                  "dropped": inj_name in dropped,
-                                  "block_snr": dropped.get(inj_name)}
+            entry["injection"] = {
+                "name": inj_name,
+                "f": float(start["Frequency"][j]),
+                "lnA": float(np.log(start["Amplitude"][j])),
+                "dropped": inj_name in dropped,
+                "block_snr": dropped.get(inj_name),
+            }
         if frac < 0.5:
             entry["nearest_catalogue"] = _nearest_catalogue(path, T, qd, start)
-        entry["overlap"] = bool(frac >= 0.5 and entry.get("sep_f", np.inf) < 3
-                                and entry.get("sep_lnA", np.inf) < 3)
+        entry["overlap"] = bool(
+            frac >= 0.5
+            and entry.get("sep_f", np.inf) < 3
+            and entry.get("sep_lnA", np.inf) < 3
+        )
         out.append(entry)
-    return {"segment": seg_index, "band": list(band), "core": list(core), "span": SPAN,
-            "edge_segments": [segs[0].index, segs[-1].index], "n_start": len(start),
-            "n_dropped": len(block.dropped), "seconds_per_turn": seconds,
-            "minutes": minutes, "detections": out}
+    return {
+        "segment": seg_index,
+        "band": list(band),
+        "core": list(core),
+        "span": SPAN,
+        "edge_segments": [segs[0].index, segs[-1].index],
+        "n_start": len(start),
+        "n_dropped": len(block.dropped),
+        "seconds_per_turn": seconds,
+        "minutes": minutes,
+        "detections": out,
+    }
 
 
 def main() -> None:
@@ -155,29 +195,53 @@ def main() -> None:
     data = runs.frequency_data(spectra, n, dt)
     det, chosen = glass_segments(args.segments)
     outdir = Path(tempfile.mkdtemp(prefix="glass-compare-"))
-    results = [compare_segment(s, det, spectra, data, T=T, turns=args.turns,
-                               steps=args.steps, seed=args.seed + s, outdir=outdir,
-                               path=args.path) for s in chosen]
+    results = [
+        compare_segment(
+            s,
+            det,
+            spectra,
+            data,
+            T=T,
+            turns=args.turns,
+            steps=args.steps,
+            seed=args.seed + s,
+            outdir=outdir,
+            path=args.path,
+        )
+        for s in chosen
+    ]
     bright = [d for r in results for d in r["detections"] if d["glass_snr"] >= 10]
     fraction = float(np.mean([d["overlap"] for d in bright])) if bright else 0.0
-    report = {"noise_reference": NOISE_REFERENCE, "T_block": T, "T_glass": 31_457_280.0, "segments": results,
-              "n_bright": len(bright), "bright_overlap_fraction": fraction,
-              "pass": len(bright) >= 1 and fraction >= 0.8}
+    report = {
+        "noise_reference": NOISE_REFERENCE,
+        "T_block": T,
+        "T_glass": 31_457_280.0,
+        "segments": results,
+        "n_bright": len(bright),
+        "bright_overlap_fraction": fraction,
+        "pass": len(bright) >= 1 and fraction >= 0.8,
+    }
     runs.write_report("segments-glass-compare.json", report)
     for r in results:
-        print(f"GLASS segment {r['segment']} band {r['band']} core {r['core']} "
-              f"start={r['n_start']} dropped={r['n_dropped']} minutes={r['minutes']:.1f}")
+        print(
+            f"GLASS segment {r['segment']} band {r['band']} core {r['core']} "
+            f"start={r['n_start']} dropped={r['n_dropped']} minutes={r['minutes']:.1f}"
+        )
         for d in r["detections"]:
             inj = d.get("injection", {})
-            print(f"  {d['name']} snr={d['glass_snr']:6.1f} found={d['found_fraction']:.2f} "
-                  f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']} "
-                  f"inj={inj.get('name')} inj_dropped={inj.get('dropped')} "
-                  f"inj_block_snr={inj.get('block_snr')}")
+            print(
+                f"  {d['name']} snr={d['glass_snr']:6.1f} found={d['found_fraction']:.2f} "
+                f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']} "
+                f"inj={inj.get('name')} inj_dropped={inj.get('dropped')} "
+                f"inj_block_snr={inj.get('block_snr')}"
+            )
             if "nearest_catalogue" in d:
                 print(f"    MISS nearest catalogue: {d['nearest_catalogue']}")
     if not bright:
         print("VACUOUS: no GLASS detection has SNR >= 10")
-    print(f"n_bright {len(bright)}; bright overlap fraction {fraction:.2f}; run directory: {outdir}")
+    print(
+        f"n_bright {len(bright)}; bright overlap fraction {fraction:.2f}; run directory: {outdir}"
+    )
     print("PASS" if report["pass"] else "FAIL")
     sys.exit(0 if report["pass"] else 1)
 

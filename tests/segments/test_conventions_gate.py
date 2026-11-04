@@ -19,7 +19,9 @@ def test_bright_verification_binaries_match():
     for name in ("HPLib", "SDSSJ0651", "V407Vul"):
         j = names.index(name)
         for backend in ("fourier", "onfly"):
-            result = conventions_gate.match_source(native[j], spectra, T, n_freq, backend)
+            result = conventions_gate.match_source(
+                native[j], spectra, T, n_freq, backend
+            )
             assert result["match"] > 0.999, (name, backend, result)
             scale = complex(*result["scale"])
             assert abs(scale - 1.0) < 2e-3, (name, backend, result)

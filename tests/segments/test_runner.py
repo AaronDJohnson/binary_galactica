@@ -23,9 +23,14 @@ def _window(seed=0, offset=0.0):
     f = (SEG.bin_lo + np.arange(n)) / T_SHORT
     c = np.stack([0.5 * T_SHORT * ae_noise(f)] * 2)
     rng = np.random.default_rng(seed)
-    noise = np.sqrt(c / 2) * (rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape))
-    h = np.asarray(template_on_window(SOURCE, T=T_SHORT, bin_lo=SEG.bin_lo, n_bins=n,
-                                      BW=SEG.bw, backend="onfly"))
+    noise = np.sqrt(c / 2) * (
+        rng.standard_normal(c.shape) + 1j * rng.standard_normal(c.shape)
+    )
+    h = np.asarray(
+        template_on_window(
+            SOURCE, T=T_SHORT, bin_lo=SEG.bin_lo, n_bins=n, BW=SEG.bw, backend="onfly"
+        )
+    )
     return noise + h + offset * np.sqrt(c), c
 
 
@@ -61,12 +66,21 @@ def test_archive_refuses_a_used_directory(tmp_path):
 def test_fixed_count_smoke(tmp_path):
     rj_impulse()
     r, c = _window()
-    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
-                           config=_config(birth_death=False), outdir=tmp_path, seed=1,
-                           reference=c)
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(birth_death=False),
+        outdir=tmp_path,
+        seed=1,
+        reference=c,
+    )
     runner.advance(r, c)
     assert runner.ks.tolist() == [1, 1]
-    assert np.all(np.isfinite(runner.cold_sources())) and runner.cold_sources().shape == (1, 8)
+    assert np.all(
+        np.isfinite(runner.cold_sources())
+    ) and runner.cold_sources().shape == (1, 8)
     assert runner.bank.count(0) == 1 and runner.bank.count(1) == 1
     chain = runner.archive.load()
     assert chain["samples"].shape == (50, 8)
@@ -78,15 +92,24 @@ def test_fixed_count_smoke(tmp_path):
 def test_positions_and_counts_carry_over_between_turns(tmp_path):
     rj_impulse()
     r, c = _window()
-    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
-                           config=_config(steps_per_turn=20), outdir=tmp_path, seed=5,
-                           reference=c)
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(steps_per_turn=20),
+        outdir=tmp_path,
+        seed=5,
+        reference=c,
+    )
     calls = []
     original = runner.sampler.sample
 
     def spy(initial_position, num_iterations, thin=1, initial_k=None):
         calls.append((np.array(initial_position), np.array(initial_k)))
-        return original(initial_position, num_iterations, thin=thin, initial_k=initial_k)
+        return original(
+            initial_position, num_iterations, thin=thin, initial_k=initial_k
+        )
 
     runner.sampler.sample = spy
     runner.advance(r, c)
@@ -104,9 +127,16 @@ def test_positions_and_counts_carry_over_between_turns(tmp_path):
 def test_residual_change_recomputes_likelihoods(tmp_path):
     rj_impulse()
     r, c = _window()
-    runner = SegmentRunner(SEG, SOURCE[None], T=T_SHORT, t0=0.0,
-                           config=_config(steps_per_turn=5), outdir=tmp_path, seed=2,
-                           reference=c)
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(steps_per_turn=5),
+        outdir=tmp_path,
+        seed=2,
+        reference=c,
+    )
     runner.advance(r, c)
     r2, _ = _window(offset=50.0)
     runner.advance(r2, c)
@@ -118,8 +148,16 @@ def test_prior_only_count_is_uniform(tmp_path):
     rj_impulse()
     stats = pytest.importorskip("scipy.stats")
     cfg = _config(ntemps=1, steps_per_turn=20_000, thin=10)
-    runner = SegmentRunner(SEG, np.empty((0, 8)), T=T_SHORT, t0=0.0, config=cfg,
-                           outdir=tmp_path, seed=3, prior_only=True)
+    runner = SegmentRunner(
+        SEG,
+        np.empty((0, 8)),
+        T=T_SHORT,
+        t0=0.0,
+        config=cfg,
+        outdir=tmp_path,
+        seed=3,
+        prior_only=True,
+    )
     runner.advance()
     chain = runner.archive.load()
     freq = np.bincount(chain["k"], minlength=4) / chain["k"].size
@@ -133,6 +171,13 @@ def test_prior_only_count_is_uniform(tmp_path):
 
 def test_fixed_count_needs_sources(tmp_path):
     with pytest.raises(ValueError, match="start source"):
-        SegmentRunner(SEG, np.empty((0, 8)), T=T_SHORT, t0=0.0,
-                      config=_config(birth_death=False), outdir=tmp_path, seed=4,
-                      prior_only=True)
+        SegmentRunner(
+            SEG,
+            np.empty((0, 8)),
+            T=T_SHORT,
+            t0=0.0,
+            config=_config(birth_death=False),
+            outdir=tmp_path,
+            seed=4,
+            prior_only=True,
+        )

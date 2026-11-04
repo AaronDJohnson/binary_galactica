@@ -118,9 +118,7 @@ class SegmentTable:
             "T": self.T,
             "n_freq": self.n_freq,
             "outside": list(self.outside),
-            "segments": [
-                {**asdict(s), "owned": list(s.owned)} for s in self.segments
-            ],
+            "segments": [{**asdict(s), "owned": list(s.owned)} for s in self.segments],
         }
 
     @classmethod
@@ -146,7 +144,9 @@ class SegmentTable:
         return cls.from_dict(json.loads(Path(path).read_text()))
 
 
-def _tile(qs: NDArray[np.float64], lo: int, hi: int, n_target: int, min_w: int) -> list[int]:
+def _tile(
+    qs: NDArray[np.float64], lo: int, hi: int, n_target: int, min_w: int
+) -> list[int]:
     """Return interior edges from the greedy midpoint rule over sorted ``qs``."""
     edges = [lo]
     cursor = lo
@@ -233,8 +233,9 @@ def build_segment_table(
     inside = (q >= band_lo) & (q < band_hi)
     members = np.nonzero(inside)[0]
     outside = tuple(int(i) for i in np.nonzero(~inside)[0])
-    edges = _tile(np.sort(q[members]), band_lo, band_hi, config.n_target,
-                  config.min_interior_bins)
+    edges = _tile(
+        np.sort(q[members]), band_lo, band_hi, config.n_target, config.min_interior_bins
+    )
 
     while True:
         owned = _owned(edges, q, members)
@@ -258,7 +259,9 @@ def build_segment_table(
         del edges[max(bad, neighbour)]
 
     segments = []
-    for s, ((a, b), own, pad) in enumerate(zip(zip(edges[:-1], edges[1:]), owned, pads)):
+    for s, ((a, b), own, pad) in enumerate(
+        zip(zip(edges[:-1], edges[1:]), owned, pads)
+    ):
         n_bins = (b - a) + 2 * pad
         if a - pad < 1 or b + pad > n_freq - 1:
             raise ValueError(
@@ -287,8 +290,9 @@ def build_segment_table(
                 f"start sources {outside_prior} lie outside the prior of segment {s}"
             )
         segments.append(seg)
-    return SegmentTable(T=float(T), n_freq=int(n_freq), segments=tuple(segments),
-                        outside=outside)
+    return SegmentTable(
+        T=float(T), n_freq=int(n_freq), segments=tuple(segments), outside=outside
+    )
 
 
 __all__ = [

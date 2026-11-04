@@ -494,15 +494,17 @@ the sampler with `python -m pip install -e ".[segments]"`; it needs impulse with
 from binary_galactica.segments import UCBBlock, UCBBlockConfig
 
 block = UCBBlock(
-    grid=l1_data,                       # channels ("A", "E") or ("A", "E", "T")
-    start_sources=catalogue_rows,       # LDC rows with the sky/dgb/cat fields
+    grid=l1_data,  # channels ("A", "E") or ("A", "E", "T")
+    start_sources=catalogue_rows,  # LDC rows with the sky/dgb/cat fields
     outdir="runs/ucb",
-    config=UCBBlockConfig(),            # written to runs/ucb/config.json
+    config=UCBBlockConfig(),  # written to runs/ucb/config.json
     reference_covariance=starting_cov,  # fixes the SNR < 5 cut for the run
 )
-wheel.add(block_to_register=block,
-          initial_block_state=block.initial_block_state(frequency_l1_data),
-          data_domain="frequency")
+wheel.add(
+    block_to_register=block,
+    initial_block_state=block.initial_block_state(frequency_l1_data),
+    data_domain="frequency",
+)
 ```
 
 Each `sample()` call is one Gibbs turn:
