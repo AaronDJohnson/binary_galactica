@@ -1,3 +1,5 @@
+"""Catalogue rows convert to native parameters and back."""
+
 import numpy as np
 import pytest
 

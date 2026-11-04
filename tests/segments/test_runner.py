@@ -1,3 +1,5 @@
+"""The segment runner archives chains and carries state across turns."""
+
 import re
 
 import numpy as np
@@ -144,6 +146,7 @@ def test_residual_change_recomputes_likelihoods(tmp_path):
     np.testing.assert_allclose(runner.sampler.state.lnlikes, expected, rtol=1e-12)
 
 
+@pytest.mark.slow
 def test_prior_only_count_is_uniform(tmp_path):
     rj_impulse()
     stats = pytest.importorskip("scipy.stats")

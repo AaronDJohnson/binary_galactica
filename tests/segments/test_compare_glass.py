@@ -1,8 +1,11 @@
+"""The compare_glass tool agrees with GLASS on segments and chains."""
+
 import pytest
 
 from .support import TOOLS  # noqa: F401  (puts tools/segments on sys.path)
 
 
+@pytest.mark.slow
 def test_glass_segments_and_chains():
     pytest.importorskip("pandas")
     pytest.importorskip("tables")

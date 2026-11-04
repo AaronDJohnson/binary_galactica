@@ -1,10 +1,14 @@
+"""The conventions gate matches the bright verification binaries."""
+
 import numpy as np
+import pytest
 
 from binary_galactica.segments import CATALOGUE_FIELDS, ldc_to_native
 
 from .support import SANGRIA, requires_sangria
 
 
+@pytest.mark.slow
 @requires_sangria
 def test_bright_verification_binaries_match():
     import conventions_gate

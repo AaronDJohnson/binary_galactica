@@ -1,3 +1,5 @@
+"""The UCB block sweeps segments, publishes owned sources and survives failures."""
+
 import importlib
 import json
 from types import SimpleNamespace
@@ -51,7 +53,10 @@ def _cov(channels=CHANNELS):
 def _rows(qs=QS, amplitudes=None):
     amplitudes = amplitudes or [np.exp(-48.0)] * len(qs)
     rows = np.concatenate(
-        [ldc_rows(Frequency=q / T_SHORT, Amplitude=a) for q, a in zip(qs, amplitudes)]
+        [
+            ldc_rows(Frequency=q / T_SHORT, Amplitude=a)
+            for q, a in zip(qs, amplitudes, strict=True)
+        ]
     )
     return rows
 
@@ -80,7 +85,7 @@ class _Noise:
         return ae_noise(f)
 
 
-class _InjectedFailure(Exception):
+class _InjectedFailureError(Exception):
     pass
 
 
@@ -112,7 +117,7 @@ class _FakeRunner:
 
     def advance(self, residual, c):
         if _FakeRunner.fail is not None and len(_FakeRunner.calls) == _FakeRunner.fail:
-            raise _InjectedFailure(f"segment {self.segment.index}")
+            raise _InjectedFailureError(f"segment {self.segment.index}")
         _FakeRunner.calls.append((self.segment.index, np.array(residual)))
 
     def cold_sources(self):
@@ -280,7 +285,9 @@ def test_sweep_subtracts_updated_neighbours(tmp_path, fake_runner):
     )
 
     published = [moved[0], block.start_native[[1]], moved[2]]
-    expected = sum(_render(x, s).window(0, N_FREQ) for x, s in zip(published, segs))
+    expected = sum(
+        _render(x, s).window(0, N_FREQ) for x, s in zip(published, segs, strict=True)
+    )
     for j, ch in enumerate(CHANNELS):
         np.testing.assert_allclose(
             state.template[ch],
@@ -326,7 +333,7 @@ def test_refuses_to_continue_after_a_failed_sweep(tmp_path, fake_runner):
 
     fake_runner.calls = []
     fake_runner.fail = 1  # segment 0 advances, then segment 2's advance raises
-    with pytest.raises(_InjectedFailure, match="segment 2"):
+    with pytest.raises(_InjectedFailureError, match="segment 2"):
         block.sample(_grid(), _cov(), state, rng=rng)
     assert [s for s, _ in fake_runner.calls] == [0]
     assert block.turn == 1
@@ -467,6 +474,7 @@ def _check_block_run(tmp_path, rows, config):
     return block
 
 
+@pytest.mark.slow
 def test_check_block(tmp_path):
     config = UCBBlockConfig(
         band_bins=(2920, 2984), steps_per_turn=10, ntemps=2, hottest_temperature=10.0
@@ -474,6 +482,7 @@ def test_check_block(tmp_path):
     _check_block_run(tmp_path, _rows(qs=(2952.3,)), config)
 
 
+@pytest.mark.slow
 def test_check_block_three_segments(tmp_path):
     # Cross-segment subtraction on the real path: three sources, one per segment.
     block = _check_block_run(tmp_path, _rows(), _config())

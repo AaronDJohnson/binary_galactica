@@ -1,3 +1,5 @@
+"""The segment moves leave the prior invariant and obey the move contract."""
+
 from types import SimpleNamespace
 
 import numpy as np

@@ -1,3 +1,5 @@
+"""The run helpers select bands, subtract sources and predict noise."""
+
 from types import SimpleNamespace
 
 import numpy as np
@@ -6,6 +8,7 @@ import pytest
 from .support import SANGRIA, requires_sangria
 
 
+@pytest.mark.slow
 @requires_sangria
 def test_target_band():
     import runs
@@ -45,6 +48,7 @@ def test_inner_segments():
         )
 
 
+@pytest.mark.slow
 @requires_sangria
 def test_residual_spectra_removes_noise_free_sources():
     import runs
@@ -70,12 +74,13 @@ def test_residual_spectra_removes_noise_free_sources():
         np.testing.assert_array_equal(spectra[ch], before[ch])
 
 
+@pytest.mark.slow
 @requires_sangria
 def test_noise_only_stream_matches_instrument_variance():
     """Noise-only running median over the instrument variance, at four frequencies.
 
-    The measured ratios run 1.03-1.20 (Sangria's noise parameters against GLASS's SPS/SACC
-    defaults), which is why the bound [0.9, 1.35] is asymmetric about 1.
+    The measured ratios run 1.03-1.20 (Sangria's noise parameters against GLASS's
+    SPS/SACC defaults), which is why the bound [0.9, 1.35] is asymmetric about 1.
     """
     import runs
     import sangria

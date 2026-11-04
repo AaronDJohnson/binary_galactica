@@ -1,9 +1,12 @@
+"""The segment 767 tool reproduces the start rows of its reference file."""
+
 import numpy as np
 import pytest
 
 from .support import SANGRIA, requires_sangria
 
 
+@pytest.mark.slow
 @requires_sangria
 def test_start_rows_match_the_npz():
     import sangria

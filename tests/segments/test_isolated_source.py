@@ -1,3 +1,5 @@
+"""The isolated-source tool folds exact symmetries and runs a short chain."""
+
 import numpy as np
 import pytest
 
@@ -15,6 +17,7 @@ def test_fold_offsets_exposes_only_the_exact_symmetry():
     assert abs(out[1, 5]) < 1e-12 and abs(abs(out[1, 6]) - np.pi) < 1e-12
 
 
+@pytest.mark.slow
 def test_short_isolated_run(tmp_path):
     rj_impulse()
     pytest.importorskip("h5py")

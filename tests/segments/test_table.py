@@ -1,3 +1,5 @@
+"""The segment table fixes padding, ownership and merging."""
+
 import math
 
 import numpy as np
@@ -24,14 +26,14 @@ def _sources(qs, lnA=-50.0, fdot_T2=0.0):
 
 def _check_rules(table):
     segs = table.segments
-    for a, b in zip(segs[:-1], segs[1:]):
+    for a, b in zip(segs[:-1], segs[1:], strict=True):
         assert a.hi == b.lo
     for s, seg in enumerate(segs):
         left = segs[s - 1].pad if s > 0 else 0
         right = segs[s + 1].pad if s < len(segs) - 1 else 0
         assert seg.width >= max(seg.pad, left + right)
         assert seg.bw & (seg.bw - 1) == 0 and seg.bw <= seg.n_bins
-    for a, b in zip(segs[:-2], segs[2:]):
+    for a, b in zip(segs[:-2], segs[2:], strict=True):
         assert a.bin_hi <= b.bin_lo
 
 

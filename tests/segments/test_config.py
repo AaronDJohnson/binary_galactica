@@ -1,3 +1,5 @@
+"""The block configuration has the specified defaults and validation."""
+
 import json
 
 import pytest
