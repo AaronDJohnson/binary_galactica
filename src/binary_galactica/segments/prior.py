@@ -20,6 +20,7 @@ class SegmentPrior:
     """
 
     def __init__(self, prior: UCBPrior, k_max: int, k_min: int = 0) -> None:
+        """Store the box prior and the allowed range of source counts."""
         if not 0 <= int(k_min) <= int(k_max):
             raise ValueError("need 0 <= k_min <= k_max")
         self.prior = prior

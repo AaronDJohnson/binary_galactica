@@ -66,6 +66,7 @@ class ChainArchive:
     """
 
     def __init__(self, directory: str | Path) -> None:
+        """Open the archive directory, refusing one that already holds files."""
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         if self.files():
@@ -104,7 +105,10 @@ class ChainArchive:
             "k": np.concatenate([z["k"] for z in parts]),
             "lnlike": np.concatenate([z["lnlike"] for z in parts]),
             "turn": np.concatenate(
-                [np.full(z["k"].shape, t, dtype=np.int64) for z, t in zip(parts, turns)]
+                [
+                    np.full(z["k"].shape, t, dtype=np.int64)
+                    for z, t in zip(parts, turns, strict=True)
+                ]
             ),
         }
 
@@ -132,6 +136,7 @@ class SegmentRunner:
         reference: ArrayLike | None = None,
         prior_only: bool = False,
     ) -> None:
+        """Build the impulse sampler for one segment from its start sources."""
         start = np.asarray(start, dtype=np.float64).reshape(-1, 8)
         self.segment = segment
         self.config = config
@@ -252,7 +257,7 @@ class SegmentRunner:
         widths = self.prior.hi - self.prior.lo
         for c in range(len(rows)):
             qs, evalues, evectors = [], [], []
-            for src, F in zip(stack[owners == c], matrices[owners == c]):
+            for src, F in zip(stack[owners == c], matrices[owners == c], strict=True):
                 dec = fisher_decomposition(F, widths)
                 if dec is not None:
                     qs.append(src[0])
@@ -293,7 +298,8 @@ class SegmentRunner:
         )
         for path in (self.outdir / "impulse").glob("chain_*"):
             path.unlink()
-        # Free impulse's (ntemps, steps, D) ring buffer; every sample() call rebuilds it.
+        # Free impulse's (ntemps, steps, D) ring buffer; every sample() call
+        # rebuilds it.
         self.sampler.short_chain = None
         self.turn += 1
 

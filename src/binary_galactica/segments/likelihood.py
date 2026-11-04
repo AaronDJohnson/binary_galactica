@@ -179,6 +179,7 @@ class SegmentLikelihood:
         response_samples: int | None = None,
         snr_min: float = SNR_MIN,
     ) -> None:
+        """Validate the window and settings and prepare the template evaluator."""
         if int(n_bins) < 1 or int(k_max) < 1:
             raise ValueError("n_bins and k_max must be positive")
         if not _is_int(BW) or BW <= 0 or BW % 2:

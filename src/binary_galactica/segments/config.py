@@ -77,7 +77,8 @@ class UCBBlockConfig:
             object.__setattr__(self, name, int(value))
         if self.thin > self.steps_per_turn:
             raise ValueError(
-                f"thin must not exceed steps_per_turn={self.steps_per_turn}, got {self.thin}"
+                f"thin must not exceed steps_per_turn={self.steps_per_turn}, "
+                f"got {self.thin}"
             )
         if self.band_bins is not None:
             lo, hi = self.band_bins

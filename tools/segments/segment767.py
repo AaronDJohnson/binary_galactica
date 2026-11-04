@@ -140,7 +140,7 @@ def run(
             continue
         inj = ldc_to_native(own, T)
         found, counts = runs.recovery(chain, inj)
-        for entry, row, rho in zip(found, own, lik.snr(inj)):
+        for entry, row, rho in zip(found, own, lik.snr(inj), strict=True):
             entry.update(
                 snr=float(rho),
                 npz=bool(row["Name"] in npz_names),
@@ -162,7 +162,7 @@ def run(
             else by_name.get(name, {}).get("snr"),
             "recovered": by_name.get(name, {}).get("recovered"),
         }
-        for q, name in zip(npz_rows["Frequency"] * T, npz_rows["Name"])
+        for q, name in zip(npz_rows["Frequency"] * T, npz_rows["Name"], strict=True)
     ]
     report["criterion"] = {"snr_at_least": floor, "recovered_at_least": need}
     report["pass"] = report["n_at_floor"] >= 1 and all(
@@ -190,7 +190,8 @@ def main() -> None:
     for s in report["sources"]:
         print(
             f"seg={s['segment']:2d} q={s['q']:.2f} snr={s['snr']:6.1f} "
-            f"recovered={s['recovered']:.2f} dq={s['median_dq']} dlnA={s['median_dlnA']}"
+            f"recovered={s['recovered']:.2f} dq={s['median_dq']} "
+            f"dlnA={s['median_dlnA']}"
             f"{' npz' if s['npz'] else ''}"
         )
     print(
@@ -202,7 +203,8 @@ def main() -> None:
         report["n_evaluated"],
     )
     print(
-        f"n_at_floor (snr >= {report['criterion']['snr_at_least']}): {report['n_at_floor']}"
+        f"n_at_floor (snr >= {report['criterion']['snr_at_least']}): "
+        f"{report['n_at_floor']}"
     )
     if report["n_at_floor"] == 0:
         print("VACUOUS: no evaluated source reaches the SNR floor")

@@ -45,6 +45,7 @@ class FisherMove(SlotMove):
     """One eigendirection of the turn-fixed Fisher matrix nearest in frequency."""
 
     def __init__(self, bank: FisherBank) -> None:
+        """Store the Fisher bank the proposal reads."""
         self.bank = bank
 
     def propose(self, source, rng, chain):
@@ -68,6 +69,7 @@ class PriorRedrawMove(SlotMove):
     """
 
     def __init__(self, prior: UCBPrior) -> None:
+        """Store the prior the redraw samples from."""
         self.prior = prior
 
     def propose(self, source, rng, chain):
@@ -79,6 +81,7 @@ class FmShiftMove(SlotMove):
     """GLASS's annual-modulation sideband hop, with longitude jitter."""
 
     def __init__(self, T: float) -> None:
+        """Store the period ``T`` used to shift frequencies."""
         self.T = float(T)
 
     def propose(self, source, rng, chain):

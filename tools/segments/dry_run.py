@@ -72,7 +72,8 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
     spectra = sangria.aet_spectra(*sangria.combine(["obs"], ["mbhb", "vgb"], path))
     if sample < 3:
         raise ValueError(
-            "--sample must be at least 3 (evenly spaced picks plus the heaviest mid-band two)"
+            "--sample must be at least 3 "
+            "(evenly spaced picks plus the heaviest mid-band two)"
         )
     cost = np.array(
         [seg.k_max * quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64
@@ -148,8 +149,9 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
     tail = n_pads == n_pads.max()
     models = {"k_npad_nnls": float(per_seg.sum() * full_steps)}
     # Model 2: bulk cost scales with K (mean measured seconds per step per K over the
-    # samples below the heavy threshold); every segment at or above the smallest heavy
-    # sample's n_pad takes the measured time of the sample nearest in n_pad, scaled by K.
+    # samples below the heavy threshold); every segment at or above the smallest
+    # heavy sample's n_pad takes the measured time of the sample nearest in n_pad,
+    # scaled by K.
     thr = min(tn[heavy_idx])
     heavy_mask = n_pads >= thr
     bulk_t = [t for t in timings if t["n_pad"] < thr]
@@ -159,7 +161,8 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
         min(hv_t, key=lambda t: abs(np.log(t["n_pad"] / n))) for n in n_pads[heavy_mask]
     ]
     heavy_step = sum(
-        t["per_step_s"] * k / t["k_max"] for t, k in zip(nearest, ks_all[heavy_mask])
+        t["per_step_s"] * k / t["k_max"]
+        for t, k in zip(nearest, ks_all[heavy_mask], strict=True)
     )
     models["bulk_k_scaled_plus_measured_heavy"] = float(
         (bulk_rate * ks_all[~heavy_mask].sum() + heavy_step) * full_steps
@@ -191,12 +194,14 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
         "k_max": _stats([seg.k_max for seg in segs]),
         "owned": _stats([len(seg.owned) for seg in segs]),
         "memory_bytes": memory,
-        "memory_counted": "chain positions+counts and Fisher bank at k_max sources per chain, "
-        "float64, summed over segments; impulse short_chain, JAX executables and the "
+        "memory_counted": "chain positions+counts and Fisher bank at k_max sources "
+        "per chain, float64, summed over segments; impulse short_chain, JAX "
+        "executables and the "
         "tool's full-band spectra excluded",
         "archive_bytes_per_turn": archive,
-        "archive_note": "archive_bytes_per_turn is an uncompressed upper bound at 1000 steps, "
-        "thin 1; the measured_* per-sample keys are at the sampled step count",
+        "archive_note": "archive_bytes_per_turn is an uncompressed upper bound at "
+        "1000 steps, thin 1; the measured_* per-sample keys are at the sampled "
+        "step count",
         "timings": timings,
         "fit_seconds_per_step": {
             "per_slot": float(coef[0]),
@@ -236,7 +241,8 @@ def main() -> None:
     )
     for t in report["timings"]:
         print(
-            f"  seg {t['segment']:5d} f={t['frequency_hz'] * 1e3:.3f}mHz BW={t['bw']:4d} K={t['k_max']:3d} "
+            f"  seg {t['segment']:5d} f={t['frequency_hz'] * 1e3:.3f}mHz "
+            f"BW={t['bw']:4d} K={t['k_max']:3d} "
             f"cold {t['first_turn_s']:.1f}s warm {t['steady_turn_s']:.2f}s"
         )
     lo, hi = report["predicted_turn_s_range"]
@@ -248,7 +254,8 @@ def main() -> None:
         print(f"  {name}: {v / 3600:.2f} h")
     tl = report["tail"]
     print(
-        f"  tail ({tl['segments']} seg, n_pad {tl['n_pad']:.0f}): {tl['predicted_turn_s'] / 60:.0f} min "
+        f"  tail ({tl['segments']} seg, n_pad {tl['n_pad']:.0f}): "
+        f"{tl['predicted_turn_s'] / 60:.0f} min "
         f"per turn, {100 * tl['share_of_total']:.0f}% of the k_npad_nnls total"
     )
     print(f"wrote {path}")

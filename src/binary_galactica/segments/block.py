@@ -102,6 +102,7 @@ class UCBBlock:
         reference_covariance: Any = None,
         name: str = "ucb",
     ) -> None:
+        """Validate the inputs, build the segment table and write the run files."""
         self.outdir = Path(outdir)
         self._check_outdir_unused()
         self.name = name
@@ -224,7 +225,7 @@ class UCBBlock:
             )
             lik.set_reference(c_ref[:, seg.bin_lo : seg.bin_hi])
             keep = []
-            for i, rho in zip(own, lik.snr(self.start_native[own])):
+            for i, rho in zip(own, lik.snr(self.start_native[own]), strict=True):
                 if rho >= self.config.snr_min:
                     keep.append(i)
                 else:
@@ -291,7 +292,8 @@ class UCBBlock:
         if self.c_ref is None:
             raise ValueError(
                 "initial_block_state needs the SNR cut applied first; build the "
-                "UCBBlock with reference_covariance= (e.g. the initial noise covariance)"
+                "UCBBlock with reference_covariance= (e.g. the initial noise "
+                "covariance)"
             )
         sources = self._start_sources()
         contrib = {
@@ -329,7 +331,9 @@ class UCBBlock:
         self._model = self._model_of(self._contrib)
 
     def cold_chain(self, index: int) -> dict[str, NDArray[Any]] | None:
-        """Return segment ``index``'s archived cold chain (``ChainArchive.load()`` of its runner).
+        """Return segment ``index``'s archived cold chain.
+
+        This is ``ChainArchive.load()`` of the segment's runner.
 
         ``None`` when the segment has no runner (fixed count with no start sources).
         Raises ``RuntimeError`` before the first ``sample()`` call and ``KeyError`` for
@@ -374,7 +378,8 @@ class UCBBlock:
         if ledger_turn is not None and ledger_turn != self.turn:
             raise ValueError(
                 f"current_block_state is from turn {ledger_turn} but the block is at "
-                f"turn {self.turn}; the ledger and the block's sampler state are out of step"
+                f"turn {self.turn}; the ledger and the block's sampler state are "
+                "out of step"
             )
         data = conditional_residual
         self._check_data(data)
@@ -402,7 +407,7 @@ class UCBBlock:
         c: NDArray[np.float64],
         rng: np.random.Generator,
     ) -> NDArray[np.complex128]:
-        """Apply the cut and start the runners if needed, sweep, and return the model."""
+        """Apply the cut, start the runners if needed, sweep, and return the model."""
         if self.c_ref is None:
             self._set_reference(c)
         if self._runners is None:

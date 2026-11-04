@@ -172,12 +172,15 @@ def main() -> None:
     names = ["f0T", "sinb", "lam", "lnA", "cosi", "psi", "phi0", "fdotT2"]
     for i, name in enumerate(names):
         print(
-            f"{name:7s} offset={report['mean_offset'][i]:+.3e} std={report['std'][i]:.3e} "
-            f"fisher={report['fisher_sigma'][i]:.3e} ratio={report['width_ratio'][i]:.2f} "
+            f"{name:7s} offset={report['mean_offset'][i]:+.3e} "
+            f"std={report['std'][i]:.3e} "
+            f"fisher={report['fisher_sigma'][i]:.3e} "
+            f"ratio={report['width_ratio'][i]:.2f} "
             f"trunc-ratio={report['truncated_width_ratio'][i]:.2f}"
         )
     print(
-        f"snr={report['snr']:.1f}  {report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}"
+        f"snr={report['snr']:.1f}  "
+        f"{report['seconds_per_step'] * 1e3:.2f} ms/step  -> {path}"
     )
     ok = all(report["checks"].values())
     print("PASS" if ok else f"FAIL {report['checks']}")

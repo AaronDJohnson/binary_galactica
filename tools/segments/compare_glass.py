@@ -38,7 +38,10 @@ SPAN = 300
 
 
 def glass_segments(count: int, fmin=3e-3, fmax=5e-3, nmin=8, nmax=20):
-    """Return GLASS's detections and ``count`` segment indices with ``nmin..nmax`` of them."""
+    """Return GLASS's detections and ``count`` segment indices.
+
+    Each selected segment holds ``nmin..nmax`` of the detections.
+    """
     import pandas as pd
 
     det = pd.read_hdf(GLASS_DIR / "UCB.h5", "detections")
@@ -69,7 +72,10 @@ def _counterpart(chain: dict, q: float, burn: float = 0.25, tol: float = 2.0):
 
 
 def _nearest_catalogue(path, T, q, start):
-    """Return the catalogue row of any SNR nearest ``q`` (bins), and whether it was a start source."""
+    """Return the catalogue row of any SNR nearest ``q`` (bins).
+
+    Also return whether that row was a start source.
+    """
     rows = runs.catalogue_rows(path, T=T, band=(q - 10, q + 10))
     if not len(rows):
         return None
@@ -123,7 +129,7 @@ def compare_segment(
     dropped = {d["name"]: d["snr"] for d in block.dropped}
     inj_q = start["Frequency"] * T
     out = []
-    for (name, row), qd, owner in zip(rows_g.iterrows(), q, owners):
+    for (name, row), qd, owner in zip(rows_g.iterrows(), q, owners, strict=True):
         g = glass_chain(det, name)
         gf, glnA = g["Frequency"].to_numpy(), np.log(g["Amplitude"].to_numpy())
         chain = chains[segs[owner].index] if owner >= 0 else None
@@ -230,8 +236,10 @@ def main() -> None:
         for d in r["detections"]:
             inj = d.get("injection", {})
             print(
-                f"  {d['name']} snr={d['glass_snr']:6.1f} found={d['found_fraction']:.2f} "
-                f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} overlap={d['overlap']} "
+                f"  {d['name']} snr={d['glass_snr']:6.1f} "
+                f"found={d['found_fraction']:.2f} "
+                f"sep_f={d.get('sep_f')} sep_lnA={d.get('sep_lnA')} "
+                f"overlap={d['overlap']} "
                 f"inj={inj.get('name')} inj_dropped={inj.get('dropped')} "
                 f"inj_block_snr={inj.get('block_snr')}"
             )
@@ -240,7 +248,8 @@ def main() -> None:
     if not bright:
         print("VACUOUS: no GLASS detection has SNR >= 10")
     print(
-        f"n_bright {len(bright)}; bright overlap fraction {fraction:.2f}; run directory: {outdir}"
+        f"n_bright {len(bright)}; bright overlap fraction {fraction:.2f}; "
+        f"run directory: {outdir}"
     )
     print("PASS" if report["pass"] else "FAIL")
     sys.exit(0 if report["pass"] else 1)

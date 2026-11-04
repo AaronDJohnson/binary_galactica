@@ -169,13 +169,13 @@ def _owned(edges: list[int], q: NDArray[np.float64], members: NDArray[np.int64])
     """Return, per interior, the start-set indices whose ``q`` it contains."""
     return [
         tuple(int(i) for i in members[(q[members] >= a) & (q[members] < b)])
-        for a, b in zip(edges[:-1], edges[1:])
+        for a, b in zip(edges[:-1], edges[1:], strict=True)
     ]
 
 
 def _pads(edges, owned, native, T) -> list[int]:
     pads = []
-    for (a, b), own in zip(zip(edges[:-1], edges[1:]), owned):
+    for (_, b), own in zip(zip(edges[:-1], edges[1:], strict=True), owned, strict=True):
         fdot = float(np.max(np.abs(native[list(own), 7]))) / T**2 if own else 0.0
         pads.append(padding_bins(b / T, fdot, T))
     return pads
@@ -201,7 +201,8 @@ def build_segment_table(
     ``[floor(min f0*T), floor(max f0*T) + 1)``, widened about its centre to at
     least ``min_interior_bins`` and to the padding that width implies (so a lone
     source builds a valid one-segment table). The widened band is shifted to keep the
-    padded window inside the grid interior, but always covers every start source; the grid check below is the final guard.
+    padded window inside the grid interior, but always covers every start source;
+    the grid check below is the final guard.
     """
     x = np.asarray(native, dtype=np.float64).reshape(-1, 8)
     q = x[:, 0]
@@ -260,7 +261,7 @@ def build_segment_table(
 
     segments = []
     for s, ((a, b), own, pad) in enumerate(
-        zip(zip(edges[:-1], edges[1:]), owned, pads)
+        zip(zip(edges[:-1], edges[1:], strict=True), owned, pads, strict=True)
     ):
         n_bins = (b - a) + 2 * pad
         if a - pad < 1 or b + pad > n_freq - 1:

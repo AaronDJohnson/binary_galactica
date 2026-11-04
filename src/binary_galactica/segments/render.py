@@ -42,7 +42,7 @@ class Contribution:
         return cls(0, np.zeros((n_channels, 0), dtype=np.complex128))
 
     def add_to(self, model: NDArray[np.complex128], sign: float = 1.0) -> None:
-        """Add ``sign`` times this contribution into a full ``(channels, n_freq)`` model."""
+        """Add ``sign`` times this contribution into a ``(channels, n_freq)`` model."""
         if self.values.shape[1]:
             model[:, self.bin_lo : self.bin_hi] += sign * self.values
 
@@ -103,7 +103,8 @@ def render_sources(
         raise ValueError("n_channels must be 2 (A, E) or 3 (A, E, T)")
     if n_channels == 3 and fmt != "sangria":
         raise ValueError(
-            f"the T channel is only consistent with A and E for fmt='sangria', got {fmt!r}"
+            "the T channel is only consistent with A and E for fmt='sangria', "
+            f"got {fmt!r}"
         )
     x = np.asarray(sources, dtype=np.float64).reshape(-1, 8)
     n = x.shape[0]

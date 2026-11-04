@@ -75,8 +75,9 @@ def catalogue_rows(
 def target_band(path, *, T, core, span, snr_min=START_SNR, extra=None):
     """Return ``(band, rows)`` for a band of ``span`` bins either side of ``core``.
 
-    ``rows`` holds every dgb/igb catalogue row in ``band`` with analytic SNR >= ``snr_min``,
-    plus the rows of ``extra`` (merged by Name, no duplicates), sorted by frequency.
+    ``rows`` holds every dgb/igb catalogue row in ``band`` with analytic SNR
+    >= ``snr_min``, plus the rows of ``extra`` (merged by Name, no duplicates),
+    sorted by frequency.
     """
     band = (int(core[0]) - int(span), int(core[1]) + int(span))
     rows = catalogue_rows(path, T=T, band=band, snr_min=snr_min)
@@ -134,14 +135,17 @@ def residual_spectra(
     snr_min: float | None = START_SNR,
     BW: int = 512,
 ) -> tuple[dict, np.ndarray]:
-    """Return ``spectra`` minus every dgb/igb catalogue source with analytic SNR >= ``snr_min``
-    whose bin lies in ``[lo, hi)``, plus the subtracted rows.
+    """Return ``spectra`` minus the catalogue sources in ``[lo, hi)``, plus the rows.
 
-    Sources are rendered with ``render_sources`` (on-fly backend, ``fmt="sangria"``, every
-    channel in ``spectra``) at ``ldc_to_native`` parameters, i.e. the true injected waveforms,
-    in the same ``dt * rfft`` units as ``spectra``. Callers pass ``[lo, hi)`` wide enough to
-    cover the running-median window (band +- MARGIN +- half_width), so the median never sees an
-    unsubtracted start-rule source. ``spectra`` is not modified.
+    The subtracted sources are every dgb/igb catalogue source with analytic SNR
+    >= ``snr_min`` whose bin lies in ``[lo, hi)``.
+
+    Sources are rendered with ``render_sources`` (on-fly backend, ``fmt="sangria"``,
+    every channel in ``spectra``) at ``ldc_to_native`` parameters, i.e. the true
+    injected waveforms, in the same ``dt * rfft`` units as ``spectra``. Callers pass
+    ``[lo, hi)`` wide enough to cover the running-median window (band +- MARGIN +-
+    half_width), so the median never sees an unsubtracted start-rule source.
+    ``spectra`` is not modified.
     """
     channels = tuple(spectra)
     if channels not in (("A", "E"), ("A", "E", "T")):
@@ -182,11 +186,12 @@ def frequency_data(spectra: dict, n: int, dt: float, channels=CHANNELS):
 
 
 def instrument_variance(f, T: float):
-    """Return the instrument-noise variance of a Sangria-format ``dt * rfft`` A/E coefficient.
+    """Return the instrument-noise variance of a Sangria ``dt * rfft`` A/E coefficient.
 
-    ``ae_noise`` is GLASS's phase-format A/E PSD. Sangria-format templates and data carry
-    ``P = 4 x sin(x) sqrt(T)`` against phase's ``2 sin(x) sqrt(T)`` (``glass/tdi.py``, the
-    table of ``P`` per format), so in power the factor is ``4 x^2`` with ``x = f / FSTAR``:
+    ``ae_noise`` is GLASS's phase-format A/E PSD. Sangria-format templates and data
+    carry ``P = 4 x sin(x) sqrt(T)`` against phase's ``2 sin(x) sqrt(T)``
+    (``glass/tdi.py``, the table of ``P`` per format), so in power the factor is
+    ``4 x^2`` with ``x = f / FSTAR``:
     ``0.5 * T * ae_noise(f) * 4 * (f / FSTAR)**2``.
     """
     f = np.asarray(f, dtype=np.float64)
@@ -226,7 +231,10 @@ def covariance(data, variances: dict, lo: int, hi: int):
 
 
 def run_block(block, data, cov, turns: int, seed: int):
-    """Run ``turns`` Gibbs turns of one block alone; return the state and seconds per turn."""
+    """Run ``turns`` Gibbs turns of one block alone.
+
+    Return the state and the seconds per turn.
+    """
     rng = np.random.default_rng(seed)
     state = block.initial_block_state(data)
     seconds = []
@@ -240,7 +248,7 @@ def run_block(block, data, cov, turns: int, seed: int):
 def recovery(
     chain: dict, injections: np.ndarray, *, burn: float = 0.25, tol: float = 1.0
 ):
-    """Return, for each injection, how often a cold-chain source sits within ``tol`` bins.
+    """Return, per injection, how often a cold-chain source sits within ``tol`` bins.
 
     Matching is one-to-one within each sample: injection-component pairs are
     taken greedily by increasing distance, so two injections within ``tol`` of

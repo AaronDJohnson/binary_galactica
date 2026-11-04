@@ -88,8 +88,10 @@ def match_source(native, spectra, T, n_freq, backend, min_bw=GATE_MIN_BW):
 
 
 def bright_isolated(population, T, n_freq, count, path):
-    """Return ``(indices, skipped)``: the brightest sources with no rival above
-    5% SNR and ``f < MAX_BRIGHT_HZ``, and ``(name, f)`` of catalogue sources
+    """Return ``(indices, skipped)``.
+
+    ``indices`` are the brightest sources with no rival above 5% SNR and
+    ``f < MAX_BRIGHT_HZ``; ``skipped`` holds ``(name, f)`` of catalogue sources
     above the cap that outrank the picks (the stream carries no power there).
     """
     fields = ("Frequency", "FrequencyDerivative", "Amplitude", "EclipticLatitude")
@@ -124,7 +126,7 @@ def bright_isolated(population, T, n_freq, count, path):
         names = sangria.load_catalogue(population, ("Name",), path, index=high)["Name"]
         skipped = [
             (int(n), float(f[i]))
-            for n, i in zip(np.ravel(names), sorted(high.tolist()))
+            for n, i in zip(np.ravel(names), sorted(high.tolist()), strict=True)
         ]
     return sorted(picked), skipped
 
@@ -204,7 +206,7 @@ def main() -> None:
                 for b in BACKENDS
             )
             g = e["glass_bw"]
-            cells += "  | glass bw=%d: " % g["fourier"]["bw"] + "  ".join(
+            cells += f"  | glass bw={g['fourier']['bw']:d}: " + "  ".join(
                 f"{b}: m={g[b]['match']:.6f} "
                 f"s={g[b]['scale'][0]:+.5f}{g[b]['scale'][1]:+.5f}i"
                 for b in BACKENDS
@@ -217,7 +219,8 @@ def main() -> None:
         if skipped:
             listing = ", ".join(f"{n} ({f * 1e3:.2f} mHz)" for n, f in skipped)
             print(
-                f"note: skipped {population} sources above {MAX_BRIGHT_HZ * 1e3:.0f} mHz "
+                f"note: skipped {population} sources above "
+                f"{MAX_BRIGHT_HZ * 1e3:.0f} mHz "
                 f"(stream carries no power there): {listing}"
             )
     print("worst isolated match:", report["worst_match"])

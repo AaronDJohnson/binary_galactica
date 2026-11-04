@@ -45,6 +45,7 @@ class FisherBank:
     """
 
     def __init__(self, n_chains: int, match_bins: float) -> None:
+        """Create an empty bank with one store per chain."""
         self.match_bins = float(match_bins)
         self._q = [np.empty(0) for _ in range(n_chains)]
         self._evalues = [np.empty((0, 8)) for _ in range(n_chains)]
