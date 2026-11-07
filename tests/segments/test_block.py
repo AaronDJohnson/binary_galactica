@@ -423,6 +423,29 @@ def test_initial_block_state_renders_the_start_set(tmp_path, fake_runner):
         )
 
 
+def test_skip_gaps_block_leaves_the_gap_empty(tmp_path, fake_runner):
+    # Margins are 2 bins on this grid, so the 26-bin gap above 2944.3 splits
+    # the start set into two clusters.
+    qs = (2940.3, 2944.3, 2970.3)
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=_rows(qs=qs),
+        outdir=tmp_path,
+        config=_config(skip_gaps=True),
+    )
+    below, above = block.table.segments
+    assert below.owned == (0, 1) and above.owned == (2,)
+    assert below.hi < above.lo and below.bin_hi <= above.bin_lo
+    state = block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+    assert [s for s, _ in fake_runner.calls] == [0, 1]
+    assert [s["count"] for s in state.parameters["segments"]] == [2, 1]
+    for ch in CHANNELS:
+        model = state.template[ch]
+        assert np.all(model[below.bin_hi : above.bin_lo] == 0)
+        assert np.any(model[below.lo : below.hi] != 0)
+        assert np.any(model[above.lo : above.hi] != 0)
+
+
 def _check_block_run(tmp_path, rows, config):
     """Run enchilada's check_block for two cycles with the real segment runners."""
     enchilada = pytest.importorskip("enchilada")

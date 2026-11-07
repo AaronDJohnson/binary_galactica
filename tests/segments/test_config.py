@@ -48,6 +48,13 @@ def test_birth_death_weight_gives_the_requested_fraction():
         {"band_bins": (10, 5)},
         {"response_samples": 2},
         {"snr_min": -1.0},
+        {"skip_gaps": 1},
+        {"skip_gaps": "yes"},
+        {"max_interior_bins": 15},
+        {"max_interior_bins": 0},
+        {"max_interior_bins": 64.0},
+        {"max_interior_bins": True},
+        {"min_interior_bins": 32, "max_interior_bins": 31},
     ],
 )
 def test_invalid_settings_raise(kwargs):
@@ -92,3 +99,26 @@ def test_numpy_integers_become_plain_ints_and_round_trip(tmp_path):
     cfg.write(tmp_path / "c.json")
     back = UCBBlockConfig.read(tmp_path / "c.json")
     assert back == cfg and type(back.n_target) is int
+
+
+def test_tiling_options_default_off_and_round_trip(tmp_path):
+    import numpy as np
+
+    assert UCBBlockConfig().skip_gaps is False
+    assert UCBBlockConfig().max_interior_bins is None
+    cfg = UCBBlockConfig(skip_gaps=True, max_interior_bins=np.int64(16))
+    assert type(cfg.max_interior_bins) is int and cfg.max_interior_bins == 16
+    cfg.write(tmp_path / "c.json")
+    text = json.loads((tmp_path / "c.json").read_text())
+    assert text["skip_gaps"] is True and text["max_interior_bins"] == 16
+    assert UCBBlockConfig.read(tmp_path / "c.json") == cfg
+    assert UCBBlockConfig.from_dict(cfg.to_dict()) == cfg
+
+
+def test_config_without_the_tiling_options_still_reads(tmp_path):
+    old = UCBBlockConfig(steps_per_turn=50).to_dict()
+    del old["skip_gaps"], old["max_interior_bins"]
+    (tmp_path / "config.json").write_text(json.dumps(old))
+    cfg = UCBBlockConfig.read(tmp_path / "config.json")
+    assert cfg == UCBBlockConfig(steps_per_turn=50)
+    assert cfg.skip_gaps is False and cfg.max_interior_bins is None

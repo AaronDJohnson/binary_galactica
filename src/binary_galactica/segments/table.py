@@ -16,6 +16,29 @@ evaluated at the interior's upper edge with ``sin(theta) = 1`` and the largest
 ``|fdot|`` among the owned start sources. A merge pass then enforces
 ``w_s >= max(pad_s, pad_{s-1} + pad_{s+1})``. Padding then reaches only
 adjacent interiors, and windows of the same parity are disjoint.
+
+Two opt-in settings of :class:`UCBBlockConfig` change the tiling; with both
+off (the default) the whole band is tiled as above.
+
+``skip_gaps`` tiles clusters of start sources and leaves the gaps between them
+unsampled. Sorted by ``q = f0*T``, each source gets a margin ``m_i``, its own
+padding (:func:`padding_bins` at ``q_i / T`` and its ``|fdot|``). The sources
+split between neighbours with ``q_{i+1} - q_i > 2 (m_i + m_{i+1})``, and a
+cluster spans ``[floor(q_first) - m_first, floor(q_last) + 1 + m_last)``,
+clipped to the band. Each cluster is tiled and merged on its own, with a
+neighbour in another cluster counting as absent (pad 0). A cluster narrower
+than ``min_interior_bins``, or left as one interior narrower than its padding,
+is widened about its centre (shifted to stay in the band) rather than raising.
+Two neighbouring clusters whose padded windows overlap are merged into one and
+re-tiled, until every gap separates the windows. No segment covers a gap, so
+reversible jump cannot add a source there, and :meth:`SegmentTable.owners`
+returns ``-1`` for it.
+
+``max_interior_bins`` is a soft cap: after tiling, each interior wider than the
+cap is split into ``min(ceil(w / cap), w // min_interior_bins)`` near-equal
+pieces, so no piece is narrower than ``min_interior_bins``. The merge pass then
+runs as usual and may widen a piece past the cap where the padding rule needs
+it.
 """
 
 from __future__ import annotations
@@ -103,12 +126,17 @@ class SegmentTable:
     outside: tuple[int, ...] = ()
 
     def owners(self, q: ArrayLike) -> NDArray[np.int64]:
-        """Return the owning segment of each ``f0*T``, or ``-1`` outside the band."""
+        """Return the owning segment of each ``f0*T``, or ``-1`` outside every interior.
+
+        That is ``-1`` outside the band and, with ``skip_gaps``, in a gap.
+        """
         q = np.atleast_1d(np.asarray(q, dtype=np.float64))
         los = np.array([s.lo for s in self.segments], dtype=np.float64)
+        his = np.array([s.hi for s in self.segments], dtype=np.float64)
         idx = np.searchsorted(los, q, side="right") - 1
+        ok = idx >= 0
+        ok[ok] = q[ok] < his[idx[ok]]
         out = np.full(q.shape, -1, dtype=np.int64)
-        ok = (idx >= 0) & (q < self.segments[-1].hi)
         out[ok] = idx[ok]
         return out
 
@@ -165,6 +193,17 @@ def _tile(
     return edges
 
 
+def _split_wide(edges: list[int], cap: int, min_w: int) -> list[int]:
+    """Split each interior wider than ``cap`` into near-equal pieces of >= ``min_w``."""
+    out = [edges[0]]
+    for a, b in zip(edges[:-1], edges[1:], strict=True):
+        w = b - a
+        n = max(1, min(-(-w // cap), w // min_w))
+        out.extend(a + (k * w) // n for k in range(1, n))
+        out.append(b)
+    return out
+
+
 def _owned(edges: list[int], q: NDArray[np.float64], members: NDArray[np.int64]):
     """Return, per interior, the start-set indices whose ``q`` it contains."""
     return [
@@ -191,6 +230,166 @@ def _first_violation(edges: list[int], pads: list[int]) -> int | None:
     return None
 
 
+@dataclass
+class _Tiling:
+    """The interiors of one contiguous stretch (the band, or one cluster)."""
+
+    edges: list[int]
+    owned: list[tuple[int, ...]]
+    pads: list[int]
+
+    @property
+    def narrow(self) -> bool:
+        """Whether the padding rule fails (after the merge pass: a lone interior)."""
+        return _first_violation(self.edges, self.pads) is not None
+
+
+def _tiling(
+    lo: int,
+    hi: int,
+    q: NDArray[np.float64],
+    members: NDArray[np.int64],
+    x: NDArray[np.float64],
+    T: float,
+    config: UCBBlockConfig,
+) -> _Tiling:
+    """Tile ``[lo, hi)``, apply the cap, then merge until the padding rule holds.
+
+    Only the ``members`` in ``[lo, hi)`` count. The merge pass stops at a lone
+    interior even if it is narrower than its padding; see ``_Tiling.narrow``.
+    """
+    inner = members[(q[members] >= lo) & (q[members] < hi)]
+    edges = _tile(np.sort(q[inner]), lo, hi, config.n_target, config.min_interior_bins)
+    if config.max_interior_bins is not None:
+        edges = _split_wide(edges, config.max_interior_bins, config.min_interior_bins)
+    while True:
+        owned = _owned(edges, q, inner)
+        pads = _pads(edges, owned, x, T)
+        bad = _first_violation(edges, pads)
+        if bad is None or len(pads) == 1:
+            return _Tiling(edges, owned, pads)
+        if bad == 0:
+            neighbour = 1
+        elif bad == len(pads) - 1:
+            neighbour = bad - 1
+        else:
+            w_left = edges[bad] - edges[bad - 1]
+            w_right = edges[bad + 2] - edges[bad + 1]
+            neighbour = bad - 1 if w_left < w_right else bad + 1
+        del edges[max(bad, neighbour)]
+
+
+def _derived_band(
+    q: NDArray[np.float64],
+    x: NDArray[np.float64],
+    T: float,
+    n_freq: int,
+    config: UCBBlockConfig,
+) -> tuple[int, int]:
+    """Return the band covering the start set, widened for a lone source."""
+    if q.size == 0:
+        raise ValueError("an empty start set needs explicit band_bins")
+    band_lo = int(np.floor(q.min()))
+    band_hi = int(np.floor(q.max())) + 1
+    fdot_max = float(np.max(np.abs(x[:, 7]))) / T**2
+    width = max(band_hi - band_lo, config.min_interior_bins)
+    pad = 0
+    for _ in range(4):  # the padding depends weakly on the upper edge
+        width = max(width, pad)
+        centre = 0.5 * (band_lo + band_hi)
+        lo = int(np.floor(centre - 0.5 * width))
+        hi = lo + width
+        pad = padding_bins(hi / T, fdot_max, T)
+        if width >= pad:
+            break
+    width = max(width, pad)
+    lo = int(np.floor(centre - 0.5 * width))
+    hi = lo + width
+    shift = max(0, pad + 1 - lo) - max(0, hi - (n_freq - 1 - pad))
+    lo, hi = lo + shift, hi + shift
+    return min(lo, int(np.floor(q.min()))), max(hi, int(np.floor(q.max())) + 1)
+
+
+def _cluster_spans(
+    q: NDArray[np.float64],
+    members: NDArray[np.int64],
+    x: NDArray[np.float64],
+    T: float,
+    band: tuple[int, int],
+) -> list[tuple[int, int]]:
+    """Split the in-band start sources at wide gaps; return each cluster's span."""
+    order = members[np.argsort(q[members], kind="stable")]
+    qs = q[order]
+    m = np.array([padding_bins(q[i] / T, x[i, 7] / T**2, T) for i in order])
+    cuts = np.nonzero(np.diff(qs) > 2 * (m[:-1] + m[1:]))[0] + 1
+    firsts = np.concatenate([[0], cuts])
+    lasts = np.concatenate([cuts, [qs.size]]) - 1
+    return [
+        (
+            max(int(np.floor(qs[i])) - int(m[i]), band[0]),
+            min(int(np.floor(qs[j])) + 1 + int(m[j]), band[1]),
+        )
+        for i, j in zip(firsts, lasts, strict=True)
+    ]
+
+
+def _widen(lo: int, hi: int, width: int, band: tuple[int, int]) -> tuple[int, int]:
+    """Widen ``[lo, hi)`` about its centre to ``width``, shifted to stay in ``band``."""
+    width = max(width, hi - lo)
+    if width > band[1] - band[0]:
+        raise ValueError(
+            f"band [{band[0]}, {band[1]}) is narrower than a cluster needs "
+            f"({width}); widen config.band_bins"
+        )
+    new_lo = int(np.floor(0.5 * (lo + hi) - 0.5 * width))
+    new_lo = min(max(new_lo, band[0]), band[1] - width)
+    return new_lo, new_lo + width
+
+
+def _cluster_tiling(
+    lo: int,
+    hi: int,
+    band: tuple[int, int],
+    q: NDArray[np.float64],
+    members: NDArray[np.int64],
+    x: NDArray[np.float64],
+    T: float,
+    config: UCBBlockConfig,
+) -> _Tiling:
+    """Tile one cluster, widening it until it meets the padding rule."""
+    lo, hi = _widen(lo, hi, config.min_interior_bins, band)
+    while True:
+        tiling = _tiling(lo, hi, q, members, x, T, config)
+        if not tiling.narrow:
+            return tiling
+        lo, hi = _widen(lo, hi, tiling.pads[0], band)
+
+
+def _clustered(
+    band: tuple[int, int],
+    q: NDArray[np.float64],
+    members: NDArray[np.int64],
+    x: NDArray[np.float64],
+    T: float,
+    config: UCBBlockConfig,
+) -> list[_Tiling]:
+    """Return the tilings of the clusters, merging those whose windows overlap."""
+    tilings = [
+        _cluster_tiling(lo, hi, band, q, members, x, T, config)
+        for lo, hi in _cluster_spans(q, members, x, T, band)
+    ]
+    c = 0
+    while c < len(tilings) - 1:
+        a, b = tilings[c], tilings[c + 1]
+        if a.edges[-1] + a.pads[-1] <= b.edges[0] - b.pads[0]:
+            c += 1
+            continue
+        lo, hi = min(a.edges[0], b.edges[0]), max(a.edges[-1], b.edges[-1])
+        tilings[c : c + 2] = [_cluster_tiling(lo, hi, band, q, members, x, T, config)]
+        c = max(c - 1, 0)
+    return tilings
+
+
 def build_segment_table(
     native: ArrayLike, *, T: float, n_freq: int, config: UCBBlockConfig
 ) -> SegmentTable:
@@ -202,67 +401,48 @@ def build_segment_table(
     least ``min_interior_bins`` and to the padding that width implies (so a lone
     source builds a valid one-segment table). The widened band is shifted to keep the
     padded window inside the grid interior, but always covers every start source;
-    the grid check below is the final guard.
+    the grid check below is the final guard. ``config.skip_gaps`` and
+    ``config.max_interior_bins`` change the tiling as the module notes describe.
     """
     x = np.asarray(native, dtype=np.float64).reshape(-1, 8)
     q = x[:, 0]
     if config.band_bins is not None:
         band_lo, band_hi = config.band_bins
     else:
-        if q.size == 0:
-            raise ValueError("an empty start set needs explicit band_bins")
-        band_lo = int(np.floor(q.min()))
-        band_hi = int(np.floor(q.max())) + 1
-        fdot_max = float(np.max(np.abs(x[:, 7]))) / T**2
-        width = max(band_hi - band_lo, config.min_interior_bins)
-        pad = 0
-        for _ in range(4):  # the padding depends weakly on the upper edge
-            width = max(width, pad)
-            centre = 0.5 * (band_lo + band_hi)
-            lo = int(np.floor(centre - 0.5 * width))
-            hi = lo + width
-            pad = padding_bins(hi / T, fdot_max, T)
-            if width >= pad:
-                break
-        width = max(width, pad)
-        lo = int(np.floor(centre - 0.5 * width))
-        hi = lo + width
-        shift = max(0, pad + 1 - lo) - max(0, hi - (n_freq - 1 - pad))
-        lo, hi = lo + shift, hi + shift
-        band_lo = min(lo, int(np.floor(q.min())))
-        band_hi = max(hi, int(np.floor(q.max())) + 1)
+        band_lo, band_hi = _derived_band(q, x, T, n_freq, config)
     inside = (q >= band_lo) & (q < band_hi)
     members = np.nonzero(inside)[0]
     outside = tuple(int(i) for i in np.nonzero(~inside)[0])
-    edges = _tile(
-        np.sort(q[members]), band_lo, band_hi, config.n_target, config.min_interior_bins
-    )
 
-    while True:
-        owned = _owned(edges, q, members)
-        pads = _pads(edges, owned, x, T)
-        bad = _first_violation(edges, pads)
-        if bad is None:
-            break
-        if len(pads) == 1:
+    if config.skip_gaps:
+        if members.size == 0:
+            raise ValueError(
+                f"skip_gaps needs at least one start source in the band "
+                f"[{band_lo}, {band_hi})"
+            )
+        tilings = _clustered((band_lo, band_hi), q, members, x, T, config)
+    else:
+        tiling = _tiling(band_lo, band_hi, q, members, x, T, config)
+        if tiling.narrow:
             raise ValueError(
                 f"band [{band_lo}, {band_hi}) is narrower than its padding "
-                f"({pads[0]}); widen config.band_bins"
+                f"({tiling.pads[0]}); widen config.band_bins"
             )
-        if bad == 0:
-            neighbour = 1
-        elif bad == len(pads) - 1:
-            neighbour = bad - 1
-        else:
-            w_left = edges[bad] - edges[bad - 1]
-            w_right = edges[bad + 2] - edges[bad + 1]
-            neighbour = bad - 1 if w_left < w_right else bad + 1
-        del edges[max(bad, neighbour)]
+        tilings = [tiling]
+
+    interiors = [
+        (a, b, own, pad)
+        for t in tilings
+        for (a, b), own, pad in zip(
+            zip(t.edges[:-1], t.edges[1:], strict=True), t.owned, t.pads, strict=True
+        )
+    ]
+    owned_all = sorted(i for _, _, own, _ in interiors for i in own)
+    if owned_all != members.tolist():
+        raise AssertionError("every in-band start source must lie in one interior")
 
     segments = []
-    for s, ((a, b), own, pad) in enumerate(
-        zip(zip(edges[:-1], edges[1:], strict=True), owned, pads, strict=True)
-    ):
+    for s, (a, b, own, pad) in enumerate(interiors):
         n_bins = (b - a) + 2 * pad
         if a - pad < 1 or b + pad > n_freq - 1:
             raise ValueError(

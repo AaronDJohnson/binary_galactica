@@ -43,11 +43,23 @@ class UCBBlockConfig:
     bins; ``None`` covers the start set. Each segment's maximum source count
     is ``K = max(k_max_floor, 2 * owned start sources)``; its count prior is
     uniform on ``0 .. K``.
+
+    Two tiling options are off by default, which tiles the whole band:
+    - ``skip_gaps`` leaves the stretches with no start sources unsampled: the
+      start sources are split into clusters and only the clusters are tiled.
+      No segment covers a gap, so reversible jump cannot add a source there.
+    - ``max_interior_bins`` is a soft cap on interior width, at least
+      ``min_interior_bins``: wider interiors are split before the merge pass,
+      which may widen a piece past the cap where the padding rule needs it.
+
+    See :mod:`binary_galactica.segments.table` for both rules.
     """
 
     n_target: int = 10
     min_interior_bins: int = 16
     band_bins: tuple[int, int] | None = None
+    skip_gaps: bool = False
+    max_interior_bins: int | None = None
     k_max_floor: int = 10
     steps_per_turn: int = 1000
     thin: int = 1
@@ -87,6 +99,16 @@ class UCBBlockConfig:
                     f"band_bins must be integers 0 < lo < hi, got {self.band_bins!r}"
                 )
             object.__setattr__(self, "band_bins", (int(lo), int(hi)))
+        if not isinstance(self.skip_gaps, bool):
+            raise ValueError("skip_gaps must be a bool")
+        if self.max_interior_bins is not None:
+            cap = self.max_interior_bins
+            if not _is_int(cap) or cap < self.min_interior_bins:
+                raise ValueError(
+                    "max_interior_bins must be None or an integer >= "
+                    f"min_interior_bins={self.min_interior_bins}, got {cap!r}"
+                )
+            object.__setattr__(self, "max_interior_bins", int(cap))
         if not (math.isfinite(self.ladder_step) and self.ladder_step > 1.0):
             raise ValueError("ladder_step must be finite and greater than 1")
         floor = self.ladder_step ** max(self.ntemps - 2, 0)
