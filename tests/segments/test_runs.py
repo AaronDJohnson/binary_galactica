@@ -32,6 +32,21 @@ def test_target_band():
     assert np.all(snr[~np.isin(rows["Name"], base["Name"])] >= 7.0)
 
 
+@pytest.mark.slow
+@requires_sangria
+def test_catalogue_rows_drop_the_mistaken_dgb():
+    import runs
+    import sangria
+
+    n, dt = sangria.grid(SANGRIA)
+    T = n * dt
+    band = (int(0.0429 * T), int(0.0431 * T))  # around 42.97 mHz
+    assert runs.EXCLUDED_NAMES == ("8537801",)
+    assert "8537801" not in runs.catalogue_rows(SANGRIA, T=T, band=band)["Name"]
+    kept = runs.catalogue_rows(SANGRIA, T=T, band=band, exclude=())
+    assert "8537801" in kept["Name"]
+
+
 def test_inner_segments():
     import runs
 

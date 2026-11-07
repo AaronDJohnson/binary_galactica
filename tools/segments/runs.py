@@ -21,6 +21,9 @@ NOISE_REFERENCE = (
     "running median of obs-mbhb-vgb minus catalogue sources with analytic SNR >= 7"
 )
 MARGIN = 300  # bins either side of a band kept for the running-median window
+# dgb 8537801 (42.97 mHz) was added to the Sangria catalogue by mistake; the user
+# removes it from the data before sampling, so the start sets leave it out too.
+EXCLUDED_NAMES = ("8537801",)
 
 
 def _json_default(value: Any) -> Any:
@@ -45,9 +48,19 @@ def analytic_snrs(freq: np.ndarray, amp: np.ndarray, T: float) -> np.ndarray:
 
 
 def catalogue_rows(
-    path: Path, *, T: float, band=None, snr_min=None, populations=("dgb", "igb")
+    path: Path,
+    *,
+    T: float,
+    band=None,
+    snr_min=None,
+    populations=("dgb", "igb"),
+    exclude=EXCLUDED_NAMES,
 ) -> np.ndarray:
-    """Return dgb/igb rows in ``band`` (bins) above ``snr_min``, sorted by frequency."""
+    """Return dgb/igb rows in ``band`` (bins) above ``snr_min``, sorted by frequency.
+
+    Rows whose ``Name`` is in ``exclude`` are dropped (by default
+    :data:`EXCLUDED_NAMES`); pass ``exclude=()`` to keep every row.
+    """
     dtype = [("Name", "U32")] + [(name, "f8") for name in CATALOGUE_FIELDS]
     parts = []
     for population in populations:
@@ -69,6 +82,8 @@ def catalogue_rows(
             out[name] = rows[name]
         parts.append(out)
     rows = np.concatenate(parts)
+    if len(exclude):
+        rows = rows[~np.isin(rows["Name"], list(exclude))]
     return rows[np.argsort(rows["Frequency"], kind="stable")]
 
 

@@ -6,8 +6,15 @@ one cold turn (which includes compilation) and one warm turn on a few segments
 spread across the band. Data: obs minus MBHB and VGB, with a running-median
 covariance. The warm per-step time is extrapolated to every segment with a
 non-negative least-squares (NNLS) fit in K and K * n_pad, the primary model.
+The sampled segments are evenly spaced picks, the two heaviest by K * n_pad, and
+the "tail": the segment with the widest padded window.
+
+``--skip-gaps`` and ``--max-interior-bins N`` set the matching
+``UCBBlockConfig`` options; ``--out`` names the report under tools/performance.
 
     PYTHONPATH=src:... python tools/segments/dry_run.py --sample 6 --steps 100
+    PYTHONPATH=src:... python tools/segments/dry_run.py --skip-gaps \
+        --out segments-dry-run-skip-gaps.json
 """
 
 from __future__ import annotations
@@ -42,22 +49,37 @@ def _stats(values) -> dict:
     }
 
 
-def run(sample: int, steps: int, seed: int, path: Path) -> dict:
+def run(
+    sample: int,
+    steps: int,
+    seed: int,
+    path: Path,
+    *,
+    skip_gaps: bool = False,
+    max_interior_bins: int | None = None,
+) -> dict:
     """Build the table, time sampled segments, and return the report."""
     n, dt = sangria.grid(path)
     T, n_freq = n * dt, n // 2 + 1
     rows = runs.catalogue_rows(path, T=T, snr_min=7.0)
     native = ldc_to_native(rows, T)
-    config = UCBBlockConfig(steps_per_turn=steps)
+    config = UCBBlockConfig(
+        steps_per_turn=steps, skip_gaps=skip_gaps, max_interior_bins=max_interior_bins
+    )
     start = time.perf_counter()
     table = build_segment_table(native, T=T, n_freq=n_freq, config=config)
     table_s = time.perf_counter() - start
     segs = table.segments
     for s, seg in enumerate(segs):
-        left = segs[s - 1].pad if s else 0
-        right = segs[s + 1].pad if s < len(segs) - 1 else 0
+        # A neighbour across a gap (skip_gaps) counts as absent.
+        left = segs[s - 1].pad if s and segs[s - 1].hi == seg.lo else 0
+        right = segs[s + 1].pad if s < len(segs) - 1 and segs[s + 1].lo == seg.hi else 0
         if seg.width < max(seg.pad, left + right):
             raise AssertionError(f"segment {s} violates the padding rule")
+    clusters = 1 + sum(a.hi != b.lo for a, b in zip(segs[:-1], segs[1:], strict=True))
+    interior = sum(seg.width for seg in segs)
+    band = segs[-1].hi - segs[0].lo
+    widest = max(segs, key=lambda seg: seg.width)
     keys = Counter((seg.bw, quantize_bins(seg.n_bins), seg.k_max) for seg in segs)
     ntemps = config.ntemps
     dims = np.array([8 * seg.k_max for seg in segs])
@@ -78,11 +100,13 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
     cost = np.array(
         [seg.k_max * quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64
     )
-    heavy = [
-        int(i) for i in np.argsort(-cost[:-1])[:2]
-    ]  # heaviest by K * n_pad, tail excluded
+    # The tail is the widest padded window: the last segment under the default
+    # tiling, but anywhere with skip_gaps. It is always sampled, and the heavy
+    # picks are the two heaviest by K * n_pad besides it.
+    tail_index = int(np.argmax([seg.n_bins for seg in segs]))
+    heavy = [int(i) for i in np.argsort(-cost) if i != tail_index][:2]
     even = np.linspace(0, len(segs) - 1, sample - 2).round().astype(int)
-    pick = np.unique(np.concatenate([even, heavy]))
+    pick = np.unique(np.concatenate([even, heavy, [tail_index]]))
     work = Path(tempfile.mkdtemp(prefix="dry-run-"))
     timings = []
     for s in pick:
@@ -181,8 +205,21 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
     predicted = models["k_npad_nnls"]
     return {
         "T": T,
+        "skip_gaps": config.skip_gaps,
+        "max_interior_bins": config.max_interior_bins,
+        "excluded_names": list(runs.EXCLUDED_NAMES),
         "start_sources": int(native.shape[0]),
         "n_segments": len(segs),
+        "n_clusters": clusters,
+        "interior_bins_total": interior,
+        "band_bins": band,
+        "interior_fraction_of_band": interior / band,
+        "widest_segment": {
+            "segment": widest.index,
+            "width": widest.width,
+            "frequency_mhz": [widest.lo / T * 1e3, widest.hi / T * 1e3],
+            "owned": len(widest.owned),
+        },
         "outside_band": len(table.outside),
         "table_seconds": table_s,
         "compile_keys": len(keys),
@@ -208,6 +245,11 @@ def run(sample: int, steps: int, seed: int, path: Path) -> dict:
             "per_slot_window_bin": float(coef[1]),
         },
         "tail": {
+            "segment": tail_index,
+            "frequency_mhz": [
+                segs[tail_index].lo / T * 1e3,
+                segs[tail_index].hi / T * 1e3,
+            ],
             "segments": int(tail.sum()),
             "n_pad": float(n_pads.max()),
             "predicted_turn_s": tail_s,
@@ -227,12 +269,39 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=100)
     parser.add_argument("--seed", type=int, default=12)
     parser.add_argument("--path", type=Path, default=sangria.DEFAULT_PATH)
+    parser.add_argument(
+        "--skip-gaps", action="store_true", help="leave gaps between clusters unsampled"
+    )
+    parser.add_argument(
+        "--max-interior-bins", type=int, default=None, help="soft cap on interior width"
+    )
+    parser.add_argument(
+        "--out",
+        default="segments-dry-run.json",
+        help="report name in tools/performance",
+    )
     args = parser.parse_args()
-    report = run(args.sample, args.steps, args.seed, args.path)
-    path = runs.write_report("segments-dry-run.json", report)
+    report = run(
+        args.sample,
+        args.steps,
+        args.seed,
+        args.path,
+        skip_gaps=args.skip_gaps,
+        max_interior_bins=args.max_interior_bins,
+    )
+    path = runs.write_report(args.out, report)
     print(
-        f"{report['start_sources']} start sources -> {report['n_segments']} segments, "
-        f"{report['compile_keys']} compile keys"
+        f"{report['start_sources']} start sources -> {report['n_segments']} segments "
+        f"in {report['n_clusters']} clusters, {report['compile_keys']} compile keys "
+        f"(skip_gaps={report['skip_gaps']}, "
+        f"max_interior_bins={report['max_interior_bins']})"
+    )
+    wd = report["widest_segment"]
+    print(
+        f"interior {report['interior_bins_total']} of {report['band_bins']} band bins "
+        f"({100 * report['interior_fraction_of_band']:.1f}%); widest segment "
+        f"{wd['segment']}: {wd['width']} bins, {wd['frequency_mhz'][0]:.2f}-"
+        f"{wd['frequency_mhz'][1]:.2f} mHz, {wd['owned']} owned"
     )
     print(f"width {report['width']}  pad {report['pad']}  K {report['k_max']}")
     print(
@@ -254,7 +323,8 @@ def main() -> None:
         print(f"  {name}: {v / 3600:.2f} h")
     tl = report["tail"]
     print(
-        f"  tail ({tl['segments']} seg, n_pad {tl['n_pad']:.0f}): "
+        f"  tail (seg {tl['segment']} at {tl['frequency_mhz'][0]:.2f} mHz; "
+        f"{tl['segments']} seg, n_pad {tl['n_pad']:.0f}): "
         f"{tl['predicted_turn_s'] / 60:.0f} min "
         f"per turn, {100 * tl['share_of_total']:.0f}% of the k_npad_nnls total"
     )
