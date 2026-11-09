@@ -2,17 +2,25 @@
 
 The stand-in start set is every dgb/igb catalogue row with analytic SNR > 7
 (no confusion noise); the user's noise block supplies the real one. Timing runs
-one cold turn (which includes compilation) and one warm turn on a few segments
-spread across the band. Data: obs minus MBHB and VGB, with a running-median
-covariance. The warm per-step time is extrapolated to every segment with a
-non-negative least-squares (NNLS) fit in K and K * n_pad, the primary model.
-The sampled segments are evenly spaced picks, the two heaviest by K * n_pad, and
-the "tail": the segment with the widest padded window.
+one cold turn (which includes compilation) and three warm turns, keeping the last
+as the steady time, on a few segments spread across the band. Data: obs minus
+MBHB and VGB, with a running-median covariance. The warm per-step time is
+extrapolated to every segment with a non-negative least-squares (NNLS) fit, the
+primary model. Its four terms follow the cached likelihood's cost:
+- a fixed cost per step, for impulse's loop and the moves;
+- about one new template per chain, which scales with BW;
+- assembly over every slot, which scales with K * BW;
+- the window's inner product, which scales with n_pad.
+A model-free check gives each segment the time of the nearest sample. The
+sampled segments are evenly spaced picks, the most crowded (largest K * BW),
+the widest window, and the "tail": the segment with the widest padded window.
+Turns run at ``steps_per_turn`` steps by default, so the fixed per-turn cost
+(Fisher refresh, archive) is amortized as in a run.
 
 ``--skip-gaps`` and ``--max-interior-bins N`` set the matching
 ``UCBBlockConfig`` options; ``--out`` names the report under tools/performance.
 
-    PYTHONPATH=src:... python tools/segments/dry_run.py --sample 6 --steps 100
+    PYTHONPATH=src:... python tools/segments/dry_run.py --sample 6
     PYTHONPATH=src:... python tools/segments/dry_run.py --skip-gaps \
         --out segments-dry-run-skip-gaps.json
 """
@@ -37,6 +45,10 @@ from binary_galactica.segments import (
     ldc_to_native,
     quantize_bins,
 )
+
+# The first warm turns still compile the template renderer's chunk sizes (a
+# run pays that once per process), so the steady time is the last of these.
+WARM_TURNS = 3
 
 
 def _stats(values) -> dict:
@@ -95,16 +107,22 @@ def run(
     if sample < 3:
         raise ValueError(
             "--sample must be at least 3 "
-            "(evenly spaced picks plus the heaviest mid-band two)"
+            "(evenly spaced picks plus the most crowded and the widest window)"
         )
-    cost = np.array(
-        [seg.k_max * quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64
-    )
     # The tail is the widest padded window: the last segment under the default
-    # tiling, but anywhere with skip_gaps. It is always sampled, and the heavy
-    # picks are the two heaviest by K * n_pad besides it.
+    # tiling, but anywhere with skip_gaps. It is always sampled. The two heavy
+    # picks span the fit's other terms: the most crowded segment (K * BW) and the
+    # widest window besides the tail (n_pad).
     tail_index = int(np.argmax([seg.n_bins for seg in segs]))
-    heavy = [int(i) for i in np.argsort(-cost) if i != tail_index][:2]
+    k_bw = np.array([seg.k_max * seg.bw for seg in segs], dtype=np.float64)
+    n_pad = np.array([quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64)
+    crowded = next(int(i) for i in np.argsort(-k_bw, kind="stable") if i != tail_index)
+    wide = next(
+        int(i)
+        for i in np.argsort(-n_pad, kind="stable")
+        if i not in (tail_index, crowded)
+    )
+    heavy = [crowded, wide]
     even = np.linspace(0, len(segs) - 1, sample - 2).round().astype(int)
     pick = np.unique(np.concatenate([even, heavy, [tail_index]]))
     work = Path(tempfile.mkdtemp(prefix="dry-run-"))
@@ -130,19 +148,21 @@ def run(
             seed=seed + int(s),
             reference=c,
         )
-        t1 = time.perf_counter()
-        runner.advance(r, c)
-        first = time.perf_counter() - t1
-        t2 = time.perf_counter()
-        runner.advance(r, c)
-        steady = time.perf_counter() - t2
+        turns = []
+        for _ in range(1 + WARM_TURNS):
+            t1 = time.perf_counter()
+            runner.advance(r, c)
+            turns.append(time.perf_counter() - t1)
+        first, warm = turns[0], turns[1:]
+        steady = warm[-1]
         archived = sum(p.stat().st_size for p in runner.archive.files())
         rates = runner.sampler.proposal_acceptance_rates()
         timings.append(
             {
                 "segment": int(s),
                 "frequency_hz": 0.5 * (seg.lo + seg.hi) / T,
-                f"measured_archive_bytes_per_turn_at_{steps}_steps": archived // 2,
+                f"measured_archive_bytes_per_turn_at_{steps}_steps": archived
+                // len(turns),
                 "acceptance": {
                     name: {"calls": r["calls"], "rate": r["rate"]}
                     for name, r in rates.items()
@@ -153,56 +173,42 @@ def run(
                 "k_max": seg.k_max,
                 "owned": len(own),
                 "first_turn_s": first,
+                "warm_turns_s": warm,
                 "steady_turn_s": steady,
                 "per_step_s": steady / steps,
             }
         )
     from scipy.optimize import nnls
 
-    n_pads = np.array([quantize_bins(seg.n_bins) for seg in segs], dtype=np.float64)
     ks_all = ks.astype(np.float64)
     bws = np.array([seg.bw for seg in segs], dtype=np.float64)
+
+    def basis(k, bw, window):
+        # The cached likelihood's cost per step (see the module docstring).
+        return np.stack([np.ones_like(k), bw, k * bw, window], axis=-1)
+
     y = np.array([t["per_step_s"] for t in timings])
-    heavy_idx = [i for i, t in enumerate(timings) if t["segment"] in heavy]
-    tk = np.array([t["k_max"] for t in timings], dtype=np.float64)
-    tn = np.array([t["n_pad"] for t in timings], dtype=np.float64)
-    tb = np.array([t["bw"] for t in timings], dtype=np.float64)
-    # Model 1 (primary): per step = a*K + b*K*n_pad, non-negative least squares.
-    coef, _ = nnls(np.stack([tk, tk * tn], axis=1), y)
-    per_seg = coef[0] * ks_all + coef[1] * ks_all * n_pads
-    tail = n_pads == n_pads.max()
-    models = {"k_npad_nnls": float(per_seg.sum() * full_steps)}
-    # Model 2: bulk cost scales with K (mean measured seconds per step per K over the
-    # samples below the heavy threshold); every segment at or above the smallest
-    # heavy sample's n_pad takes the measured time of the sample nearest in n_pad,
-    # scaled by K.
-    thr = min(tn[heavy_idx])
-    heavy_mask = n_pads >= thr
-    bulk_t = [t for t in timings if t["n_pad"] < thr]
-    hv_t = [t for t in timings if t["n_pad"] >= thr]
-    bulk_rate = float(np.mean([t["per_step_s"] / t["k_max"] for t in bulk_t]))
-    nearest = [
-        min(hv_t, key=lambda t: abs(np.log(t["n_pad"] / n))) for n in n_pads[heavy_mask]
-    ]
-    heavy_step = sum(
-        t["per_step_s"] * k / t["k_max"]
-        for t, k in zip(nearest, ks_all[heavy_mask], strict=True)
+    tk, tb, tn = (
+        np.array([t[name] for t in timings], dtype=np.float64)
+        for name in ("k_max", "bw", "n_pad")
     )
-    models["bulk_k_scaled_plus_measured_heavy"] = float(
-        (bulk_rate * ks_all[~heavy_mask].sum() + heavy_step) * full_steps
-    )
-    tail_t = [t for t in timings if t["n_pad"] == n_pads.max()]
+    # Model 1 (primary): non-negative least squares in the four cost terms.
+    coef, _ = nnls(basis(tk, tb, tn), y)
+    per_seg = basis(ks_all, bws, n_pad) @ coef
+    tail = n_pad == n_pad.max()
+    models = {"cached_nnls": float(per_seg.sum() * full_steps)}
+    # Model 2 (model-free check): each segment takes the measured time of the
+    # sample nearest in (log BW, log n_pad, log K).
+    sampled = np.log(np.stack([tb, tn, tk], axis=1))
+    every = np.log(np.stack([bws, n_pad, ks_all], axis=1))
+    nearest = np.argmin(((every[:, None] - sampled[None]) ** 2).sum(axis=-1), axis=1)
+    models["nearest_sample"] = float(y[nearest].sum() * full_steps)
+    tail_t = [t for t in timings if t["n_pad"] == n_pad.max()]
     tail_step = (
         float(np.mean([t["per_step_s"] for t in tail_t])) if tail_t else float("nan")
     )
-    # Model 3 (earlier, kept for comparison): a + b*ntemps*K*BW, unconstrained.
-    x = np.stack([np.ones_like(tk), ntemps * tk * tb], axis=1)
-    c3 = np.linalg.lstsq(x, y, rcond=None)[0]
-    models["ntemps_k_bw_lstsq"] = float(
-        np.sum(c3[0] + c3[1] * ntemps * ks_all * bws) * full_steps
-    )
     tail_s = float(per_seg[tail].sum() * full_steps)
-    predicted = models["k_npad_nnls"]
+    predicted = models["cached_nnls"]
     return {
         "T": T,
         "skip_gaps": config.skip_gaps,
@@ -233,17 +239,20 @@ def run(
         "memory_bytes": memory,
         "memory_counted": "chain positions+counts and Fisher bank at k_max sources "
         "per chain, float64, summed over segments; impulse short_chain, JAX "
-        "executables and the "
-        "tool's full-band spectra excluded",
+        "executables, the likelihood's template cache (one segment at a time, "
+        "cleared after each turn) and the tool's full-band spectra excluded",
         "archive_bytes_per_turn": archive,
         "archive_note": "archive_bytes_per_turn is an uncompressed upper bound at "
         "1000 steps, thin 1; the measured_* per-sample keys are at the sampled "
         "step count",
         "timings": timings,
         "fit_seconds_per_step": {
-            "per_slot": float(coef[0]),
-            "per_slot_window_bin": float(coef[1]),
+            "fixed": float(coef[0]),
+            "per_bw_bin": float(coef[1]),
+            "per_slot_bw_bin": float(coef[2]),
+            "per_window_bin": float(coef[3]),
         },
+        "timed_steps_per_turn": steps,
         "tail": {
             "segment": tail_index,
             "frequency_mhz": [
@@ -251,7 +260,7 @@ def run(
                 segs[tail_index].hi / T * 1e3,
             ],
             "segments": int(tail.sum()),
-            "n_pad": float(n_pads.max()),
+            "n_pad": float(n_pad.max()),
             "predicted_turn_s": tail_s,
             "share_of_total": tail_s / predicted,
             "measured_per_step_s": tail_step,
@@ -266,7 +275,12 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--sample", type=int, default=6)
-    parser.add_argument("--steps", type=int, default=100)
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=UCBBlockConfig().steps_per_turn,
+        help="steps per timed turn (default: a run's steps_per_turn)",
+    )
     parser.add_argument("--seed", type=int, default=12)
     parser.add_argument("--path", type=Path, default=sangria.DEFAULT_PATH)
     parser.add_argument(
@@ -326,7 +340,12 @@ def main() -> None:
         f"  tail (seg {tl['segment']} at {tl['frequency_mhz'][0]:.2f} mHz; "
         f"{tl['segments']} seg, n_pad {tl['n_pad']:.0f}): "
         f"{tl['predicted_turn_s'] / 60:.0f} min "
-        f"per turn, {100 * tl['share_of_total']:.0f}% of the k_npad_nnls total"
+        f"per turn, {100 * tl['share_of_total']:.0f}% of the cached_nnls total"
+    )
+    fit = report["fit_seconds_per_step"]
+    print(
+        "  fit per step: "
+        + ", ".join(f"{name} {value:.3g} s" for name, value in fit.items())
     )
     print(f"wrote {path}")
 
