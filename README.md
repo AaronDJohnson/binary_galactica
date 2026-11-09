@@ -484,6 +484,16 @@ its own `impulse.RJPTSampler`, with:
 - the Fisher, prior-redraw, fm-shift and psi-phi moves;
 - prior birth/death on about 25% of moves.
 
+By default the segments tile the whole band. With `skip_gaps=True` the start
+sources are split into clusters wherever two neighbours sit more than twice
+their summed padding apart, and only the clusters are tiled. On the Sangria
+start set (10369 sources) the 971 segments then cover 345,338 of the band's
+663,332 bins, and the widest interior falls from 182,294 bins (15.69-21.47 mHz)
+to 3,093. No segment covers a gap, so reversible jump cannot find a source
+there; use it for runs that start on the real sources. `max_interior_bins` is a
+soft cap instead: wider interiors are split, and the merge pass widens a piece
+past the cap only where the padding rule needs it.
+
 Sampling starts at injected values, so there are no F-statistic or GMM
 proposals. The waveform backend defaults to `"onfly"`. The likelihood is the
 Fourier (rfft-bin) one; a WDM-domain likelihood is a planned follow-up. Install
@@ -518,6 +528,12 @@ Each `sample()` call is one Gibbs turn:
 3. It publishes the owned sources over their full band in every data channel
    (T follows GLASS's `(X + Y + Z)/sqrt(3)`; the data's T must use the same
    combination).
+
+Each move changes one source, so the segment likelihood caches every source's
+template under its exact parameters and renders only the new ones, about one
+per chain per step. With twelve chains a step then costs 1.5-4 ms on most
+Sangria segments (7-10 ms at BW 1024), against 9-30 ms at BW 128 when every
+slot is re-rendered.
 
 The SNR cut is measured against a reference covariance fixed for the run.
 Start sources below it are dropped and listed in
@@ -555,9 +571,14 @@ Validation reports are in `tools/performance/segments-*.json`:
   276): 41 of 48 GLASS detections with SNR >= 10 have a block counterpart
   within 3 sigma (0.85). The misses are start-set selection (analytic SNR < 7)
   or GLASS splitting blends.
-- Full-band dry run (`segments-dry-run.json`): 10370 start sources become 879
-  segments. Predicted 2.3-4.4 h per Gibbs turn at 1000 steps on this machine;
-  the 29 mHz tail segment takes about 23 min of that.
+- Full-band dry run (`segments-dry-run.json`): 10369 start sources (without the
+  mistaken 42.97 mHz dgb 8537801) become 879 segments. Predicted 0.46-0.48 h
+  per Gibbs turn at 1000 steps on this machine, run serially; the 15.69-21.47
+  mHz tail segment is under 1% of that. With `skip_gaps`
+  (`segments-dry-run-skip-gaps.json`) there are 971 segments in 133 clusters,
+  covering 52% of the band, and 0.60-0.72 h per turn. The cached step costs
+  much the same in a narrow window as in a wide one, so the extra segments
+  outweigh the narrower windows.
 
 ## Validation
 
