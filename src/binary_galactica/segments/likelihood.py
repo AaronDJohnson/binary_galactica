@@ -19,6 +19,17 @@ compile therefore serves every segment with the same
 ``(BW, n_pad, K, backend, fmt, response_samples)``. On the on-fly backend an
 automatic (``None``) response grid is resolved from the concrete ``T`` at
 construction, so only that grid compiles rather than every automatic branch.
+
+Each sampler move changes one source, so evaluating a batch re-renders only the
+sources it has not seen. A source's template depends on its eight parameters
+alone, given the window and waveform settings, so templates are cached under
+the parameters' exact bytes. That key needs no knowledge of which chain, slot
+or move produced a row. Births and deaths shift slots, tempering swaps
+exchange rows, the sampler may pass a subset of rows, and a rejected
+proposal's old value comes back. All of these are cache hits. The cache keeps
+the least recently used entries up to ``cache_slots`` and is cleared with
+:meth:`SegmentLikelihood.clear_cache`. The cache-free evaluation is kept as
+:meth:`SegmentLikelihood.lnlike_uncached`.
 """
 
 from __future__ import annotations
@@ -54,11 +65,161 @@ def quantize_bins(n: int) -> int:
     return three if p >= 4 and three >= n else p
 
 
+# Batch sizes of the cached-template renderer. A call costs about 0.1 ms plus
+# about 45 us per source, and a step usually renders one new source per chain,
+# so the last chunk is padded only up to the next size.
+RENDER_SIZES = (4, 8, 12, 16)
+
+
 @dataclass(frozen=True)
 class _Kernels:
     lnlike: Callable[..., Any]
     templates: Callable[..., Any]
     fisher: Callable[..., Any]
+    render: Callable[..., Any]
+    assemble: Callable[..., Any]
+
+
+@functools.cache
+def _render_kernel(
+    BW: int, backend: str, fmt: str, response_samples: int | None
+) -> Callable[..., Any]:
+    """Compact templates ``(n, 2, BW)``, window-relative bins and finiteness."""
+
+    def compact(p, T, t0, bin_lo):
+        w = ucb_waveform(
+            p,
+            T=T,
+            BW=BW,
+            t0=t0,
+            fmt=fmt,
+            backend=backend,
+            response_samples=response_samples,
+        )
+        c = GLASS_TO_CONTINUOUS(T)
+        h = jnp.stack([c * w["A"], c * w["E"]])
+        idx = jnp.asarray(w["freq_bin_indices"] - bin_lo, dtype=jnp.int32)
+        finite = jnp.all(jnp.isfinite(w["A"])) & jnp.all(jnp.isfinite(w["E"]))
+        return h, idx, finite
+
+    return jax.jit(jax.vmap(compact, in_axes=(0, None, None, None)))
+
+
+@functools.cache
+def _assemble_kernel(n_pad: int, k_max: int) -> Callable[..., Any]:
+    """Log likelihood of rows built from compact templates (see ``lnlike_row``)."""
+    zero = jnp.zeros((), dtype=jnp.complex128)
+
+    def row(h, idx, finite, k, residual, inv_c, inv_c_ref, snr2_min):
+        active = jnp.arange(k_max) < k
+        valid = (idx >= 0) & (idx < n_pad) & active[:, None]
+        safe = jnp.where(valid, idx, n_pad)  # out of range: dropped, never wrapped
+        vals = jnp.where(valid[:, None, :], h, zero)
+        flat = safe.reshape(-1)
+        model = jnp.zeros((2, n_pad), dtype=jnp.complex128)
+        model = model.at[0, flat].add(vals[:, 0].reshape(-1), mode="drop")
+        model = model.at[1, flat].add(vals[:, 1].reshape(-1), mode="drop")
+        d = residual - model
+        ll = -jnp.sum(inv_c * (d.real**2 + d.imag**2))
+        ref = jnp.concatenate([inv_c_ref, jnp.zeros((2, 1))], axis=1)[:, safe]
+        power = vals.real**2 + vals.imag**2
+        snr2 = 2.0 * jnp.sum(jnp.moveaxis(ref, 0, 1) * power, axis=(1, 2))
+        bad = jnp.any(active & (~finite | (snr2 < snr2_min)))
+        ll = jnp.where(bad, -jnp.inf, ll)
+        return jnp.where(jnp.isnan(ll), -jnp.inf, ll)
+
+    return jax.jit(jax.vmap(row, in_axes=(0, 0, 0, 0) + (None,) * 4))
+
+
+class _TemplateStore:
+    """Compact templates keyed by a source's exact parameter bytes, LRU-evicted.
+
+    Row 0 is a permanent all-zero template that inactive slots point at.
+    """
+
+    def __init__(self, BW: int) -> None:
+        self.BW = int(BW)
+        self.renders = 0
+        self.clear()
+
+    def clear(self) -> None:
+        self._row: dict[bytes, int] = {}
+        self._key: list[bytes | None] = [None]
+        self.h = np.zeros((1, 2, self.BW), dtype=np.complex128)
+        self.idx = np.full((1, self.BW), -1, dtype=np.int32)
+        self.finite = np.ones(1, dtype=bool)
+        self._stamp = np.zeros(1, dtype=np.int64)
+        self._free: list[int] = []
+        self._clock = 0
+
+    def __len__(self) -> int:
+        return len(self._row)
+
+    @property
+    def capacity(self) -> int:
+        return len(self._key) - 1
+
+    def _grow(self, rows: int) -> None:
+        if rows <= 0:
+            return
+        start = len(self._key)
+        self._key.extend([None] * rows)
+        self.h = np.concatenate([self.h, np.zeros((rows, 2, self.BW), self.h.dtype)])
+        self.idx = np.concatenate([self.idx, np.full((rows, self.BW), -1, np.int32)])
+        self.finite = np.concatenate([self.finite, np.ones(rows, dtype=bool)])
+        self._stamp = np.concatenate([self._stamp, np.zeros(rows, dtype=np.int64)])
+        self._free.extend(range(start + rows - 1, start - 1, -1))
+
+    def _reserve(self, need: int, capacity: int) -> list[int]:
+        """Free ``need`` rows, evicting entries this call has not used."""
+        self._grow(capacity - self.capacity)
+        if len(self._free) < need:
+            stale = np.flatnonzero(self._stamp[1:] < self._clock) + 1
+            stale = stale[[self._key[i] is not None for i in stale]]
+            if len(self._free) + len(stale) < need:
+                self._grow(need - len(self._free) - len(stale))
+            # Evict the older half of the stale entries (at least what is needed),
+            # so eviction runs rarely rather than on every call.
+            count = min(len(stale), max(need - len(self._free), len(stale) // 2))
+            for i in stale[np.argsort(self._stamp[stale], kind="stable")[:count]]:
+                del self._row[self._key[i]]  # type: ignore[arg-type]
+                self._key[i] = None
+                self._free.append(int(i))
+        return [self._free.pop() for _ in range(need)]
+
+    def rows(
+        self,
+        sources: NDArray[np.float64],
+        capacity: int,
+        render: Callable[[NDArray[np.float64]], tuple[Any, Any, Any]],
+    ) -> NDArray[np.int64]:
+        """Return each source's store row, rendering the sources not yet stored."""
+        self._clock += 1
+        buf = np.ascontiguousarray(sources, dtype=np.float64).tobytes()
+        width = 8 * 8
+        out = np.zeros(len(sources), dtype=np.int64)
+        missing: dict[bytes, list[int]] = {}
+        get = self._row.get
+        for i in range(len(sources)):
+            key = buf[i * width : (i + 1) * width]
+            row = get(key)
+            if row is None:
+                missing.setdefault(key, []).append(i)
+            else:
+                out[i] = row
+        self._stamp[out] = self._clock  # protect this call's hits from eviction
+        if missing:
+            keys = list(missing)
+            rows = self._reserve(len(keys), capacity)
+            h, idx, finite = render(sources[[missing[k][0] for k in keys]])
+            self.h[rows], self.idx[rows], self.finite[rows] = h, idx, finite
+            self._stamp[rows] = self._clock
+            for key, row in zip(keys, rows, strict=True):
+                self._row[key] = row
+                self._key[row] = key
+                out[missing[key]] = row
+            self.renders += len(keys)
+        return out
 
 
 @functools.cache
@@ -122,6 +283,8 @@ def _kernels(
         lnlike=jax.jit(jax.vmap(lnlike_row, in_axes=(0, 0) + (None,) * 7)),
         templates=jax.jit(many),
         fisher=jax.jit(jax.vmap(fisher_one, in_axes=(0, None, None, None, None))),
+        render=_render_kernel(BW, backend, fmt, response_samples),
+        assemble=_assemble_kernel(n_pad, k_max),
     )
 
 
@@ -163,6 +326,11 @@ class SegmentLikelihood:
     Call :meth:`set_data` once per turn and :meth:`set_reference` once per
     run before evaluating. ``x`` rows are padded impulse vectors
     ``(n, 8 * k_max)`` with NaN past ``k``.
+
+    Evaluation reuses cached templates (see the module docstring).
+    ``cache_slots`` bounds the cache. The default is four times the first
+    batch's rows times ``k_max``, and the cache grows past the bound only to
+    hold one batch's sources.
     """
 
     def __init__(
@@ -178,10 +346,13 @@ class SegmentLikelihood:
         fmt: str = "sangria",
         response_samples: int | None = None,
         snr_min: float = SNR_MIN,
+        cache_slots: int | None = None,
     ) -> None:
         """Validate the window and settings and prepare the template evaluator."""
         if int(n_bins) < 1 or int(k_max) < 1:
             raise ValueError("n_bins and k_max must be positive")
+        if cache_slots is not None and (not _is_int(cache_slots) or cache_slots < 1):
+            raise ValueError("cache_slots must be None or a positive integer")
         if not _is_int(BW) or BW <= 0 or BW % 2:
             raise ValueError(f"BW must be a positive even integer, got {BW!r}")
         if backend not in BACKENDS:
@@ -214,6 +385,8 @@ class SegmentLikelihood:
             self.response_samples,
         )
         self.kernels = _kernels(*self.key)
+        self.cache_slots = None if cache_slots is None else int(cache_slots)
+        self._store = _TemplateStore(int(BW))
         self._residual: jax.Array | None = None
         self._inv_c: jax.Array | None = None
         self._inv_c_ref: jax.Array | None = None
@@ -302,8 +475,9 @@ class SegmentLikelihood:
         F = self.kernels.fisher(x, self._inv_c, *self._scalars())
         return np.asarray(F)[:n]
 
-    def __call__(self, x: ArrayLike, k: ArrayLike) -> NDArray[np.float64]:
-        """Return the log likelihood of each row; NaN becomes ``-inf``."""
+    def _rows(
+        self, x: ArrayLike, k: ArrayLike
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         if self._residual is None or self._inv_c is None or self._inv_c_ref is None:
             raise RuntimeError("call set_data and set_reference first")
         rows = np.asarray(x, dtype=np.float64)
@@ -314,6 +488,52 @@ class SegmentLikelihood:
             raise ValueError(f"k has {ks.shape[0]} entries for {rows.shape[0]} rows")
         if np.any((ks < 0) | (ks > self.k_max)):
             raise ValueError(f"k must lie in 0 .. {self.k_max}")
+        return rows, ks
+
+    def _render(self, sources: NDArray[np.float64]) -> tuple[Any, Any, Any]:
+        """Compact templates of ``sources``, in chunks of the :data:`RENDER_SIZES`."""
+        hs, idxs, finites = [], [], []
+        big = RENDER_SIZES[-1]
+        for start in range(0, len(sources), big):
+            chunk = sources[start : start + big]
+            n = len(chunk)
+            size = next(s for s in RENDER_SIZES if s >= n)
+            pad = np.concatenate([chunk, np.repeat(chunk[:1], size - n, 0)])
+            h, idx, finite = self.kernels.render(jnp.asarray(pad), *self._scalars())
+            hs.append(np.asarray(h)[:n])
+            idxs.append(np.asarray(idx)[:n])
+            finites.append(np.asarray(finite)[:n])
+        return np.concatenate(hs), np.concatenate(idxs), np.concatenate(finites)
+
+    def __call__(self, x: ArrayLike, k: ArrayLike) -> NDArray[np.float64]:
+        """Return the log likelihood of each row; NaN becomes ``-inf``.
+
+        Equal to :meth:`lnlike_uncached` up to summation order (about 1e-15
+        relative), from cached templates of the rows' active sources.
+        """
+        rows, ks = self._rows(x, k)
+        n = rows.shape[0]
+        active = np.arange(self.k_max)[None, :] < ks[:, None]
+        sources = rows.reshape(n, self.k_max, 8)[active]
+        capacity = self.cache_slots or 4 * n * self.k_max
+        ids = np.zeros((n, self.k_max), dtype=np.int64)
+        ids[active] = self._store.rows(sources, capacity, self._render)
+        store = self._store
+        out = self.kernels.assemble(
+            jnp.asarray(store.h[ids]),
+            jnp.asarray(store.idx[ids]),
+            jnp.asarray(store.finite[ids]),
+            jnp.asarray(ks),
+            self._residual,
+            self._inv_c,
+            self._inv_c_ref,
+            jnp.float64(self.snr_min**2),
+        )
+        return np.asarray(out, dtype=np.float64)
+
+    def lnlike_uncached(self, x: ArrayLike, k: ArrayLike) -> NDArray[np.float64]:
+        """Return the log likelihood with every slot's template rendered afresh."""
+        rows, ks = self._rows(x, k)
         out = self.kernels.lnlike(
             jnp.asarray(rows),
             jnp.asarray(ks),
@@ -324,6 +544,19 @@ class SegmentLikelihood:
             *self._scalars(),
         )
         return np.asarray(out, dtype=np.float64)
+
+    def clear_cache(self) -> None:
+        """Drop every cached template and free the cache's memory."""
+        self._store.clear()
+
+    def cache_info(self) -> dict[str, int]:
+        """Return the cache's ``entries``, ``capacity`` and cumulative ``renders``."""
+        store = self._store
+        return {
+            "entries": len(store),
+            "capacity": store.capacity,
+            "renders": store.renders,
+        }
 
 
 __all__ = ["SegmentLikelihood", "quantize_bins"]

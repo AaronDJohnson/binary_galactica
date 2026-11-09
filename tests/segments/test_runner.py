@@ -126,6 +126,26 @@ def test_positions_and_counts_carry_over_between_turns(tmp_path):
     np.testing.assert_array_equal(calls[1][1], after_k)
 
 
+def test_archived_lnlike_matches_the_uncached_likelihood(tmp_path):
+    rj_impulse()
+    r, c = _window()
+    runner = SegmentRunner(
+        SEG,
+        SOURCE[None],
+        T=T_SHORT,
+        t0=0.0,
+        config=_config(steps_per_turn=200),
+        outdir=tmp_path,
+        seed=4,
+        reference=c,
+    )
+    runner.advance(r, c)
+    chain = runner.archive.load()
+    assert runner.likelihood.cache_info()["entries"] == 0  # freed after the turn
+    ref = runner.likelihood.lnlike_uncached(chain["samples"], chain["k"])
+    np.testing.assert_allclose(chain["lnlike"], ref, rtol=1e-12)
+
+
 def test_residual_change_recomputes_likelihoods(tmp_path):
     rj_impulse()
     r, c = _window()

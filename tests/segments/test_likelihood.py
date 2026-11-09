@@ -139,12 +139,17 @@ def test_compile_key_sharing():
         x[0, :8] = native_source(bin_lo + 50.3)
         assert np.isfinite(lik(x, np.array([1]))[0])
         liks.append(lik)
-        compiled.append(lik.kernels.lnlike._cache_size())
+        compiled.append(
+            (lik.kernels.render._cache_size(), lik.kernels.assemble._cache_size())
+        )
     a, b = liks
     c = SegmentLikelihood(T=T_SHORT, t0=0.0, bin_lo=5000, n_bins=200, BW=64, k_max=2)
     assert a.key == b.key and a.kernels is b.kernels
-    assert compiled[1] == compiled[0] >= 1
+    assert compiled[1] == compiled[0] and min(compiled[0]) >= 1
     assert c.key != a.key
+    # The template renderer depends only on BW and the waveform settings, so
+    # one compile serves windows of every size and slot count.
+    assert c.kernels.render is a.kernels.render
 
 
 def test_automatic_response_grid_is_resolved_at_construction():
@@ -271,6 +276,122 @@ def test_matches_enchilada_quadratic_form():
         full[ch][BIN_LO : BIN_LO + N_BINS] = r[i] - h[i]
     got = lik(_row(SOURCES)[None], np.array([2]))[0]
     assert got == pytest.approx(-0.5 * dc.quadratic_form(full), rel=1e-10)
+
+
+def _sources(rng, n):
+    """Draw ``n`` sources near the test band: two bright groups, one edge, one weak."""
+    base = np.array(
+        [
+            native_source(2949.12),
+            native_source(2960.4, lnA=-48.5),
+            native_source(2880.3),  # straddles bin_lo
+            native_source(2949.12, lnA=-54.0),  # below the SNR cut
+        ]
+    )
+    out = base[rng.integers(0, len(base), n)].copy()
+    out[:, 0] += rng.uniform(-0.5, 0.5, n)
+    out[:, 3] += rng.uniform(-0.1, 0.1, n)
+    out[:, 6] = rng.uniform(0.0, 2 * np.pi, n)
+    return out
+
+
+def _random_batch(rng, n_rows=6, k_max=4):
+    ks = rng.integers(0, k_max + 1, n_rows)
+    rows = np.stack([_row(_sources(rng, k), k_max=k_max) for k in ks])
+    return rows, ks
+
+
+def _agree(lik, rows, ks):
+    got = lik(rows, ks)
+    ref = lik.lnlike_uncached(rows, ks)
+    np.testing.assert_array_equal(np.isfinite(got), np.isfinite(ref))
+    ok = np.isfinite(ref)
+    np.testing.assert_allclose(got[ok], ref[ok], rtol=1e-12)
+    return got
+
+
+def test_cached_likelihood_matches_uncached():
+    lik, _, _ = _lik(k_max=4)
+    rng = np.random.default_rng(3)
+    rows, ks = _random_batch(rng, n_rows=8)
+    bad = native_source(2949.12)
+    bad[4] = 1.5  # invalid cos(inclination): -inf in both paths
+    rows[0, :8], ks[0] = bad, max(ks[0], 1)
+    first = _agree(lik, rows, ks)
+    assert first[0] == -np.inf
+    assert np.isfinite(first).any() and (~np.isfinite(first[1:])).any()
+    renders = lik.cache_info()["renders"]
+    again = lik(rows, ks)  # every source is now cached
+    np.testing.assert_array_equal(again, first)
+    assert lik.cache_info()["renders"] == renders
+
+
+def test_cache_renders_only_the_sources_a_move_creates():
+    lik, _, _ = _lik(k_max=4)
+    rng = np.random.default_rng(4)
+    srcs = _sources(rng, 9)
+    rows = np.stack([_row(srcs[0:3], 4), _row(srcs[3:6], 4), _row(srcs[6:9], 4)])
+    ks = np.array([3, 3, 3])
+    _agree(lik, rows, ks)
+    assert lik.cache_info()["renders"] == 9
+
+    def renders_for(new_rows, new_ks):
+        before = lik.cache_info()["renders"]
+        _agree(lik, new_rows, new_ks)
+        return lik.cache_info()["renders"] - before
+
+    moved = rows.copy()
+    moved[0, 8:16] = _sources(rng, 1)[0]  # within-model move of one slot
+    assert renders_for(moved, ks) == 1
+    assert renders_for(rows, ks) == 0  # rejected: the old value is still cached
+    death = rows.copy()
+    death[1] = _row(np.delete(srcs[3:6], 0, axis=0), 4)  # later slots shift down
+    assert renders_for(death, np.array([3, 2, 3])) == 0
+    birth = rows.copy()
+    birth[2] = _row(np.insert(srcs[6:9], 1, _sources(rng, 1), axis=0), 4)
+    assert renders_for(birth, np.array([3, 3, 4])) == 1
+    assert renders_for(rows[::-1], ks[::-1]) == 0  # tempering swap
+    assert renders_for(rows[1:], ks[1:]) == 0  # only the finite-prior rows
+
+
+def test_cache_survives_a_new_residual():
+    lik, r, c = _lik(k_max=4)
+    rows, ks = _random_batch(np.random.default_rng(5))
+    _agree(lik, rows, ks)
+    renders = lik.cache_info()["renders"]
+    lik.set_data(r + 3.0 * np.sqrt(c), c)
+    _agree(lik, rows, ks)
+    assert lik.cache_info()["renders"] == renders
+
+
+def test_cache_eviction_and_clear_keep_values_exact():
+    lik = SegmentLikelihood(
+        T=T_SHORT,
+        t0=0.0,
+        bin_lo=BIN_LO,
+        n_bins=N_BINS,
+        BW=BW,
+        k_max=4,
+        backend="onfly",
+        cache_slots=8,
+    )
+    _, r, c = _lik()
+    lik.set_data(r, c)
+    lik.set_reference(c)
+    rng = np.random.default_rng(6)
+    rows, ks = _random_batch(rng, n_rows=4)
+    for _ in range(12):
+        i, j = rng.integers(0, len(rows)), rng.integers(0, 4)
+        rows[i, 8 * j : 8 * j + 8] = _sources(rng, 1)[0]
+        ks[i] = max(ks[i], j + 1)
+        _agree(lik, rows, ks)
+        # The store grows past cache_slots only to hold one call's sources.
+        assert lik.cache_info()["entries"] <= 4 * 4
+    first = lik(rows, ks)
+    lik.clear_cache()
+    assert lik.cache_info()["entries"] == 0
+    # Re-rendered in a different chunk size, so equal to roundoff, not bitwise.
+    np.testing.assert_allclose(lik(rows, ks), first, rtol=1e-12)
 
 
 @pytest.mark.slow

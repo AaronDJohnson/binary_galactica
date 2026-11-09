@@ -298,6 +298,9 @@ class SegmentRunner:
         )
         for path in (self.outdir / "impulse").glob("chain_*"):
             path.unlink()
+        # Only the segment being sampled needs its templates; free the rest.
+        if self.likelihood is not None:
+            self.likelihood.clear_cache()
         # Free impulse's (ntemps, steps, D) ring buffer; every sample() call
         # rebuilds it.
         self.sampler.short_chain = None
