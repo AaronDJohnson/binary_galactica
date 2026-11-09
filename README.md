@@ -433,9 +433,10 @@ The modules under `binary_galactica.glass` provide constants, orbit, response,
 on-fly interpolation, waveform generation, TDI conversion, bandwidth,
 alignment, Fourier conversion, fixed-window placement, priors, and proposals.
 Priors/proposals use NumPy on the host and native coordinates. They are building
-blocks rather than an inference engine:
-likelihoods, fitted noise, trans-dimensional searches, and WDM integration
-remain outside this package.
+blocks rather than an inference engine. The one sampler-facing exception is
+`binary_galactica.segments` (below), a GLASS-style segment likelihood and
+enchilada block that drives impulse's reversible-jump sampler. Fitted noise and
+WDM integration remain outside this package.
 
 The Fisher helper preserves the donor's one-eigendirection draw, but uses two
 safer guards: non-finite draws and correlated jumps reaching either cosine
@@ -472,6 +473,112 @@ log_prior = prior.log_prior(candidate)
 default mixture, only about 70% of steps use Fisher proposals, so refreshing
 every 80 calls does not reproduce GLASS's refresh every 80 total sampler
 steps. The example's fixed decomposition avoids state-dependent adaptation.
+
+## UCB segment block
+
+`binary_galactica.segments` samples the galactic-binary band the way GLASS's
+global fit did, as one block of an enchilada blocked-Gibbs sampler. The band
+is tiled into segments, each with an interior plus padding. Each segment has
+its own `impulse.RJPTSampler`, with:
+- GLASS's twelve-chain ladder;
+- the Fisher, prior-redraw, fm-shift and psi-phi moves;
+- prior birth/death on about 25% of moves.
+
+By default the segments tile the whole band. With `skip_gaps=True` the start
+sources are split into clusters wherever two neighbours sit more than twice
+their summed padding apart, and only the clusters are tiled. On the Sangria
+start set (10369 sources) the 971 segments then cover 345,338 of the band's
+663,332 bins, and the widest interior falls from 182,294 bins (15.69-21.47 mHz)
+to 3,093. No segment covers a gap, so reversible jump cannot find a source
+there; use it for runs that start on the real sources. `max_interior_bins` is a
+soft cap instead: wider interiors are split, and the merge pass widens a piece
+past the cap only where the padding rule needs it.
+
+Sampling starts at injected values, so there are no F-statistic or GMM
+proposals. The waveform backend defaults to `"onfly"`. The likelihood is the
+Fourier (rfft-bin) one; a WDM-domain likelihood is a planned follow-up. Install
+the sampler with `python -m pip install -e ".[segments]"`; it needs impulse with
+`RJPTSampler` (its `rjmcmc` branch until that is released).
+
+```python
+from binary_galactica.segments import UCBBlock, UCBBlockConfig
+
+block = UCBBlock(
+    grid=l1_data,  # channels ("A", "E") or ("A", "E", "T")
+    start_sources=catalogue_rows,  # LDC rows with the sky/dgb/cat fields
+    outdir="runs/ucb",
+    config=UCBBlockConfig(),  # written to runs/ucb/config.json
+    reference_covariance=starting_cov,  # fixes the SNR < 5 cut for the run
+)
+wheel.add(
+    block_to_register=block,
+    initial_block_state=block.initial_block_state(frequency_l1_data),
+    data_domain="frequency",
+)
+```
+
+Each `sample()` call is one Gibbs turn:
+1. The block reads the A and E coefficient variances `C = (T/2) S` from the
+   frequency `DataCovariance`. S is the one-sided PSD in the data's units. For
+   Sangria fractional-frequency `dt * rfft` data this is GLASS's phase-format
+   `ae_noise` times `4 (f/f*)^2`; `tools/segments/runs.py: instrument_variance`
+   has it.
+2. It sweeps even segments, then odd. Each segment sees the conditional
+   residual minus the other segments' owned sources, on its padded window.
+3. It publishes the owned sources over their full band in every data channel
+   (T follows GLASS's `(X + Y + Z)/sqrt(3)`; the data's T must use the same
+   combination).
+
+Each move changes one source, so the segment likelihood caches every source's
+template under its exact parameters and renders only the new ones, about one
+per chain per step. With twelve chains a step then costs 1.5-4 ms on most
+Sangria segments (7-10 ms at BW 1024), against 9-30 ms at BW 128 when every
+slot is re-rendered.
+
+The SNR cut is measured against a reference covariance fixed for the run.
+Start sources below it are dropped and listed in
+`dropped_start_sources.json`. As in GLASS, the cut truncates the source prior
+without renormalizing it, so the posterior on the count is not exactly that of
+the uniform count prior. Prior-only runs have no likelihood and no cut, and
+recover the uniform count.
+
+The reference should approximate the noise a converged noise block sees. A
+running median of the raw data counts resolvable sources as noise: in crowded
+bands it overestimates the noise several-fold and drops bright sources at the
+cut. One GLASS segment at 3.3 mHz dropped 34 of 83 start sources against the raw
+median, and 1 against the median of the data minus the start sources. The
+validation tools use the latter: `tools/segments/runs.py: residual_spectra`.
+
+impulse has no continue call, so each turn re-calls `sample()` on the same
+sampler. The ladder, its adaptation, the RNG streams and the proposal state
+carry over. The iteration count and impulse's own chain files restart each
+turn, and the block copies every turn's cold chain to
+`segment_*/cold/turn_*.npz`. `block.cold_chain(i)` returns segment `i`'s
+archived cold chain, and `ChainArchive` refuses to reopen a directory that
+already holds turns.
+
+Validation reports are in `tools/performance/segments-*.json`:
+- Conventions gate (`segments-conventions.json`): templates against noise-free
+  Sangria. The worst isolated match is 0.997 (AM CVn) at the gate bandwidth.
+  LDC `InitialPhase` is GLASS's native phi0.
+- Isolated synthetic source (`segments-isolated.json`): SNR 38, 20 turns of
+  1000 steps; the posterior mean is within 4 sigma of the injection and the
+  widths match the truncated Fisher widths.
+- Segment 767 band, +-600 bins (`segments-767.json`): fixed count PASS, with 66
+  sources at reference SNR >= 7 each recovered in >= 90% of samples. RJ PASS,
+  with 49 sources at SNR >= 10 each recovered in >= 80%.
+- GLASS comparison (`segments-glass-compare.json`, GLASS segments 113, 125,
+  276): 41 of 48 GLASS detections with SNR >= 10 have a block counterpart
+  within 3 sigma (0.85). The misses are start-set selection (analytic SNR < 7)
+  or GLASS splitting blends.
+- Full-band dry run (`segments-dry-run.json`): 10369 start sources (without the
+  mistaken 42.97 mHz dgb 8537801) become 879 segments. Predicted 0.46-0.48 h
+  per Gibbs turn at 1000 steps on this machine, run serially; the 15.69-21.47
+  mHz tail segment is under 1% of that. With `skip_gaps`
+  (`segments-dry-run-skip-gaps.json`) there are 971 segments in 133 clusters,
+  covering 52% of the band, and 0.60-0.72 h per turn. The cached step costs
+  much the same in a narrow window as in a wide one, so the extra segments
+  outweigh the narrower windows.
 
 ## Validation
 

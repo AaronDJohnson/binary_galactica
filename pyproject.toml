@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "binary-galactica"
-version = "0.6.0"
+version = "0.7.0"
 description = "Differentiable LISA galactic-binary TDI waveforms in JAX"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,6 +34,7 @@ GLASS = "https://github.com/nsgs-analysis-center/glass"
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "pytest-xdist>=3", "ruff==0.17.0", "mypy>=1.10"]
+segments = ["impulse-mcmc>=2.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binary_galactica"]
@@ -57,5 +58,8 @@ ignore = ["D203", "D213"]
 "tests/*" = ["D103"]
 "src/binary_galactica/glass/*" = ["N802", "N803", "N806"]
 "tests/glass/*" = ["N802", "N803", "N806"]
+"src/binary_galactica/segments/*" = ["N802", "N803", "N806"]
+"tests/segments/*" = ["N802", "N803", "N806"]
+"tools/segments/*" = ["N802", "N803", "N806", "D103"]
 "src/binary_galactica/detector.py" = ["N803"]
 "src/binary_galactica/single.py" = ["N803"]
