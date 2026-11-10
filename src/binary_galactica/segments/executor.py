@@ -14,6 +14,11 @@ result.
   that has initialised JAX is unsafe, and they inherit the parent's
   environment (``XLA_FLAGS`` included) and its JAX x64 setting.
 
+Other JAX settings changed with ``jax.config.update`` in the parent do not
+reach the workers; set them through environment variables, which the
+workers inherit. Workers ignore SIGINT: an interrupt reaches the parent,
+which then terminates them.
+
 If any worker fails, the executor terminates every worker at once and
 refuses further work; build a new one.
 
@@ -26,6 +31,7 @@ from __future__ import annotations
 import contextlib
 import multiprocessing as mp
 import resource
+import signal
 import sys
 import traceback
 from collections.abc import Callable, Mapping, Sequence
@@ -44,9 +50,11 @@ from .table import Segment
 #: One segment's job: its ``(2, n_bins)`` residual window and A/E variances.
 Job = tuple[NDArray[np.complex128], NDArray[np.float64]]
 
-#: The dry run's fitted cost of one step (``tools/segments/dry_run.py``): a fixed
-#: part and parts per template bin, per slot-bin and per window bin, in
-#: microseconds. :func:`assign_shards` uses it only as relative weights.
+#: A step's cost from the dry run's fit at commit 6dc3c4d
+#: (``tools/segments/dry_run.py``): a fixed part and parts per template bin,
+#: per slot-bin and per window bin, in microseconds. Fits vary between runs,
+#: the per-bin term most, so :func:`assign_shards` uses these only as
+#: relative weights for load balance.
 STEP_COST_US = (1252.0, 3.33, 0.036, 0.022)
 
 
@@ -200,6 +208,9 @@ def _worker(
     conn: Any, factory: RunnerFactory, specs: list[RunnerSpec], x64: bool
 ) -> None:
     """Build a shard's runners, then serve jobs until told to stop."""
+    # A terminal Ctrl-C reaches the whole process group; the parent handles it
+    # and stops the workers (see ProcessExecutor.advance).
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     import jax
 
     jax.config.update("jax_enable_x64", x64)
@@ -269,26 +280,31 @@ class ProcessExecutor:
             raise RuntimeError("the executor is already started")
         x64 = bool(jax.config.read("jax_enable_x64"))
         by_index = {spec.segment.index: spec for spec in specs}
-        for shard in assign_shards([s.segment for s in specs], self.workers):
-            if not shard:
-                continue
-            parent, child = self._context.Pipe()
-            proc = self._context.Process(
-                target=_worker,
-                args=(child, self._factory, [by_index[i] for i in shard], x64),
-                name=f"ucb-shard-{len(self._procs)}",
-                daemon=True,
-            )
-            proc.start()
-            child.close()
-            k = len(self._procs)
-            self._procs.append(proc)
-            self._conns.append(parent)
-            self._shards.append(shard)
-            for i in shard:
-                self._shard_of[i] = k
-        for k in range(len(self._procs)):
-            self._receive(k)
+        try:
+            for shard in assign_shards([s.segment for s in specs], self.workers):
+                if not shard:
+                    continue
+                parent, child = self._context.Pipe()
+                proc = self._context.Process(
+                    target=_worker,
+                    args=(child, self._factory, [by_index[i] for i in shard], x64),
+                    name=f"ucb-shard-{len(self._procs)}",
+                    daemon=True,
+                )
+                proc.start()
+                child.close()
+                k = len(self._procs)
+                self._procs.append(proc)
+                self._conns.append(parent)
+                self._shards.append(shard)
+                for i in shard:
+                    self._shard_of[i] = k
+            for k in range(len(self._procs)):
+                self._receive(k)
+        except BaseException:
+            if not self._failed:
+                self._fail()
+            raise
 
     def _send(self, k: int, message: Any) -> None:
         try:
@@ -341,19 +357,29 @@ class ProcessExecutor:
         parts: dict[int, dict[int, Job]] = {}
         for index, job in jobs.items():
             parts.setdefault(self._shard_of[index], {})[index] = job
-        for k, part in parts.items():
-            self._send(k, part)
-        results: dict[int, AdvanceResult] = {}
-        for k in parts:
-            results.update(self._receive(k))
+        try:
+            for k, part in parts.items():
+                self._send(k, part)
+            results: dict[int, AdvanceResult] = {}
+            for k in parts:
+                results.update(self._receive(k))
+        except BaseException:
+            if not self._failed:
+                self._fail()
+            raise
         return results
 
     def peak_rss_bytes(self) -> list[int]:
         """Return each worker's peak resident memory in bytes."""
         self._check_running()
-        for k in range(len(self._procs)):
-            self._send(k, "rss")
-        return [int(self._receive(k)) for k in range(len(self._procs))]
+        try:
+            for k in range(len(self._procs)):
+                self._send(k, "rss")
+            return [int(self._receive(k)) for k in range(len(self._procs))]
+        except BaseException:
+            if not self._failed:
+                self._fail()
+            raise
 
     def close(self) -> None:
         """Ask every worker to stop, then terminate any that does not."""

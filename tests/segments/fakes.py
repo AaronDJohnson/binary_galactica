@@ -72,6 +72,14 @@ class StallingRunner(RaisingRunner):
         super().advance(residual, c)
 
 
+class Unpicklable:
+    """Raises when pickled, as a job the parent cannot send."""
+
+    def __reduce__(self):
+        """Refuse to pickle."""
+        raise TypeError("this job cannot be pickled")
+
+
 def shift_runner(spec):
     """Return a :class:`ShiftRunner`."""
     return ShiftRunner(spec)

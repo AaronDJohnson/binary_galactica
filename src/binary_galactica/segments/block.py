@@ -81,8 +81,9 @@ class UCBBlock:
         Registration name.
     workers
         Processes for the sweep. ``1`` (the default) runs every segment in the
-        main process. More starts that many ``spawn`` worker processes at the
-        first turn, each owning a fixed shard of segments for the whole run
+        main process. More starts up to that many ``spawn`` worker processes at
+        the first turn (one per non-empty shard), each owning a fixed shard of
+        segments for the whole run
         (:class:`~binary_galactica.segments.executor.ProcessExecutor`). The
         chains do not depend on ``workers``. Stop the workers with
         :meth:`close`, or use the block as a context manager; a script that

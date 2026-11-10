@@ -47,7 +47,7 @@ returns ``-1`` for it.
 ``max_interior_bins`` is a soft cap: after tiling, each interior wider than the
 cap is split into ``min(ceil(w / cap), w // min_interior_bins)`` near-equal
 pieces, so no piece is narrower than ``min_interior_bins``. The merge pass then
-runs as usual and may widen a piece past the cap where the padding rule needs
+runs as usual and may widen a piece past the cap where the merge rule needs
 it.
 """
 
@@ -289,7 +289,7 @@ class _Tiling:
 
     @property
     def narrow(self) -> bool:
-        """Whether the padding rule fails (after the merge pass: a lone interior)."""
+        """Whether the merge rule fails (after the merge pass: a lone interior)."""
         return _first_violation(self.edges, self.pads, self.bws) is not None
 
 
@@ -303,7 +303,7 @@ def _tiling(
     n_freq: int,
     config: UCBBlockConfig,
 ) -> _Tiling:
-    """Tile ``[lo, hi)``, apply the cap, then merge until the padding rule holds.
+    """Tile ``[lo, hi)``, apply the cap, then merge until the merge rule holds.
 
     Only the ``members`` in ``[lo, hi)`` count. The merge pass stops at a lone
     interior even if it is narrower than its padding; see ``_Tiling.narrow``.
@@ -408,7 +408,7 @@ def _cluster_tiling(
     n_freq: int,
     config: UCBBlockConfig,
 ) -> _Tiling:
-    """Tile one cluster, widening it until it meets the padding rule."""
+    """Tile one cluster, widening it until it meets the merge rule."""
     lo, hi = _widen(lo, hi, config.min_interior_bins, band)
     while True:
         tiling = _tiling(lo, hi, q, members, x, T, n_freq, config)

@@ -119,6 +119,7 @@ def run(
     report = {
         "noise_reference": NOISE_REFERENCE,
         "mode": mode,
+        "workers": workers,
         "band": band,
         "core": core,
         "span": SPAN,

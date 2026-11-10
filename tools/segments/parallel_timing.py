@@ -22,7 +22,8 @@ A configuration whose predicted memory (the main process plus ``workers``
 times the largest worker of the latest multi-worker run at the same
 threading) exceeds ``--max-total-gib`` is skipped and recorded as skipped.
 A configuration that has not finished after ``--timeout-s`` seconds is
-recorded as an error. The report is rewritten after every configuration, so
+recorded as an error, and the timeout kills the configuration's worker
+processes too. The report is rewritten after every configuration, so
 an interrupted run keeps what it measured.
 
     PYTHONPATH=src:... python tools/segments/parallel_timing.py
@@ -33,6 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -149,27 +151,30 @@ def _configuration(args: argparse.Namespace, workers: int, single: bool) -> dict
             "--path",
             str(args.path),
         ]
+        # Its own session, so a timeout can kill its worker processes too.
+        proc = subprocess.Popen(
+            command,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
         try:
-            done = subprocess.run(
-                command,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=args.timeout_s,
-            )
+            _, stderr = proc.communicate(timeout=args.timeout_s)
         except subprocess.TimeoutExpired:
-            # run() has killed the configuration; its workers see the closed
-            # pipe and exit.
+            os.killpg(proc.pid, signal.SIGKILL)
+            _, stderr = proc.communicate()
             return {
                 "workers": workers,
                 "single_thread": single,
-                "error": f"timed out after {args.timeout_s:g} s",
+                "error": f"timed out after {args.timeout_s:g} s\n{stderr[-4000:]}",
             }
-        if done.returncode != 0:
+        if proc.returncode != 0:
             return {
                 "workers": workers,
                 "single_thread": single,
-                "error": done.stderr[-4000:],
+                "error": stderr[-4000:],
             }
         result = json.loads(record.read_text())
     result["single_thread"] = single

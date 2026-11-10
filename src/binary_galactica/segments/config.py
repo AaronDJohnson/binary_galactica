@@ -50,7 +50,7 @@ class UCBBlockConfig:
       No segment covers a gap, so reversible jump cannot add a source there.
     - ``max_interior_bins`` is a soft cap on interior width, at least
       ``min_interior_bins``: wider interiors are split before the merge pass,
-      which may widen a piece past the cap where the padding rule needs it.
+      which may widen a piece past the cap where the merge rule needs it.
 
     See :mod:`binary_galactica.segments.table` for both rules.
     """

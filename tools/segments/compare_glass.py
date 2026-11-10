@@ -187,6 +187,7 @@ def compare_segment(
         "edge_segments": [segs[0].index, segs[-1].index],
         "n_start": len(start),
         "n_dropped": len(block.dropped),
+        "workers": workers,
         "seconds_per_turn": seconds,
         "minutes": minutes,
         "detections": out,

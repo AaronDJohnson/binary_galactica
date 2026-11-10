@@ -483,7 +483,7 @@ def test_rendered_edge_sources_stay_out_of_same_parity_windows():
     table = build_segment_table(_crowded(), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
     segs = table.segments
     for s, seg in enumerate(segs):
-        for q in (seg.lo + 1e-6, seg.hi - 1e-6):
+        for q in (float(seg.lo), seg.lo + 1e-6, seg.hi - 1e-6):
             part = render_sources(
                 _sources([q]), T=T, t0=0.0, BW=seg.bw, n_channels=2, n_freq=N_FREQ
             )

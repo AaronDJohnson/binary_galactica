@@ -1,5 +1,7 @@
 """Executors run segment turns in the main process or in worker processes."""
 
+import os
+import signal
 import time
 
 import numpy as np
@@ -216,6 +218,51 @@ def test_a_failure_stops_every_worker_at_once(tmp_path):
     finally:
         executor.close()
     assert time.perf_counter() - begin < 30.0  # well under the 60 s stall
+
+
+def test_a_failure_in_the_parent_stops_every_worker(tmp_path):
+    # Sending the last job fails in the parent, after other workers may
+    # already hold theirs. Their unread results must never be returned
+    # later as if they were current.
+    config = _config()
+    x, table, r, c = _problem(config)
+    executor = ProcessExecutor(2, runner_factory=fakes.shift_runner)
+    executor.start(_specs(x, table, c, config, tmp_path))
+    jobs = {
+        seg.index: (r[:, seg.bin_lo : seg.bin_hi], c[:, seg.bin_lo : seg.bin_hi])
+        for seg in table.segments[0::2]
+    }
+    last = max(jobs)
+    jobs[last] = (fakes.Unpicklable(), jobs[last][1])
+    try:
+        with pytest.raises(TypeError, match="cannot be pickled"):
+            executor.advance(jobs)
+        assert not any(p.is_alive() for p in executor._procs)
+        with pytest.raises(RuntimeError, match="the executor has failed"):
+            executor.advance(jobs)
+    finally:
+        executor.close()
+
+
+def test_workers_ignore_sigint(tmp_path):
+    # A Ctrl-C in a terminal reaches every process in the foreground group.
+    # Only the parent should react; it then stops the workers itself.
+    config = _config()
+    x, table, r, c = _problem(config)
+    executor = ProcessExecutor(2, runner_factory=fakes.shift_runner)
+    executor.start(_specs(x, table, c, config, tmp_path))
+    try:
+        for proc in executor._procs:
+            os.kill(proc.pid, signal.SIGINT)
+        time.sleep(1.0)
+        assert all(p.is_alive() for p in executor._procs)
+        jobs = {
+            seg.index: (r[:, seg.bin_lo : seg.bin_hi], c[:, seg.bin_lo : seg.bin_hi])
+            for seg in table.segments[0::2]
+        }
+        assert set(executor.advance(jobs)) == set(jobs)
+    finally:
+        executor.close()
 
 
 def test_a_closed_executor_does_not_start(tmp_path):

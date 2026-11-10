@@ -546,11 +546,13 @@ owning a fixed shard of segments for the whole run. The chains do not depend on
 N; serial and worker runs agree bit for bit. Stop the workers with
 `block.close()` or a `with` block, and guard a script that uses them with
 `if __name__ == "__main__":`. On this machine (16 cores, 64 GiB) the 2-4 mHz
-band (295 segments, `segments-parallel.json`) ran 2.4x faster with 4 workers
-than with one (167 s → 69 s per 200-step turn), at up to 5.8 GiB per worker
-plus 5.8 GiB in the main process. 8 and 16 workers were not timed: from the
-4-worker run, the timing tool's memory guard predicted more than its 52 GiB
-budget.
+band (295 segments, `segments-parallel.json`) ran 2.1-2.4x faster with 4
+workers than with one: per 200-step turn, the median of turns 2-4 fell from
+149 s to 69 s and the last turn from 167 s to 69 s. That used up to 5.8 GiB
+per worker plus 5.8 GiB in the main process. 8 and 16 workers were not timed:
+from the 4-worker run, the timing tool's memory guard predicted more than its
+52 GiB budget. Of the counts timed, 4 workers was the fastest; the default,
+`workers=1`, runs every segment in the main process.
 
 Each move changes one source, so the segment likelihood caches every source's
 template under its exact parameters and renders only the new ones, about one
@@ -587,13 +589,14 @@ Validation reports are in `tools/performance/segments-*.json`:
 - Isolated synthetic source (`segments-isolated.json`): SNR 38, 20 turns of
   1000 steps; the posterior mean is within 4 sigma of the injection and the
   widths match the truncated Fisher widths.
-- Segment 767 band, +-600 bins (`segments-767.json`): fixed count PASS, with 66
-  sources at reference SNR >= 7 each recovered in >= 90% of samples. RJ PASS,
-  with 49 sources at SNR >= 10 each recovered in >= 80%.
+- Segment 767 band, +-600 bins (`segments-767.json`), run with 4 workers:
+  fixed count PASS, with 66 sources at reference SNR >= 7 each recovered in
+  >= 90% of samples. RJ PASS, with 49 sources at SNR >= 10 each recovered in
+  >= 80%.
 - GLASS comparison (`segments-glass-compare.json`, GLASS segments 113, 125,
-  276): 41 of 48 GLASS detections with SNR >= 10 have a block counterpart
-  within 3 sigma (0.85). The misses are start-set selection (analytic SNR < 7)
-  or GLASS splitting blends.
+  276), run with 4 workers: 41 of 48 GLASS detections with SNR >= 10 have a
+  block counterpart within 3 sigma (0.85). The misses are start-set selection
+  (analytic SNR < 7) or GLASS splitting blends.
 - Full-band dry run (`segments-dry-run.json`): 10369 start sources (without the
   mistaken 42.97 mHz dgb 8537801) become 770 segments. Predicted 0.39-0.43 h
   per Gibbs turn at 1000 steps on this machine, run serially; the 15.69-21.47
@@ -602,7 +605,7 @@ Validation reports are in `tools/performance/segments-*.json`:
   covering 52% of the band, and 0.56-0.59 h per turn. The cached step costs
   much the same in a narrow window as in a wide one, so the extra segments
   outweigh the narrower windows. With 4 workers the 770-segment turn is roughly
-  0.16-0.18 h, if the 2-4 mHz speedup carries over. Its memory with workers was
+  0.16-0.20 h, if the 2-4 mHz speedup carries over. Its memory with workers was
   not measured.
 
 ## Validation
