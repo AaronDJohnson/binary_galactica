@@ -487,12 +487,22 @@ its own `impulse.RJPTSampler`, with:
 By default the segments tile the whole band. With `skip_gaps=True` the start
 sources are split into clusters wherever two neighbours sit more than twice
 their summed padding apart, and only the clusters are tiled. On the Sangria
-start set (10369 sources) the 971 segments then cover 345,338 of the band's
+start set (10369 sources) the 862 segments then cover 345,338 of the band's
 663,332 bins, and the widest interior falls from 182,294 bins (15.69-21.47 mHz)
 to 3,093. No segment covers a gap, so reversible jump cannot find a source
 there; use it for runs that start on the real sources. `max_interior_bins` is a
 soft cap instead: wider interiors are split, and the merge pass widens a piece
-past the cap only where the padding rule needs it.
+past the cap only where the merge rule below needs it.
+
+Segments of the same parity never share a bin. With `r = bw//2 + 1`, how far
+an owned template reaches past its interior, and `e = max(pad, r)`, the tiling
+merges neighbouring interiors until every interior satisfies
+`w_s >= max(pad_s, e_{s-1} + pad_{s+1}, pad_{s-1} + e_{s+1})`; under
+`skip_gaps` it also merges clusters that would break this across a gap. Then
+the windows of segments `s - 1` and `s + 1` are disjoint and neither one's
+owned templates reach the other's window (`same_parity_disjoint` checks it).
+On Sangria that gives 770 segments (862 with `skip_gaps`), with at most 42
+owned start sources per segment.
 
 Sampling starts at injected values, so there are no F-statistic or GMM
 proposals. The waveform backend defaults to `"onfly"`. The likelihood is the
@@ -528,6 +538,19 @@ Each `sample()` call is one Gibbs turn:
 3. It publishes the owned sources over their full band in every data channel
    (T follows GLASS's `(X + Y + Z)/sqrt(3)`; the data's T must use the same
    combination).
+
+Each parity's jobs are built from the model as it stood when the parity
+started, so a parity can run in parallel: `UCBBlock(..., workers=N)` starts up
+to N `spawn` worker processes at the first turn (one per non-empty shard), each
+owning a fixed shard of segments for the whole run. The chains do not depend on
+N; serial and worker runs agree bit for bit. Stop the workers with
+`block.close()` or a `with` block, and guard a script that uses them with
+`if __name__ == "__main__":`. On this machine (16 cores, 64 GiB) the 2-4 mHz
+band (295 segments, `segments-parallel.json`) ran 2.4x faster with 4 workers
+than with one (167 s → 69 s per 200-step turn), at up to 5.8 GiB per worker
+plus 5.8 GiB in the main process. 8 and 16 workers were not timed: from the
+4-worker run, the timing tool's memory guard predicted more than its 52 GiB
+budget.
 
 Each move changes one source, so the segment likelihood caches every source's
 template under its exact parameters and renders only the new ones, about one
@@ -572,13 +595,15 @@ Validation reports are in `tools/performance/segments-*.json`:
   within 3 sigma (0.85). The misses are start-set selection (analytic SNR < 7)
   or GLASS splitting blends.
 - Full-band dry run (`segments-dry-run.json`): 10369 start sources (without the
-  mistaken 42.97 mHz dgb 8537801) become 879 segments. Predicted 0.46-0.48 h
+  mistaken 42.97 mHz dgb 8537801) become 770 segments. Predicted 0.39-0.43 h
   per Gibbs turn at 1000 steps on this machine, run serially; the 15.69-21.47
   mHz tail segment is under 1% of that. With `skip_gaps`
-  (`segments-dry-run-skip-gaps.json`) there are 971 segments in 133 clusters,
-  covering 52% of the band, and 0.60-0.72 h per turn. The cached step costs
+  (`segments-dry-run-skip-gaps.json`) there are 862 segments in 133 clusters,
+  covering 52% of the band, and 0.56-0.59 h per turn. The cached step costs
   much the same in a narrow window as in a wide one, so the extra segments
-  outweigh the narrower windows.
+  outweigh the narrower windows. With 4 workers the 770-segment turn is roughly
+  0.16-0.18 h, if the 2-4 mHz speedup carries over. Its memory with workers was
+  not measured.
 
 ## Validation
 
