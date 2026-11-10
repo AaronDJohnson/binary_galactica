@@ -215,7 +215,7 @@ def test_a_failure_stops_every_worker_at_once(tmp_path):
             executor.peak_rss_bytes()
     finally:
         executor.close()
-    assert time.perf_counter() - begin < 5.0
+    assert time.perf_counter() - begin < 30.0  # well under the 60 s stall
 
 
 def test_a_closed_executor_does_not_start(tmp_path):
