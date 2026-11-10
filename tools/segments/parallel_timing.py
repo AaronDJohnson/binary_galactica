@@ -32,6 +32,7 @@ an interrupted run keeps what it measured.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import signal
@@ -170,6 +171,11 @@ def _configuration(args: argparse.Namespace, workers: int, single: bool) -> dict
                 "single_thread": single,
                 "error": f"timed out after {args.timeout_s:g} s\n{stderr[-4000:]}",
             }
+        except BaseException:
+            # A Ctrl-C no longer reaches the configuration's own session.
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGKILL)
+            raise
         if proc.returncode != 0:
             return {
                 "workers": workers,
