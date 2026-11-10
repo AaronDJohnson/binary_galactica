@@ -5,18 +5,25 @@ memory and ``XLA_FLAGS`` are its own. A configuration builds the block on the
 band with the residual noise reference (as ``segment767.py`` does), runs
 ``--turns`` turns of ``--steps`` steps, and records:
 
-- ``turn_s``: every turn's wall time; the last is the steady value, because
-  the first includes the compiles;
+- ``turn_s``: every turn's wall time; the last is the steady value. The first
+  turn includes the compiles, and the next can still compile a few new array
+  shapes, so the default runs four turns;
 - ``steps_per_s``: active segments x steps / the last turn's time;
 - ``worker_peak_rss_bytes``: each worker's peak resident memory (the main
   process's with one worker) and ``main_peak_rss_bytes``.
 
 ``single_thread`` configurations set ``XLA_FLAGS`` to ``SINGLE_THREAD`` for
 the configuration's processes; the others inherit the caller's environment.
+On jax 0.7.2 these flags leave XLA's CPU threading unchanged (the same CPU
+time per wall second with and without them), so the default times only the
+inherited environment (``--threading inherit``).
 
 A configuration whose predicted memory (the main process plus ``workers``
 times the largest worker of the latest multi-worker run at the same
 threading) exceeds ``--max-total-gib`` is skipped and recorded as skipped.
+A configuration that has not finished after ``--timeout-s`` seconds is
+recorded as an error. The report is rewritten after every configuration, so
+an interrupted run keeps what it measured.
 
     PYTHONPATH=src:... python tools/segments/parallel_timing.py
 """
@@ -142,7 +149,22 @@ def _configuration(args: argparse.Namespace, workers: int, single: bool) -> dict
             "--path",
             str(args.path),
         ]
-        done = subprocess.run(command, env=env, capture_output=True, text=True)
+        try:
+            done = subprocess.run(
+                command,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=args.timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            # run() has killed the configuration; its workers see the closed
+            # pipe and exit.
+            return {
+                "workers": workers,
+                "single_thread": single,
+                "error": f"timed out after {args.timeout_s:g} s",
+            }
         if done.returncode != 0:
             return {
                 "workers": workers,
@@ -154,18 +176,41 @@ def _configuration(args: argparse.Namespace, workers: int, single: bool) -> dict
     return result
 
 
+def _report(args: argparse.Namespace, results: list[dict]) -> dict:
+    """Return the report for ``results``, adding each run's speedup."""
+    usable = [r for r in results if "error" not in r and "skipped" not in r]
+    serial = {r["single_thread"]: r["steps_per_s"] for r in usable if r["workers"] == 1}
+    for r in usable:
+        if r["single_thread"] in serial:
+            r["speedup_vs_one_worker"] = r["steps_per_s"] / serial[r["single_thread"]]
+    return {
+        "machine_cpu_count": os.cpu_count(),
+        "single_thread_flags": SINGLE_THREAD,
+        "steps_per_turn": args.steps,
+        "turns": args.turns,
+        "note": (
+            "steady_turn_s is the last turn's wall time; the first turn includes "
+            "the compiles. speedup_vs_one_worker compares steps_per_s with the "
+            "one-worker run of the same threading. The single-thread flags are "
+            "not timed by default: on jax 0.7.2 they leave XLA's CPU threading "
+            "unchanged."
+        ),
+        "results": results,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--workers", type=int, nargs="+", default=[1, 2, 4, 8, 16])
     parser.add_argument("--band-mhz", type=float, nargs=2, default=[2.0, 4.0])
     parser.add_argument("--steps", type=int, default=200)
-    parser.add_argument("--turns", type=int, default=2)
+    parser.add_argument("--turns", type=int, default=4)
     parser.add_argument("--seed", type=int, default=11)
     parser.add_argument("--path", type=Path, default=sangria.DEFAULT_PATH)
     parser.add_argument(
         "--threading",
         choices=("both", "inherit", "single"),
-        default="both",
+        default="inherit",
         help="XLA threading variants to time",
     )
     parser.add_argument(
@@ -173,6 +218,12 @@ def main() -> None:
         type=float,
         default=52.0,
         help="skip a configuration whose predicted memory exceeds this",
+    )
+    parser.add_argument(
+        "--timeout-s",
+        type=float,
+        default=3600.0,
+        help="record a configuration as failed after this many seconds",
     )
     parser.add_argument("--out", default="segments-parallel.json")
     parser.add_argument("--one", action="store_true", help=argparse.SUPPRESS)
@@ -183,6 +234,11 @@ def main() -> None:
         return
     variants = {"both": (False, True), "inherit": (False,), "single": (True,)}
     results = []
+
+    def record(entry: dict) -> None:
+        results.append(entry)
+        runs.write_report(args.out, _report(args, results))
+
     budget = args.max_total_gib * 2**30
     for single in variants[args.threading]:
         last = None  # the latest successful multi-worker record at this threading
@@ -196,13 +252,13 @@ def main() -> None:
                         f"predicted {predicted / 2**30:.1f} GiB exceeds "
                         f"--max-total-gib {args.max_total_gib:g}"
                     )
-                    results.append(
+                    record(
                         {"workers": workers, "single_thread": single, "skipped": note}
                     )
                     print(f"workers={workers} single_thread={single}: SKIPPED, {note}")
                     continue
             result = _configuration(args, workers, single)
-            results.append(result)
+            record(result)
             if "error" in result:
                 print(f"workers={workers} single_thread={single}: FAILED")
                 print(result["error"])
@@ -216,27 +272,7 @@ def main() -> None:
                 f"{result['steps_per_s']:8.0f} steps/s "
                 f"worker rss max {max(result['worker_peak_rss_bytes']) / 2**30:.2f} GiB"
             )
-    serial = {
-        r["single_thread"]: r["steps_per_s"]
-        for r in results
-        if r.get("workers") == 1 and "error" not in r and "skipped" not in r
-    }
-    for r in results:
-        if "error" not in r and "skipped" not in r and r["single_thread"] in serial:
-            r["speedup_vs_one_worker"] = r["steps_per_s"] / serial[r["single_thread"]]
-    report = {
-        "machine_cpu_count": os.cpu_count(),
-        "single_thread_flags": SINGLE_THREAD,
-        "steps_per_turn": args.steps,
-        "turns": args.turns,
-        "note": (
-            "steady_turn_s is the last turn's wall time; the first turn includes "
-            "the compiles. speedup_vs_one_worker compares steps_per_s with the "
-            "one-worker run of the same threading."
-        ),
-        "results": results,
-    }
-    print(f"wrote {runs.write_report(args.out, report)}")
+    print(f"wrote {runs.write_report(args.out, _report(args, results))}")
 
 
 if __name__ == "__main__":
