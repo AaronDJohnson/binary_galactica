@@ -129,7 +129,7 @@ New module `segments/executor.py`.
 
 ```python
 @dataclass(frozen=True)
-class RunnerSpec:            # everything SegmentRunner(...) takes; picklable
+class RunnerSpec:  # everything SegmentRunner(...) takes; picklable
     segment: Segment
     start: NDArray[np.float64]
     T: float
@@ -141,14 +141,18 @@ class RunnerSpec:            # everything SegmentRunner(...) takes; picklable
     n_channels: int
     n_freq: int
 
+
 @dataclass(frozen=True)
 class AdvanceResult:
-    owned: NDArray[np.float64]       # cold sources the segment owns
-    contribution: Contribution       # rendered over the full band
+    owned: NDArray[np.float64]  # cold sources the segment owns
+    contribution: Contribution  # rendered over the full band
+
 
 class SegmentExecutor(Protocol):
     def start(self, specs: Sequence[RunnerSpec]) -> None: ...
-    def advance(self, jobs: Mapping[int, tuple[NDArray, NDArray]]) -> dict[int, AdvanceResult]: ...
+    def advance(
+        self, jobs: Mapping[int, tuple[NDArray, NDArray]]
+    ) -> dict[int, AdvanceResult]: ...
     def peak_rss_bytes(self) -> list[int]: ...
     def close(self) -> None: ...
 ```

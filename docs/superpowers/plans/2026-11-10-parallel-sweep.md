@@ -27,7 +27,7 @@
   ```
 
   `$HOME/Documents/GitHub/impulse_mcmc` is impulse's `rjmcmc` branch. The installed impulse lacks `RJPTSampler`, and tests that need real runners skip without it. `enchilada/src` is needed by `check_block` tests and the validation tools.
-- `ruff 0.17.0` is installed: `ruff check . && ruff format --check .` must pass. `python -m mypy src` has a pre-existing baseline of 41 errors, 2 of them in `segments/` (impulse is untyped). Don't add new ones.
+- `ruff 0.17.0` is installed: `ruff check . && ruff format --check .` must pass, as CI runs both. `ruff format` also formats ```` ```python ```` blocks in Markdown files (README, docs). A block that holds an indented fragment must sit between `<!-- fmt:off -->` and `<!-- fmt:on -->` lines, as this plan's do. `python -m mypy src` has a pre-existing baseline of 41 errors, 2 of them in `segments/` (impulse is untyped). Don't add new ones.
 - pytest-xdist is **not** installed; run pytest without `-n`.
 - Spawned workers print `OMP: Warning #179: Function Can't set size of /tmp file failed` under the Claude Code sandbox. It is harmless; filter it with `grep -v "OMP: Warning"`.
 - A spawned worker re-imports the main module, so a script that uses `workers > 1` needs an `if __name__ == "__main__":` guard (every tool under `tools/segments` has one).
@@ -408,6 +408,7 @@ Expected: collection error `ImportError: cannot import name 'ProcessExecutor'`.
 
 - [ ] **Step 4: Add `ChainArchive.read`** — in `src/binary_galactica/segments/runner.py`, insert this classmethod between `append` and `files`:
 
+<!-- fmt:off -->
 ```python
     @classmethod
     def read(cls, directory: str | Path) -> dict[str, NDArray[Any]]:
@@ -419,6 +420,7 @@ Expected: collection error `ImportError: cannot import name 'ProcessExecutor'`.
         archive.directory = Path(directory)
         return archive.load()
 ```
+<!-- fmt:on -->
 
 - [ ] **Step 5: Create `src/binary_galactica/segments/executor.py`**:
 
@@ -867,9 +869,11 @@ from binary_galactica.segments.table import _cluster_conflict, _Tiling
 
 Add a parity check to `_check_rules`, after its last loop:
 
+<!-- fmt:off -->
 ```python
     _check_parity(table)
 ```
+<!-- fmt:on -->
 
 and define, just above `_check_rules`:
 
@@ -1122,6 +1126,7 @@ def _clustered(
 
 (g) In `build_segment_table`, pass `n_freq` to `_clustered((band_lo, band_hi), q, members, x, T, n_freq, config)` and to `_tiling(band_lo, band_hi, q, members, x, T, n_freq, config)`. Build the interiors with each tiling's `bws`:
 
+<!-- fmt:off -->
 ```python
     interiors = [
         (a, b, own, pad, bw)
@@ -1132,9 +1137,11 @@ def _clustered(
     ]
     owned_all = sorted(i for _, _, own, _, _ in interiors for i in own)
 ```
+<!-- fmt:on -->
 
 Unpack `for s, (a, b, own, pad, bw) in enumerate(interiors):` and delete the lines that recomputed `n_bins`, `fdot`, `amp` and `bw` there (the `Segment(...)` call keeps `bw=int(bw)`). Replace the final `return SegmentTable(...)` with:
 
+<!-- fmt:off -->
 ```python
     table = SegmentTable(
         T=float(T), n_freq=int(n_freq), segments=tuple(segments), outside=outside
@@ -1160,6 +1167,7 @@ def same_parity_disjoint(table: SegmentTable) -> None:
                 f"{b.lo - a.hi} bins apart; their windows and templates need {need}"
             )
 ```
+<!-- fmt:on -->
 
 Add `"same_parity_disjoint"` to the module's `__all__`.
 
@@ -1258,6 +1266,7 @@ executor_module = importlib.import_module("binary_galactica.segments.executor")
 
 Replace `_FakeRunner.__init__`, its `archive` property and `advance` with:
 
+<!-- fmt:off -->
 ```python
     def __init__(self, segment, start, **kwargs):
         self.segment = segment
@@ -1277,15 +1286,19 @@ Replace `_FakeRunner.__init__`, its `archive` property and `advance` with:
         )
         self.turn += 1
 ```
+<!-- fmt:on -->
 
 In the `fake_runner` fixture, patch the executor module instead of the block module:
 
+<!-- fmt:off -->
 ```python
     monkeypatch.setattr(executor_module, "SegmentRunner", _FakeRunner)
 ```
+<!-- fmt:on -->
 
 In `test_cold_chain_accessor`, replace the lines from `chain = block.cold_chain(1)` to the end with:
 
+<!-- fmt:off -->
 ```python
     chain = block.cold_chain(1)
     assert chain["k"].tolist() == [1] and chain["lnlike"].tolist() == [1.0]
@@ -1294,6 +1307,7 @@ In `test_cold_chain_accessor`, replace the lines from `chain = block.cold_chain(
     block._active.discard(1)  # a segment with no start sources and a fixed count
     assert block.cold_chain(1) is None
 ```
+<!-- fmt:on -->
 
 Append these tests:
 
@@ -1514,6 +1528,7 @@ def _make_executor(workers: int) -> SegmentExecutor:
 
 (e) Signature and first lines of `__init__`:
 
+<!-- fmt:off -->
 ```python
         name: str = "ucb",
         workers: int = 1,
@@ -1524,18 +1539,22 @@ def _make_executor(workers: int) -> SegmentExecutor:
         self.workers = int(workers)
         self.outdir = Path(outdir)
 ```
+<!-- fmt:on -->
 
 Replace `self._runners: dict[int, SegmentRunner | None] | None = None` with:
 
+<!-- fmt:off -->
 ```python
         self._active: set[int] | None = None
         self._executor: SegmentExecutor | None = None
         self._finalizer: weakref.finalize | None = None
         self._closed = False
 ```
+<!-- fmt:on -->
 
 (f) Replace the body of `_start` up to (not including) `self._contrib = {` with:
 
+<!-- fmt:off -->
 ```python
         assert self.c_ref is not None
         self._sources = self._start_sources()
@@ -1564,11 +1583,13 @@ Replace `self._runners: dict[int, SegmentRunner | None] | None = None` with:
         executor.start(specs)
         self._active = {spec.segment.index for spec in specs}
 ```
+<!-- fmt:on -->
 
 Seeds are drawn in the same order as before (only for segments with a runner), so a serial run on the same table draws the same seeds.
 
 (g) Replace `cold_chain` and add the lifecycle methods after it:
 
+<!-- fmt:off -->
 ```python
     def cold_chain(self, index: int) -> dict[str, NDArray[Any]] | None:
         """Return segment ``index``'s archived cold chain.
@@ -1616,6 +1637,7 @@ Seeds are drawn in the same order as before (only for segments with a runner), s
         """Close the block."""
         self.close()
 ```
+<!-- fmt:on -->
 
 (h) In `sample`'s docstring, replace the paragraph that starts "Within a parity the segments advance in index order" with:
 
@@ -1631,13 +1653,16 @@ Seeds are drawn in the same order as before (only for segments with a runner), s
 
 After the `if self._failed:` block in `sample`, add:
 
+<!-- fmt:off -->
 ```python
         if self._closed:
             raise RuntimeError("the block is closed; build a fresh UCBBlock")
 ```
+<!-- fmt:on -->
 
 and make the failure handler stop the workers:
 
+<!-- fmt:off -->
 ```python
         try:
             model = self._turn(r, c, rng)
@@ -1647,9 +1672,11 @@ and make the failure handler stop the workers:
                 self._finalizer()  # stop the workers; the block cannot continue
             raise
 ```
+<!-- fmt:on -->
 
 (i) In `_turn`, replace everything from `if self._runners is None:` through the end of the parity loop with:
 
+<!-- fmt:off -->
 ```python
         if self._active is None:
             self._start(rng)
@@ -1674,6 +1701,7 @@ and make the failure handler stop the workers:
                 self._contrib[index] = result.contribution
                 self._sources[index] = result.owned
 ```
+<!-- fmt:on -->
 
 (`_render` stays: `initial_block_state` and `_start` still use it.)
 
@@ -2026,39 +2054,49 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Add `--workers` to `tools/segments/segment767.py`.** In `run`, add a keyword parameter `workers: int = 1` after `path`, and pass `workers=workers` to the `UCBBlock(...)` call. Wrap the sampling so the workers stop. Replace
 
+<!-- fmt:off -->
 ```python
     inner = runs.inner_segments(block, core)
     _, seconds = runs.run_block(block, data, cov, turns, seed)
 ```
+<!-- fmt:on -->
 
 with
 
+<!-- fmt:off -->
 ```python
     inner = runs.inner_segments(block, core)
     with block:
         _, seconds = runs.run_block(block, data, cov, turns, seed)
 ```
+<!-- fmt:on -->
 
 (`cold_chain` keeps working after close.) In `main`, add
 
+<!-- fmt:off -->
 ```python
     parser.add_argument("--workers", type=int, default=1)
 ```
+<!-- fmt:on -->
 
 and pass `workers=args.workers` to `run(...)`.
 
 - [ ] **Step 2: Add `--workers` to `tools/segments/compare_glass.py`.** In `compare_segment`, add a keyword parameter `workers=1` after `path`, and pass `workers=workers` to `UCBBlock(...)`. Replace
 
+<!-- fmt:off -->
 ```python
     _, seconds = runs.run_block(block, data, cov, turns, seed)
 ```
+<!-- fmt:on -->
 
 with
 
+<!-- fmt:off -->
 ```python
     with block:
         _, seconds = runs.run_block(block, data, cov, turns, seed)
 ```
+<!-- fmt:on -->
 
 In `main`, add `parser.add_argument("--workers", type=int, default=1)` and pass `workers=args.workers` to `compare_segment(...)`.
 
@@ -2117,7 +2155,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - [ ] The merge rule and the Sangria counts (770 segments, 862 with `skip_gaps`, at most 42 owned start sources) are stated.
 - [ ] Every number in the dry-run, 767, GLASS and parallel bullets matches the committed JSON reports, as printed by the Step 1 script.
 
-**Verify:** `python -m pytest tests -q -k "readme or doc" 2>&1 | tail -1 && ruff check .` (doctests run with the suite), then a careful read of the diff against the Step 1 printout.
+**Verify:** `ruff check . && ruff format --check . && python -m pytest -q 2>&1 | grep -v "OMP: Warning" | tail -1` → clean and all passed (no test reads the README, and `ruff format` also checks python blocks in Markdown), then a careful read of the diff against the Step 1 printout.
 
 **Steps:**
 
@@ -2197,7 +2235,7 @@ If Task 4 recommended single-threaded flags, add the sentence: "Set `XLA_FLAGS='
 
 - [ ] **Step 3: Check and commit**
 
-Run: `ruff check . && python -m pytest -q 2>&1 | grep -v "OMP: Warning" | tail -1`
+Run: `ruff check . && ruff format --check . && python -m pytest -q 2>&1 | grep -v "OMP: Warning" | tail -1`
 Expected: clean; all passed.
 
 ```bash
@@ -2208,5 +2246,5 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ```json:metadata
-{"files": ["README.md"], "verifyCommand": "python -m pytest -q", "acceptanceCriteria": ["README describes workers, the parity-start snapshot, bitwise equality, close()/with and the __main__ guard", "README states the merge rule and 770 / 862 segments, max 42 owned", "every README number in the dry-run, 767, GLASS and parallel bullets matches the committed JSON reports"], "modelTier": "mechanical"}
+{"files": ["README.md"], "verifyCommand": "ruff check . && ruff format --check . && python -m pytest -q", "acceptanceCriteria": ["README describes workers, the parity-start snapshot, bitwise equality, close()/with and the __main__ guard", "README states the merge rule and 770 / 862 segments, max 42 owned", "every README number in the dry-run, 767, GLASS and parallel bullets matches the committed JSON reports"], "modelTier": "mechanical"}
 ```
