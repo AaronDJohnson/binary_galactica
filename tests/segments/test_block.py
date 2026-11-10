@@ -1,18 +1,29 @@
 """The UCB block sweeps segments, publishes owned sources and survives failures."""
 
+import gc
 import importlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from binary_galactica.glass import ae_noise
-from binary_galactica.segments import UCBBlock, UCBBlockConfig, render_sources
+from binary_galactica.segments import (
+    ChainArchive,
+    ProcessExecutor,
+    SerialExecutor,
+    UCBBlock,
+    UCBBlockConfig,
+    render_sources,
+)
 
+from . import fakes
 from .support import DT, N_FREQ, N_TIME, T_SHORT, ldc_rows, rj_impulse
 
 block_module = importlib.import_module("binary_galactica.segments.block")
+executor_module = importlib.import_module("binary_galactica.segments.executor")
 CHANNELS = ("A", "E", "T")
 QS = (2940.3, 2952.3, 2964.3)
 
@@ -103,22 +114,20 @@ class _FakeRunner:
     def __init__(self, segment, start, **kwargs):
         self.segment = segment
         self.start = np.array(start).reshape(-1, 8)
-
-    @property
-    def archive(self):
-        index = self.segment.index
-        return SimpleNamespace(
-            load=lambda: {
-                "k": np.array([1]),
-                "samples": np.zeros((1, 8)),
-                "index": index,
-            }
-        )
+        self.archive = ChainArchive(Path(kwargs["outdir"]) / "cold")
+        self.turn = 0
 
     def advance(self, residual, c):
         if _FakeRunner.fail is not None and len(_FakeRunner.calls) == _FakeRunner.fail:
             raise _InjectedFailureError(f"segment {self.segment.index}")
         _FakeRunner.calls.append((self.segment.index, np.array(residual)))
+        self.archive.append(
+            self.turn,
+            samples=np.zeros((1, 8)),
+            k=[1],
+            lnlike=[float(self.segment.index)],
+        )
+        self.turn += 1
 
     def cold_sources(self):
         base = self.start.copy()
@@ -137,7 +146,7 @@ def fake_runner(monkeypatch):
     _FakeRunner.extra = None
     _FakeRunner.move = None
     _FakeRunner.fail = None
-    monkeypatch.setattr(block_module, "SegmentRunner", _FakeRunner)
+    monkeypatch.setattr(executor_module, "SegmentRunner", _FakeRunner)
     return _FakeRunner
 
 
@@ -149,10 +158,10 @@ def test_cold_chain_accessor(tmp_path, fake_runner):
         block.cold_chain(0)
     block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
     chain = block.cold_chain(1)
-    assert {"k", "samples"} <= set(chain) and chain["index"] == 1
+    assert chain["k"].tolist() == [1] and chain["lnlike"].tolist() == [1.0]
     with pytest.raises(KeyError):
         block.cold_chain(99)
-    block._runners[1] = None  # a segment with no start sources and a fixed count
+    block._active.discard(1)  # a segment with no start sources and a fixed count
     assert block.cold_chain(1) is None
 
 
@@ -557,3 +566,172 @@ def test_initial_block_state_checks_the_domain(tmp_path, fake_runner):
     )
     with pytest.raises(ValueError, match="frequency-domain"):
         block.initial_block_state(_grid(domain="time"))
+
+
+def test_workers_must_be_a_positive_integer(tmp_path):
+    for bad in (0, -1, 1.5, True):
+        with pytest.raises(ValueError, match="workers must be a positive integer"):
+            UCBBlock(
+                grid=_grid(),
+                start_sources=_rows(),
+                outdir=tmp_path / str(bad),
+                config=_config(),
+                workers=bad,
+            )
+        assert not (tmp_path / str(bad)).exists()
+
+
+def test_close_ends_sampling_but_keeps_the_chains(tmp_path, fake_runner):
+    with UCBBlock(
+        grid=_grid(), start_sources=_rows(), outdir=tmp_path, config=_config()
+    ) as block:
+        block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+        assert len(block.peak_rss_bytes()) == 1
+    with pytest.raises(RuntimeError, match="the block is closed"):
+        block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+    assert block.cold_chain(0)["k"].tolist() == [1]
+    block.close()  # a second close is harmless
+
+
+def _published(tmp_path, executor, monkeypatch):
+    """Run two turns with ``executor``; return the published states and chains."""
+    monkeypatch.setattr(block_module, "_make_executor", lambda workers: executor)
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=_rows(),
+        outdir=tmp_path,
+        config=_config(),
+        reference_covariance=_cov(),
+    )
+    rng = np.random.default_rng(9)
+    states = []
+    with block:
+        state = block.initial_block_state(_grid())
+        for _ in range(2):
+            state = block.sample(_grid(), _cov(), state, rng=rng)
+            states.append(state)
+        chains = [block.cold_chain(s.index) for s in block.table.segments]
+    return states, chains
+
+
+def _assert_same_run(a, b):
+    for sa, sb in zip(a[0], b[0], strict=True):
+        for ch in CHANNELS:
+            np.testing.assert_array_equal(sa.template[ch], sb.template[ch])
+        for xa, xb in zip(
+            sa.parameters["segments"], sb.parameters["segments"], strict=True
+        ):
+            np.testing.assert_array_equal(xa["native"], xb["native"])
+    for ca, cb in zip(a[1], b[1], strict=True):
+        for key in ca:
+            np.testing.assert_array_equal(ca[key], cb[key])
+
+
+def test_worker_processes_publish_what_the_main_process_does(tmp_path, monkeypatch):
+    serial = _published(
+        tmp_path / "serial", SerialExecutor(fakes.shift_runner), monkeypatch
+    )
+    parallel = _published(
+        tmp_path / "parallel",
+        ProcessExecutor(2, runner_factory=fakes.shift_runner),
+        monkeypatch,
+    )
+    _assert_same_run(serial, parallel)
+
+
+class _RecordingExecutor(SerialExecutor):
+    """Shift runners in the main process; records each parity's jobs and results."""
+
+    def __init__(self):
+        super().__init__(fakes.shift_runner)
+        self.rounds = []
+
+    def advance(self, jobs):
+        results = super().advance(jobs)
+        self.rounds.append((dict(jobs), results))
+        return results
+
+
+def test_snapshot_sweep_matches_the_sequential_loop(tmp_path, monkeypatch):
+    # Replay the second turn one segment at a time, as the old loop ran it:
+    # each segment's job must equal, bit for bit, the one built after the
+    # segments before it were applied.
+    executor = _RecordingExecutor()
+    monkeypatch.setattr(block_module, "_make_executor", lambda workers: executor)
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=_rows(),
+        outdir=tmp_path,
+        config=_config(),
+        reference_covariance=_cov(),
+    )
+    rng = np.random.default_rng(5)
+    data = {
+        ch: 1e-21 * (rng.standard_normal(N_FREQ) + 1j * rng.standard_normal(N_FREQ))
+        for ch in CHANNELS
+    }
+    r = np.stack([data["A"], data["E"]])
+    state = block.sample(_grid(data=data), _cov(), None, rng=rng)
+    model = block._model.copy()
+    contrib = dict(block._contrib)
+    block.sample(_grid(data=data), _cov(), state, rng=rng)
+    assert [sorted(jobs) for jobs, _ in executor.rounds[-2:]] == [[0, 2], [1]]
+    changed = False
+    for jobs, results in executor.rounds[-2:]:
+        start = model.copy()
+        for index in sorted(jobs):
+            seg = block.table.segments[index]
+            lo, hi = seg.bin_lo, seg.bin_hi
+            own = contrib[index].window(lo, hi)[:2]
+            np.testing.assert_array_equal(
+                jobs[index][0], r[:, lo:hi] - (model[:2, lo:hi] - own)
+            )
+            contrib[index].add_to(model, -1.0)
+            results[index].contribution.add_to(model, 1.0)
+            contrib[index] = results[index].contribution
+            changed = changed or not np.array_equal(model, start)
+    assert changed  # the updates moved the model, so the check is not vacuous
+    block.close()
+
+
+def test_collecting_the_block_stops_its_workers(tmp_path, monkeypatch):
+    executor = ProcessExecutor(2, runner_factory=fakes.shift_runner)
+    monkeypatch.setattr(block_module, "_make_executor", lambda workers: executor)
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=_rows(),
+        outdir=tmp_path,
+        config=_config(),
+        reference_covariance=_cov(),
+    )
+    block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+    procs = list(executor._procs)
+    assert procs and all(p.is_alive() for p in procs)
+    del block
+    gc.collect()
+    assert not any(p.is_alive() for p in procs)
+
+
+def test_a_worker_failure_fails_the_block(tmp_path, monkeypatch):
+    executor = ProcessExecutor(2, runner_factory=fakes.raising_runner)
+    monkeypatch.setattr(block_module, "_make_executor", lambda workers: executor)
+    block = UCBBlock(
+        grid=_grid(),
+        start_sources=_rows(),
+        outdir=tmp_path,
+        config=_config(),
+        reference_covariance=_cov(),
+    )
+    with pytest.raises(RuntimeError, match="failed in segment 2"):
+        block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+    assert not any(p.is_alive() for p in executor._procs)
+    with pytest.raises(RuntimeError, match="failed mid-sweep"):
+        block.sample(_grid(), _cov(), None, rng=np.random.default_rng(1))
+
+
+@pytest.mark.slow
+def test_parallel_block_reproduces_the_serial_block(tmp_path, monkeypatch):
+    rj_impulse()
+    serial = _published(tmp_path / "serial", SerialExecutor(), monkeypatch)
+    parallel = _published(tmp_path / "parallel", ProcessExecutor(3), monkeypatch)
+    _assert_same_run(serial, parallel)

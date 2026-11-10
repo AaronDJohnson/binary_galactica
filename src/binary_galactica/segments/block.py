@@ -8,7 +8,8 @@ One :meth:`UCBBlock.sample` call:
    covariance;
 3. sweeps even segments, then odd. Each segment's sampler sees the conditional
    residual minus the other segments' current owned sources, on its padded
-   window;
+   window. Every job of a parity is built from the model as it stood when the
+   parity started, so a parity can run in worker processes (``workers``);
 4. publishes the owned sources over their full band in every data channel.
 
 The block implements enchilada's ``Block`` protocol structurally and never
@@ -18,6 +19,7 @@ imports enchilada. States are built with ``conditional_residual.block_state``.
 from __future__ import annotations
 
 import json
+import weakref
 from pathlib import Path
 from typing import Any
 
@@ -26,13 +28,19 @@ from numpy.typing import NDArray
 
 from .catalogue import ldc_to_native, native_to_ldc
 from .config import UCBBlockConfig
+from .executor import ProcessExecutor, RunnerSpec, SegmentExecutor, SerialExecutor
 from .likelihood import SegmentLikelihood
 from .render import Contribution, render_sources
-from .runner import SegmentRunner
+from .runner import ChainArchive
 from .table import Segment, build_segment_table
 
 #: Channel layouts the block accepts; A and E are always rows 0 and 1.
 CHANNEL_SETS = (("A", "E"), ("A", "E", "T"))
+
+
+def _make_executor(workers: int) -> SegmentExecutor:
+    """Return the sweep's executor: in-process for one worker, else processes."""
+    return SerialExecutor() if workers == 1 else ProcessExecutor(workers)
 
 
 def _names(rows: Any, n: int) -> list[str]:
@@ -71,6 +79,14 @@ class UCBBlock:
         another way.
     name
         Registration name.
+    workers
+        Processes for the sweep. ``1`` (the default) runs every segment in the
+        main process. More starts that many ``spawn`` worker processes at the
+        first turn, each owning a fixed shard of segments for the whole run
+        (:class:`~binary_galactica.segments.executor.ProcessExecutor`). The
+        chains do not depend on ``workers``. Stop the workers with
+        :meth:`close`, or use the block as a context manager; a script that
+        uses workers needs an ``if __name__ == "__main__":`` guard.
 
     The block holds its own sampler state (every segment's chains) and does
     not restart from ``current_block_state``. It only checks that the ledger's
@@ -101,8 +117,12 @@ class UCBBlock:
         config: UCBBlockConfig | None = None,
         reference_covariance: Any = None,
         name: str = "ucb",
+        workers: int = 1,
     ) -> None:
         """Validate the inputs, build the segment table and write the run files."""
+        if isinstance(workers, bool) or int(workers) != workers or workers < 1:
+            raise ValueError(f"workers must be a positive integer, got {workers!r}")
+        self.workers = int(workers)
         self.outdir = Path(outdir)
         self._check_outdir_unused()
         self.name = name
@@ -137,7 +157,10 @@ class UCBBlock:
         self.owned_start = {seg.index: list(seg.owned) for seg in self.table.segments}
         self.c_ref: NDArray[np.float64] | None = None
         self.turn = 0
-        self._runners: dict[int, SegmentRunner | None] | None = None
+        self._active: set[int] | None = None
+        self._executor: SegmentExecutor | None = None
+        self._finalizer: weakref.finalize | None = None
+        self._closed = False
         self._sources: dict[int, NDArray[np.float64]] = {}
         self._contrib: dict[int, Contribution] = {}
         self._model: NDArray[np.complex128] | None = None
@@ -308,22 +331,30 @@ class UCBBlock:
     def _start(self, rng: np.random.Generator) -> None:
         assert self.c_ref is not None
         self._sources = self._start_sources()
-        self._runners = {}
+        specs = []
         for seg in self.table.segments:
             start = self._sources[seg.index]
             if not self.config.birth_death and start.shape[0] == 0:
-                self._runners[seg.index] = None
                 continue
-            self._runners[seg.index] = SegmentRunner(
-                seg,
-                start,
-                T=self.T,
-                t0=self.t0,
-                config=self.config,
-                outdir=self.outdir / f"segment_{seg.index:05d}",
-                seed=int(rng.integers(2**32)),
-                reference=self.c_ref[:, seg.bin_lo : seg.bin_hi],
+            specs.append(
+                RunnerSpec(
+                    segment=seg,
+                    start=start,
+                    T=self.T,
+                    t0=self.t0,
+                    config=self.config,
+                    outdir=self.outdir / f"segment_{seg.index:05d}",
+                    seed=int(rng.integers(2**32)),
+                    reference=self.c_ref[:, seg.bin_lo : seg.bin_hi].copy(),
+                    n_channels=len(self.channels),
+                    n_freq=self.n_freq,
+                )
             )
+        executor = _make_executor(self.workers)
+        self._executor = executor
+        self._finalizer = weakref.finalize(self, executor.close)
+        executor.start(specs)
+        self._active = {spec.segment.index for spec in specs}
         self._contrib = {
             seg.index: self._render(seg, self._sources[seg.index])
             for seg in self.table.segments
@@ -333,16 +364,48 @@ class UCBBlock:
     def cold_chain(self, index: int) -> dict[str, NDArray[Any]] | None:
         """Return segment ``index``'s archived cold chain.
 
-        This is ``ChainArchive.load()`` of the segment's runner.
+        This is :meth:`ChainArchive.read` of the segment's archive directory, so
+        it works whichever process runs the segment, and after :meth:`close`.
 
         ``None`` when the segment has no runner (fixed count with no start sources).
         Raises ``RuntimeError`` before the first ``sample()`` call and ``KeyError`` for
         an unknown index.
         """
-        if self._runners is None:
+        if self._active is None:
             raise RuntimeError("no chains yet: call sample() first")
-        runner = self._runners[index]
-        return None if runner is None else runner.archive.load()
+        if not 0 <= index < len(self.table.segments):
+            raise KeyError(index)
+        if index not in self._active:
+            return None
+        return ChainArchive.read(self.outdir / f"segment_{index:05d}" / "cold")
+
+    def peak_rss_bytes(self) -> list[int]:
+        """Return the peak resident memory of each process running segments.
+
+        One entry per worker process, or the main process's with one worker.
+        Raises ``RuntimeError`` before the first ``sample()`` call.
+        """
+        if self._executor is None:
+            raise RuntimeError("no executor yet: call sample() first")
+        return self._executor.peak_rss_bytes()
+
+    def close(self) -> None:
+        """Stop the sweep's worker processes; later :meth:`sample` calls raise.
+
+        Archived chains stay readable through :meth:`cold_chain`. Closing twice,
+        or before the first turn, is harmless.
+        """
+        self._closed = True
+        if self._finalizer is not None:
+            self._finalizer()
+
+    def __enter__(self) -> UCBBlock:
+        """Return the block; leaving the ``with`` block calls :meth:`close`."""
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        """Close the block."""
+        self.close()
 
     # ---- Block protocol ---------------------------------------------------
 
@@ -356,13 +419,13 @@ class UCBBlock:
     ) -> Any:
         """Run one Gibbs turn and return the published block state.
 
-        Within a parity the segments advance in index order, and each updates
-        the shared model in place before the next one reads it. Same-parity
-        padded windows are disjoint, but a template can still reach a
-        same-parity neighbour's window through its tail, because ``bw`` is
-        capped at ``floor_pow2(width + 2 * pad)`` rather than ``2 * pad``.
-        This sequential order is therefore the defined sweep: a parallel sweep
-        within a parity would need a snapshot of the model taken before it.
+        Every job of a parity is built from the model as it stood when the
+        parity started; the parity's updates are applied in index order once
+        it finishes. The segment table guarantees that no same-parity update
+        reaches another same-parity window
+        (:func:`~binary_galactica.segments.table.same_parity_disjoint`), so
+        this equals advancing the segments one by one in index order, whether
+        they run in the main process or in ``workers`` processes.
 
         ``current_block_state`` is not used to restart the sampler. Its
         ``parameters["turn"]``, if present, must equal :attr:`turn`. After a
@@ -373,6 +436,8 @@ class UCBBlock:
                 "a previous sample() failed mid-sweep; build a fresh UCBBlock "
                 "(with a new outdir)"
             )
+        if self._closed:
+            raise RuntimeError("the block is closed; build a fresh UCBBlock")
         params = getattr(current_block_state, "parameters", None)
         ledger_turn = params.get("turn") if isinstance(params, dict) else None
         if ledger_turn is not None and ledger_turn != self.turn:
@@ -396,6 +461,8 @@ class UCBBlock:
             model = self._turn(r, c, rng)
         except BaseException:
             self._failed = True
+            if self._finalizer is not None:
+                self._finalizer()  # stop the workers; the block cannot continue
             raise
         return data.block_state(
             self._template(model), parameters=self._parameters(self._sources)
@@ -410,26 +477,28 @@ class UCBBlock:
         """Apply the cut, start the runners if needed, sweep, and return the model."""
         if self.c_ref is None:
             self._set_reference(c)
-        if self._runners is None:
+        if self._active is None:
             self._start(rng)
-        assert self._runners is not None and self._model is not None
+        assert self._executor is not None and self._active is not None
+        assert self._model is not None
         for parity in (0, 1):
+            jobs = {}
             for seg in self.table.segments[parity::2]:
-                runner = self._runners[seg.index]
-                if runner is None:
+                if seg.index not in self._active:
                     continue
                 lo, hi = seg.bin_lo, seg.bin_hi
                 own = self._contrib[seg.index].window(lo, hi)[:2]
-                runner.advance(
-                    r[:, lo:hi] - (self._model[:2, lo:hi] - own), c[:, lo:hi]
+                jobs[seg.index] = (
+                    r[:, lo:hi] - (self._model[:2, lo:hi] - own),
+                    c[:, lo:hi],
                 )
-                cold = runner.cold_sources()
-                keep = cold[seg.owns(cold[:, 0])]
-                new = self._render(seg, keep)
-                self._contrib[seg.index].add_to(self._model, -1.0)
-                new.add_to(self._model, 1.0)
-                self._contrib[seg.index] = new
-                self._sources[seg.index] = keep
+            results = self._executor.advance(jobs)
+            for index in sorted(results):
+                result = results[index]
+                self._contrib[index].add_to(self._model, -1.0)
+                result.contribution.add_to(self._model, 1.0)
+                self._contrib[index] = result.contribution
+                self._sources[index] = result.owned
         model = self._model_of(self._contrib)
         self._model = model
         self.turn += 1
