@@ -7,6 +7,7 @@ Spawned worker processes import this module by name
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -61,6 +62,16 @@ class DyingRunner(ShiftRunner):
         super().advance(residual, c)
 
 
+class StallingRunner(RaisingRunner):
+    """Raises in segment 2's advance and stalls for a minute in segment 4's."""
+
+    def advance(self, residual, c):
+        """Sleep for segment 4; otherwise advance as a :class:`RaisingRunner`."""
+        if self.spec.segment.index == 4:
+            time.sleep(60.0)
+        super().advance(residual, c)
+
+
 def shift_runner(spec):
     """Return a :class:`ShiftRunner`."""
     return ShiftRunner(spec)
@@ -74,6 +85,11 @@ def raising_runner(spec):
 def dying_runner(spec):
     """Return a :class:`DyingRunner`."""
     return DyingRunner(spec)
+
+
+def stalling_runner(spec):
+    """Return a :class:`StallingRunner`."""
+    return StallingRunner(spec)
 
 
 def failing_build(spec):

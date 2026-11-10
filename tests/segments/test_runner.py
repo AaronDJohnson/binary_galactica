@@ -75,6 +75,20 @@ def test_archive_read_accepts_a_used_directory(tmp_path):
         ChainArchive.read(tmp_path / "missing")
 
 
+def test_archive_append_never_leaves_a_partial_turn(tmp_path, monkeypatch):
+    archive = ChainArchive(tmp_path)
+
+    def broken(file, **arrays):
+        file.write(b"PK\x03\x04")  # the start of a zip, then the disk fills
+        raise OSError("disk full")
+
+    monkeypatch.setattr(np, "savez_compressed", broken)
+    with pytest.raises(OSError, match="disk full"):
+        archive.append(0, samples=np.ones((1, 8)), k=[1], lnlike=[0.0])
+    assert archive.files() == []
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_fixed_count_smoke(tmp_path):
     rj_impulse()
     r, c = _window()

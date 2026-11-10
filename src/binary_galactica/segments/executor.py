@@ -14,6 +14,9 @@ result.
   that has initialised JAX is unsafe, and they inherit the parent's
   environment (``XLA_FLAGS`` included) and its JAX x64 setting.
 
+If any worker fails, the executor terminates every worker at once and
+refuses further work; build a new one.
+
 A script that uses :class:`ProcessExecutor` must guard its entry point with
 ``if __name__ == "__main__":``, as ``spawn`` re-imports the main module.
 """
@@ -249,6 +252,7 @@ class ProcessExecutor:
         self._shards: list[list[int]] = []
         self._shard_of: dict[int, int] = {}
         self._closed = False
+        self._failed = False
 
     @property
     def shards(self) -> list[list[int]]:
@@ -259,6 +263,8 @@ class ProcessExecutor:
         """Launch one worker per non-empty shard and wait until all are built."""
         import jax
 
+        if self._closed:
+            raise RuntimeError("the executor is closed")
         if self._procs:
             raise RuntimeError("the executor is already started")
         x64 = bool(jax.config.read("jax_enable_x64"))
@@ -290,12 +296,27 @@ class ProcessExecutor:
         except (BrokenPipeError, OSError) as exc:
             raise self._died(k) from exc
 
+    def _fail(self) -> None:
+        """Stop every worker at once: after a failure the shards are inconsistent.
+
+        A worker may still be busy, or blocked sending a result nobody will
+        read, so waiting for it to see the stop message could take a turn.
+        """
+        self._failed = True
+        for proc in self._procs:
+            if proc.is_alive():
+                proc.terminate()
+        for proc in self._procs:
+            proc.join(timeout=5.0)
+
     def _died(self, k: int) -> RuntimeError:
         self._procs[k].join(timeout=1.0)
-        return RuntimeError(
+        error = RuntimeError(
             f"worker {k} (segments {self._shards[k]}) died with exit code "
             f"{self._procs[k].exitcode}"
         )
+        self._fail()
+        return error
 
     def _receive(self, k: int) -> Any:
         try:
@@ -304,11 +325,19 @@ class ProcessExecutor:
             raise self._died(k) from exc
         if status == "error":
             where = "building its runners" if payload is None else f"segment {payload}"
+            self._fail()
             raise RuntimeError(f"worker {k} failed in {where}:\n{text}")
         return payload
 
+    def _check_running(self) -> None:
+        if self._failed:
+            raise RuntimeError("the executor has failed; start a new one")
+        if self._closed:
+            raise RuntimeError("the executor is closed")
+
     def advance(self, jobs: Mapping[int, Job]) -> dict[int, AdvanceResult]:
         """Send each worker its shard's jobs, then gather every result."""
+        self._check_running()
         parts: dict[int, dict[int, Job]] = {}
         for index, job in jobs.items():
             parts.setdefault(self._shard_of[index], {})[index] = job
@@ -321,6 +350,7 @@ class ProcessExecutor:
 
     def peak_rss_bytes(self) -> list[int]:
         """Return each worker's peak resident memory in bytes."""
+        self._check_running()
         for k in range(len(self._procs)):
             self._send(k, "rss")
         return [int(self._receive(k)) for k in range(len(self._procs))]
@@ -330,11 +360,13 @@ class ProcessExecutor:
         if self._closed:
             return
         self._closed = True
-        for conn in self._conns:
-            with contextlib.suppress(BrokenPipeError, OSError):
-                conn.send(None)
+        if not self._failed:  # after a failure the workers are already stopped
+            for conn in self._conns:
+                with contextlib.suppress(BrokenPipeError, OSError):
+                    conn.send(None)
+            for proc in self._procs:
+                proc.join(timeout=10.0)
         for proc in self._procs:
-            proc.join(timeout=10.0)
             if proc.is_alive():
                 proc.terminate()
                 proc.join(timeout=5.0)

@@ -1,5 +1,7 @@
 """Executors run segment turns in the main process or in worker processes."""
 
+import time
+
 import numpy as np
 import pytest
 
@@ -178,7 +180,9 @@ def test_worker_exception_names_the_segment(tmp_path):
 
 def test_dead_worker_is_reported(tmp_path):
     executor = ProcessExecutor(2, runner_factory=fakes.dying_runner)
-    with pytest.raises(RuntimeError, match="died with exit code 3"):
+    with pytest.raises(
+        RuntimeError, match=r"worker 1 \(segments \[0, 2, 3\]\) died with exit code 3"
+    ):
         _run(executor, tmp_path, _config())
 
 
@@ -186,6 +190,42 @@ def test_build_failure_is_reported(tmp_path):
     executor = ProcessExecutor(2, runner_factory=fakes.failing_build)
     with pytest.raises(RuntimeError, match="building its runners(.|\n)*cannot build"):
         _run(executor, tmp_path, _config())
+
+
+def test_a_failure_stops_every_worker_at_once(tmp_path):
+    # Segment 2 (worker 1) raises while worker 0 sleeps for a minute in
+    # segment 4. The executor gathers worker 1 first, so it must then stop
+    # worker 0 at once rather than wait for it, and refuse further work.
+    config = _config()
+    x, table, r, c = _problem(config)
+    executor = ProcessExecutor(2, runner_factory=fakes.stalling_runner)
+    executor.start(_specs(x, table, c, config, tmp_path))
+    jobs = {
+        seg.index: (r[:, seg.bin_lo : seg.bin_hi], c[:, seg.bin_lo : seg.bin_hi])
+        for seg in table.segments[0::2]
+    }
+    begin = time.perf_counter()
+    try:
+        with pytest.raises(RuntimeError, match="failed in segment 2"):
+            executor.advance(jobs)
+        assert not any(p.is_alive() for p in executor._procs)
+        with pytest.raises(RuntimeError, match="the executor has failed"):
+            executor.advance(jobs)
+        with pytest.raises(RuntimeError, match="the executor has failed"):
+            executor.peak_rss_bytes()
+    finally:
+        executor.close()
+    assert time.perf_counter() - begin < 5.0
+
+
+def test_a_closed_executor_does_not_start(tmp_path):
+    config = _config()
+    x, table, _, c = _problem(config)
+    executor = ProcessExecutor(2, runner_factory=fakes.shift_runner)
+    executor.close()
+    with pytest.raises(RuntimeError, match="the executor is closed"):
+        executor.start(_specs(x, table, c, config, tmp_path))
+    assert executor._procs == []
 
 
 def test_close_stops_every_worker(tmp_path):
