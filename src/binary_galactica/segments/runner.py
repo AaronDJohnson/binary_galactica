@@ -85,6 +85,16 @@ class ChainArchive:
             lnlike=np.asarray(lnlike, dtype=np.float64),
         )
 
+    @classmethod
+    def read(cls, directory: str | Path) -> dict[str, NDArray[Any]]:
+        """Return :meth:`load` of an archive another process may be writing.
+
+        Unlike the constructor, this accepts a directory that holds turns.
+        """
+        archive = cls.__new__(cls)
+        archive.directory = Path(directory)
+        return archive.load()
+
     def files(self) -> list[Path]:
         """Return the per-turn files in turn order."""
         return sorted(self.directory.glob("turn_*.npz"))

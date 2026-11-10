@@ -65,6 +65,16 @@ def test_archive_refuses_a_used_directory(tmp_path):
         ChainArchive(tmp_path)
 
 
+def test_archive_read_accepts_a_used_directory(tmp_path):
+    archive = ChainArchive(tmp_path)
+    archive.append(0, samples=np.ones((2, 8)), k=[1, 1], lnlike=[0.0, 1.0])
+    chain = ChainArchive.read(tmp_path)
+    assert chain["lnlike"].tolist() == [0.0, 1.0]
+    assert chain["turn"].tolist() == [0, 0]
+    with pytest.raises(FileNotFoundError):
+        ChainArchive.read(tmp_path / "missing")
+
+
 def test_fixed_count_smoke(tmp_path):
     rj_impulse()
     r, c = _window()
