@@ -29,6 +29,7 @@ from .table import (
     build_segment_table,
     doppler_bins,
     padding_bins,
+    same_parity_disjoint,
 )
 
 __all__ = [
@@ -66,4 +67,5 @@ __all__ = [
     "padding_bins",
     "quantize_bins",
     "render_sources",
+    "same_parity_disjoint",
 ]

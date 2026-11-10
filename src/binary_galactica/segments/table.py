@@ -13,9 +13,18 @@ Padding per side is twice GLASS's Doppler-plus-drift bandwidth:
     bw = 2 T [(4 + 2 pi f AU / c) / yr + |fdot| T]
 
 evaluated at the interior's upper edge with ``sin(theta) = 1`` and the largest
-``|fdot|`` among the owned start sources. A merge pass then enforces
-``w_s >= max(pad_s, pad_{s-1} + pad_{s+1})``. Padding then reaches only
-adjacent interiors, and windows of the same parity are disjoint.
+``|fdot|`` among the owned start sources. Each interior's template bandwidth
+is GLASS's, capped by its window: ``bw = min(ucb_bw, floor_pow2(w + 2 pad))``.
+An owned template reaches ``r = bw//2 + 1`` bins past its interior (its
+carrier bin ``trunc(f0*T)`` lies inside, plus one bin of margin). With
+``e = max(pad, r)``, a merge pass enforces
+
+    w_s >= max(pad_s, e_{s-1} + pad_{s+1}, pad_{s-1} + e_{s+1})
+
+and, at an end of the tiling, ``w_s >= max(pad_s, pad of the one neighbour)``.
+Padding then reaches only adjacent interiors; windows of the same parity are
+disjoint; and no owned template reaches a same-parity window. A parity of the
+sweep can therefore run in parallel (:func:`same_parity_disjoint`).
 
 Two opt-in settings of :class:`UCBBlockConfig` change the tiling; with both
 off (the default) the whole band is tiled as above.
@@ -29,8 +38,9 @@ clipped to the band. Each cluster is tiled and merged on its own, with a
 neighbour in another cluster counting as absent (pad 0). A cluster narrower
 than ``min_interior_bins``, or left as one interior narrower than its padding,
 is widened about its centre (shifted to stay in the band) rather than raising.
-Two neighbouring clusters whose padded windows overlap are merged into one and
-re-tiled, until every gap separates the windows. No segment covers a gap, so
+Two neighbouring clusters are merged into one and re-tiled while their padded
+windows overlap, or while two same-parity segments that straddle them are
+closer than the merge rule allows. No segment covers a gap, so
 reversible jump cannot add a source there, and :meth:`SegmentTable.owners`
 returns ``-1`` for it.
 
@@ -220,12 +230,50 @@ def _pads(edges, owned, native, T) -> list[int]:
     return pads
 
 
-def _first_violation(edges: list[int], pads: list[int]) -> int | None:
+def _reach(bw: int) -> int:
+    """Return how many bins an owned template reaches past its interior."""
+    return int(bw) // 2 + 1
+
+
+def _extent(pad: int, bw: int) -> int:
+    """Return how far a segment's window or owned templates reach past its interior."""
+    return max(int(pad), _reach(bw))
+
+
+def _parity_gap(a_pad: int, a_bw: int, b_pad: int, b_bw: int) -> int:
+    """Return the bins two same-parity interiors need between them."""
+    return max(_extent(a_pad, a_bw) + b_pad, a_pad + _extent(b_pad, b_bw))
+
+
+def _bws(edges, owned, native, T, pads, n_freq) -> list[int]:
+    """Return each interior's template bandwidth: GLASS's, capped by its window."""
+    bws = []
+    for (a, b), own, pad in zip(
+        zip(edges[:-1], edges[1:], strict=True), owned, pads, strict=True
+    ):
+        if own:
+            fdot = float(np.max(np.abs(native[list(own), 7]))) / T**2
+            amp = float(np.max(np.exp(native[list(own), 3])))
+        else:
+            fdot, amp = 0.0, 0.0
+        glass = ucb_bw(b / T, fdot, 0.0, amp, T, n_freq)
+        bws.append(int(min(glass, _floor_pow2((b - a) + 2 * pad))))
+    return bws
+
+
+def _first_violation(edges: list[int], pads: list[int], bws: list[int]) -> int | None:
     n = len(pads)
     for s in range(n):
-        left = pads[s - 1] if s > 0 else 0
-        right = pads[s + 1] if s < n - 1 else 0
-        if edges[s + 1] - edges[s] < max(pads[s], left + right):
+        need = pads[s]
+        if 0 < s < n - 1:
+            need = max(
+                need, _parity_gap(pads[s - 1], bws[s - 1], pads[s + 1], bws[s + 1])
+            )
+        elif s > 0:
+            need = max(need, pads[s - 1])
+        elif s < n - 1:
+            need = max(need, pads[s + 1])
+        if edges[s + 1] - edges[s] < need:
             return s
     return None
 
@@ -237,11 +285,12 @@ class _Tiling:
     edges: list[int]
     owned: list[tuple[int, ...]]
     pads: list[int]
+    bws: list[int]
 
     @property
     def narrow(self) -> bool:
         """Whether the padding rule fails (after the merge pass: a lone interior)."""
-        return _first_violation(self.edges, self.pads) is not None
+        return _first_violation(self.edges, self.pads, self.bws) is not None
 
 
 def _tiling(
@@ -251,6 +300,7 @@ def _tiling(
     members: NDArray[np.int64],
     x: NDArray[np.float64],
     T: float,
+    n_freq: int,
     config: UCBBlockConfig,
 ) -> _Tiling:
     """Tile ``[lo, hi)``, apply the cap, then merge until the padding rule holds.
@@ -265,9 +315,10 @@ def _tiling(
     while True:
         owned = _owned(edges, q, inner)
         pads = _pads(edges, owned, x, T)
-        bad = _first_violation(edges, pads)
+        bws = _bws(edges, owned, x, T, pads, n_freq)
+        bad = _first_violation(edges, pads, bws)
         if bad is None or len(pads) == 1:
-            return _Tiling(edges, owned, pads)
+            return _Tiling(edges, owned, pads, bws)
         if bad == 0:
             neighbour = 1
         elif bad == len(pads) - 1:
@@ -354,15 +405,41 @@ def _cluster_tiling(
     members: NDArray[np.int64],
     x: NDArray[np.float64],
     T: float,
+    n_freq: int,
     config: UCBBlockConfig,
 ) -> _Tiling:
     """Tile one cluster, widening it until it meets the padding rule."""
     lo, hi = _widen(lo, hi, config.min_interior_bins, band)
     while True:
-        tiling = _tiling(lo, hi, q, members, x, T, config)
+        tiling = _tiling(lo, hi, q, members, x, T, n_freq, config)
         if not tiling.narrow:
             return tiling
         lo, hi = _widen(lo, hi, tiling.pads[0], band)
+
+
+def _cluster_conflict(tilings: list[_Tiling]) -> tuple[int, int] | None:
+    """Return the first two clusters that must merge, or ``None``.
+
+    Neighbouring clusters must merge if their padded windows overlap. Two
+    clusters must also merge if same-parity segments ``s`` and ``s + 2`` (in
+    the global order) lie in them and are closer than the merge rule allows.
+    """
+    rows = [
+        (c, a, b, pad, bw)
+        for c, t in enumerate(tilings)
+        for a, b, pad, bw in zip(t.edges[:-1], t.edges[1:], t.pads, t.bws, strict=True)
+    ]
+    for (c, _, hi, pad, _), (d, lo, _, pad2, _) in zip(
+        rows[:-1], rows[1:], strict=True
+    ):
+        if c != d and hi + pad > lo - pad2:
+            return c, d
+    for (c, _, hi, pad, bw), (d, lo, _, pad2, bw2) in zip(
+        rows[:-2], rows[2:], strict=True
+    ):
+        if c != d and lo - hi < _parity_gap(pad, bw, pad2, bw2):
+            return c, d
+    return None
 
 
 def _clustered(
@@ -371,22 +448,22 @@ def _clustered(
     members: NDArray[np.int64],
     x: NDArray[np.float64],
     T: float,
+    n_freq: int,
     config: UCBBlockConfig,
 ) -> list[_Tiling]:
-    """Return the tilings of the clusters, merging those whose windows overlap."""
+    """Return the tilings of the clusters, merging clusters that conflict."""
     tilings = [
-        _cluster_tiling(lo, hi, band, q, members, x, T, config)
+        _cluster_tiling(lo, hi, band, q, members, x, T, n_freq, config)
         for lo, hi in _cluster_spans(q, members, x, T, band)
     ]
-    c = 0
-    while c < len(tilings) - 1:
-        a, b = tilings[c], tilings[c + 1]
-        if a.edges[-1] + a.pads[-1] <= b.edges[0] - b.pads[0]:
-            c += 1
-            continue
-        lo, hi = min(a.edges[0], b.edges[0]), max(a.edges[-1], b.edges[-1])
-        tilings[c : c + 2] = [_cluster_tiling(lo, hi, band, q, members, x, T, config)]
-        c = max(c - 1, 0)
+    while (pair := _cluster_conflict(tilings)) is not None:
+        first, last = pair
+        group = tilings[first : last + 1]
+        lo = min(t.edges[0] for t in group)
+        hi = max(t.edges[-1] for t in group)
+        tilings[first : last + 1] = [
+            _cluster_tiling(lo, hi, band, q, members, x, T, n_freq, config)
+        ]
     return tilings
 
 
@@ -420,9 +497,9 @@ def build_segment_table(
                 f"skip_gaps needs at least one start source in the band "
                 f"[{band_lo}, {band_hi})"
             )
-        tilings = _clustered((band_lo, band_hi), q, members, x, T, config)
+        tilings = _clustered((band_lo, band_hi), q, members, x, T, n_freq, config)
     else:
-        tiling = _tiling(band_lo, band_hi, q, members, x, T, config)
+        tiling = _tiling(band_lo, band_hi, q, members, x, T, n_freq, config)
         if tiling.narrow:
             raise ValueError(
                 f"band [{band_lo}, {band_hi}) is narrower than its padding "
@@ -431,30 +508,23 @@ def build_segment_table(
         tilings = [tiling]
 
     interiors = [
-        (a, b, own, pad)
+        (a, b, own, pad, bw)
         for t in tilings
-        for (a, b), own, pad in zip(
-            zip(t.edges[:-1], t.edges[1:], strict=True), t.owned, t.pads, strict=True
+        for a, b, own, pad, bw in zip(
+            t.edges[:-1], t.edges[1:], t.owned, t.pads, t.bws, strict=True
         )
     ]
-    owned_all = sorted(i for _, _, own, _ in interiors for i in own)
+    owned_all = sorted(i for _, _, own, _, _ in interiors for i in own)
     if owned_all != members.tolist():
         raise AssertionError("every in-band start source must lie in one interior")
 
     segments = []
-    for s, (a, b, own, pad) in enumerate(interiors):
-        n_bins = (b - a) + 2 * pad
+    for s, (a, b, own, pad, bw) in enumerate(interiors):
         if a - pad < 1 or b + pad > n_freq - 1:
             raise ValueError(
                 f"segment {s} window [{a - pad}, {b + pad}) leaves the grid interior "
                 f"[1, {n_freq - 1})"
             )
-        if own:
-            fdot = float(np.max(np.abs(x[list(own), 7]))) / T**2
-            amp = float(np.max(np.exp(x[list(own), 3])))
-        else:
-            fdot, amp = 0.0, 0.0
-        bw = min(ucb_bw(b / T, fdot, 0.0, amp, T, n_freq), _floor_pow2(n_bins))
         seg = Segment(
             index=s,
             lo=int(a),
@@ -471,9 +541,29 @@ def build_segment_table(
                 f"start sources {outside_prior} lie outside the prior of segment {s}"
             )
         segments.append(seg)
-    return SegmentTable(
+    table = SegmentTable(
         T=float(T), n_freq=int(n_freq), segments=tuple(segments), outside=outside
     )
+    same_parity_disjoint(table)
+    return table
+
+
+def same_parity_disjoint(table: SegmentTable) -> None:
+    """Raise ``ValueError`` if two segments of the same parity can interact.
+
+    Segments ``s`` and ``s + 2`` must be far enough apart that their padded
+    windows are disjoint and neither one's owned templates (``bw//2 + 1`` bins
+    past its interior) reach the other's window. A parity of the sweep can
+    then run in any order, or in parallel, with the same result.
+    """
+    segs = table.segments
+    for a, b in zip(segs[:-2], segs[2:], strict=True):
+        need = _parity_gap(a.pad, a.bw, b.pad, b.bw)
+        if b.lo - a.hi < need:
+            raise ValueError(
+                f"segments {a.index} and {b.index} share a parity but are "
+                f"{b.lo - a.hi} bins apart; their windows and templates need {need}"
+            )
 
 
 __all__ = [
@@ -482,4 +572,5 @@ __all__ = [
     "build_segment_table",
     "doppler_bins",
     "padding_bins",
+    "same_parity_disjoint",
 ]
