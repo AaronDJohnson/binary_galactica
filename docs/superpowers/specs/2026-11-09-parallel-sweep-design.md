@@ -41,17 +41,20 @@ accepts that approximation. This design removes it.
 
 Define the reach of segment `s` as `r_s = bw_s // 2 + 1`: owned templates lie
 inside `[lo_s - r_s, hi_s + r_s)`. The extra bin is a margin on the carrier
-truncation. The merge pass in `table._tiling` uses
+truncation. With the extent `e_s = max(pad_s, r_s)`, the merge pass in
+`table._tiling` requires, for an interior with both neighbours,
 
 ```
-w_s >= max(pad_s, pad_{s-1} + r_{s+1}, r_{s-1} + pad_{s+1})
+w_s >= max(pad_s, e_{s-1} + pad_{s+1}, pad_{s-1} + e_{s+1})
 ```
 
-with an absent neighbour (the end of a tiling) contributing nothing to the
-two sums. Which neighbour a failing interior merges into is unchanged (the
-narrower one). That gives `hi_{s-1} + r_{s-1} <= lo_{s+1} - pad_{s+1}`, and the
-mirror inequality, so no owned template of `s-1` reaches the window of `s+1`
-and vice versa.
+and, at an end of the tiling, `w_s >= max(pad_s, pad of the one neighbour)`
+as today. Which neighbour a failing interior merges into is unchanged (the
+narrower one). That gives `hi_{s-1} + e_{s-1} <= lo_{s+1} - pad_{s+1}`, and the
+mirror inequality: the windows of `s-1` and `s+1` stay disjoint, as under the
+old rule, and no owned template of either reaches the other's window. The
+extent keeps the old `pad + pad` term, which matters wherever `r < pad`
+(common at `bw = 64`).
 
 `bw` must be known inside the loop, so the loop computes it with the same
 formula as today, `min(ucb_bw(hi/T, fdot_max, 0, amp_max, T, n_freq),
@@ -64,31 +67,35 @@ computing it again. The per-segment pad, GLASS's bandwidth, the window
 
 The merge loop runs per tiling: the whole band, or one cluster under
 `skip_gaps`. Segments `s` and `s+2` that straddle a gap belong to different
-tilings, so the loop never compares them. After all tilings are built,
-`build_segment_table` checks every same-parity pair `(s, s+2)` in the global
-index order:
+tilings, so the loop never compares them. Two places close that hole:
 
-```
-hi_s + r_s <= lo_{s+2} - pad_{s+2}
-```
+- Under `skip_gaps`, clusters are already merged and re-tiled while their
+  padded windows overlap. They are now also merged while a same-parity pair
+  `(s, s+2)` that straddles them is closer than
+  `max(e_s + pad_{s+2}, pad_s + e_{s+2})`. A table built by
+  `build_segment_table` therefore always satisfies the rule.
+- After all tilings are built, `build_segment_table` checks every same-parity
+  pair `(s, s+2)` in the global index order against the same bound. A
+  violation raises `ValueError` naming both segments and the distance. The
+  check is a public function, `same_parity_disjoint(table) -> None`.
 
-A violation raises `ValueError` naming both segments and the overlap in bins.
-Sangria has none, with or without `skip_gaps`. The check is a public
-function, `same_parity_disjoint(table) -> None`, so the block can call it on
-a table read from disk.
+Sangria needs no cross-cluster merge: the cluster count stays 133.
 
 ### Effect on Sangria
 
-From a prototype of the rule (scratch script, not committed):
+From a prototype of the rule (scratch copy of the package, not committed):
 
 | | Segments | Same-parity reach | Owned median / p99 / max | Window median |
 |---|---|---|---|---|
 | Today | 879 | 106 segments | 10 / 21 / 31 | 339 bins |
-| New rule | 779 | none | 10 / 30 / 42 | 387 bins |
+| New rule | 770 | none | 10 / 30 / 42 | 391 bins |
 | Today, `skip_gaps` | 971 | 104 segments | 10 / 21 / 31 | 337 bins |
-| New rule, `skip_gaps` | 871 | none | 10 / 30 / 42 | 382 bins |
+| New rule, `skip_gaps` | 862 | none | 10 / 30 / 42 | 386 bins |
 
-`k_max = max(10, 2*owned)` rises to 84 in the most crowded segment.
+`k_max = max(10, 2*owned)` rises to 84 in the most crowded segment. Building
+the table takes about 9 s instead of 4 s, because the merge loop now computes
+`bw` for every candidate tiling. Every existing fast segment test passes
+unchanged under the new rule, including the pinned tilings.
 
 ## One turn
 
@@ -142,6 +149,7 @@ class AdvanceResult:
 class SegmentExecutor(Protocol):
     def start(self, specs: Sequence[RunnerSpec]) -> None: ...
     def advance(self, jobs: Mapping[int, tuple[NDArray, NDArray]]) -> dict[int, AdvanceResult]: ...
+    def peak_rss_bytes(self) -> list[int]: ...
     def close(self) -> None: ...
 ```
 
@@ -160,14 +168,17 @@ call.
   the results. Workers render the published contributions themselves, so
   rendering is not serialized in the main process; each worker therefore
   compiles the full-band render kernel as well as the likelihood kernels.
-  Workers inherit the parent's environment unless the measurement (below)
-  shows that pinned XLA threading flags are needed; the executor then takes
-  them as an argument.
+  Workers inherit the parent's environment, `XLA_FLAGS` included, and the
+  parent passes its JAX x64 setting, which a fresh interpreter would not
+  have. Threading is therefore set per run with `XLA_FLAGS`, not through an
+  executor argument; the measurement (below) times both.
 - **Shards** are fixed when the executor starts. Segments of each parity are
-  assigned separately, longest first, to the least-loaded worker, with the
-  cost estimate `k_max * bw + n_bins`. Each worker so gets a balanced share
-  of both parities. The function is `assign_shards(segments, workers) ->
-  list[list[int]]`.
+  assigned separately, longest first, to the least-loaded worker. The cost
+  estimate is the dry run's fitted step time,
+  `1252 + 3.33 bw + 0.036 k_max bw + 0.022 n_bins` microseconds
+  (`STEP_COST_US`), used only as relative weights. Each worker so gets a
+  balanced share of both parities. The function is
+  `assign_shards(segments, workers) -> list[list[int]]`.
 
 ### Block API
 
@@ -182,6 +193,9 @@ call.
   `ChainArchive.read(directory)`, because the constructor refuses a
   directory that already holds turns and the runner may live in another
   process.
+- `peak_rss_bytes()` returns the peak resident memory of each process that
+  runs segments (each worker, or the main process with one worker), for the
+  measurement tool.
 - The `sample()` docstring's paragraph on why the sweep is sequential is
   replaced by the snapshot description above.
 
@@ -192,7 +206,8 @@ call.
 - A worker that dies (end-of-file on its pipe) raises `RuntimeError` naming
   the shard and its segments.
 - Either case marks the block failed, as a mid-sweep failure does today, so
-  every later `sample()` raises. `close()` still stops the remaining workers.
+  every later `sample()` raises. The block also closes its executor at once,
+  so no idle worker keeps its memory; `close()` stays harmless.
 
 ### Known cost
 
@@ -208,13 +223,18 @@ and the runners build them again in the workers. Not addressed here.
      worker's XLA threading makes these differ, workers get pinned flags; if
      pinned flags still differ, the README states the tolerance instead of
      bitwise equality, before anything else is built on the claim.
+
+   A prototype of the executors (real runners, 20 steps, two turns, both
+   parities) already gave bitwise equal results for both comparisons, with
+   inherited environments.
 2. **Table.** The merge rule and `same_parity_disjoint` on crowded synthetic
    sets, on gap straddles under `skip_gaps` (including a constructed
    violation that must raise), and with `max_interior_bins`. Sources rendered
    at both interior edges of each segment must have `freq_bin_indices`
    outside every same-parity window.
 3. **Sweep equivalence.** On a table that passes the check, the snapshot
-   sweep and the old sequential loop give identical windows and models.
+   sweep and the old sequential loop give identical windows: a test replays
+   a turn one segment at a time and compares every job bitwise.
 4. **Executor.** `assign_shards` balances each parity; a worker exception and
    a killed worker both raise as above and mark the block failed; `close()`
    and the finalizer leave no live processes.
@@ -222,14 +242,18 @@ and the runners build them again in the workers. Not addressed here.
    and 16 workers, each with inherited and with single-threaded XLA flags,
    and records wall time per turn, aggregate steps per second and peak
    resident memory per worker in `tools/performance/segments-parallel.json`.
-   Workers use about 3.5 GB each, so the default stays `workers=1`; the
-   README recommends a count from this measurement.
-6. **Re-validation on the new table**, run with the parallel executor: both
-   dry runs (`segments-dry-run.json`, `segments-dry-run-skip-gaps.json`),
-   the segment-767 band (`segments-767.json`) and the GLASS comparison on
-   segments 113, 125 and 276 (`segments-glass-compare.json`). The README's
-   numbers (segment counts, widest segment, owned maximum, turn time) are
-   updated from them, with the parallel turn time added.
+   Workers use about 3.5 GB each, and the main process holds the Sangria
+   data (about 5.5 GB), so the default stays `workers=1`. The README
+   recommends the fastest count whose main process plus workers stay under
+   48 GiB.
+6. **Re-validation on the new table.** Both dry runs
+   (`segments-dry-run.json`, `segments-dry-run-skip-gaps.json`) stay serial,
+   because they time single segments. The segment-767 band
+   (`segments-767.json`) and the GLASS comparison on segments 113, 125 and
+   276 (`segments-glass-compare.json`) run with the recommended worker
+   count. The README's numbers (segment counts, widest segment, owned
+   maximum, turn time) are updated from them, with the parallel turn time
+   added.
 
 ## Out of scope
 
