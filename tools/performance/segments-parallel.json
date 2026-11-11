@@ -1,0 +1,113 @@
+{
+  "machine_cpu_count": 16,
+  "single_thread_flags": "--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1",
+  "steps_per_turn": 200,
+  "turns": 4,
+  "note": "steady_turn_s is the last turn's wall time; the first turn includes the compiles. speedup_vs_one_worker compares steps_per_s with the one-worker run of the same threading. The single-thread flags are not timed by default: on jax 0.7.2 they leave XLA's CPU threading unchanged.",
+  "results": [
+    {
+      "workers": 1,
+      "xla_flags": null,
+      "band_mhz": [
+        2.0,
+        4.0
+      ],
+      "band_bins": [
+        63072,
+        126144
+      ],
+      "start_sources": 4777,
+      "segments": 295,
+      "active_segments": 295,
+      "steps_per_turn": 200,
+      "turn_s": [
+        179.64496779098408,
+        148.89145075000124,
+        147.35854195797583,
+        167.4090519589954
+      ],
+      "steady_turn_s": 167.4090519589954,
+      "steps_per_s": 352.43016616838173,
+      "worker_peak_rss_bytes": [
+        17118593024
+      ],
+      "main_peak_rss_bytes": 17118593024,
+      "single_thread": false,
+      "speedup_vs_one_worker": 1.0
+    },
+    {
+      "workers": 2,
+      "xla_flags": null,
+      "band_mhz": [
+        2.0,
+        4.0
+      ],
+      "band_bins": [
+        63072,
+        126144
+      ],
+      "start_sources": 4777,
+      "segments": 295,
+      "active_segments": 295,
+      "steps_per_turn": 200,
+      "turn_s": [
+        150.90043791598873,
+        95.76570754195563,
+        96.32488245901186,
+        90.56636429100763
+      ],
+      "steady_turn_s": 90.56636429100763,
+      "steps_per_s": 651.4559843698853,
+      "worker_peak_rss_bytes": [
+        8045199360,
+        8078360576
+      ],
+      "main_peak_rss_bytes": 6215057408,
+      "single_thread": false,
+      "speedup_vs_one_worker": 1.8484682836674005
+    },
+    {
+      "workers": 4,
+      "xla_flags": null,
+      "band_mhz": [
+        2.0,
+        4.0
+      ],
+      "band_bins": [
+        63072,
+        126144
+      ],
+      "start_sources": 4777,
+      "segments": 295,
+      "active_segments": 295,
+      "steps_per_turn": 200,
+      "turn_s": [
+        113.34274116699817,
+        74.85130074998597,
+        69.29437704198062,
+        69.32794287498109
+      ],
+      "steady_turn_s": 69.32794287498109,
+      "steps_per_s": 851.0277033085282,
+      "worker_peak_rss_bytes": [
+        5843550208,
+        6247038976,
+        5352030208,
+        5371625472
+      ],
+      "main_peak_rss_bytes": 6203342848,
+      "single_thread": false,
+      "speedup_vs_one_worker": 2.414741372910541
+    },
+    {
+      "workers": 8,
+      "single_thread": false,
+      "skipped": "predicted 52.3 GiB exceeds --max-total-gib 52"
+    },
+    {
+      "workers": 16,
+      "single_thread": false,
+      "skipped": "predicted 98.9 GiB exceeds --max-total-gib 52"
+    }
+  ]
+}

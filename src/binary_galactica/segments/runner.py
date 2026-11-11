@@ -17,6 +17,7 @@ files. ``num_adapt`` stays ``None``, because it would count per turn.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -78,12 +79,32 @@ class ChainArchive:
         self, turn: int, *, samples: ArrayLike, k: ArrayLike, lnlike: ArrayLike
     ) -> None:
         """Write one turn's cold samples ``(n, D)``, counts and likelihoods."""
-        np.savez_compressed(
-            self.directory / f"turn_{int(turn):05d}.npz",
-            samples=np.asarray(samples, dtype=np.float64),
-            k=np.asarray(k, dtype=np.int64),
-            lnlike=np.asarray(lnlike, dtype=np.float64),
-        )
+        final = self.directory / f"turn_{int(turn):05d}.npz"
+        partial = final.with_name(f".{final.name}.partial")
+        try:
+            with open(partial, "wb") as fh:
+                np.savez_compressed(
+                    fh,
+                    samples=np.asarray(samples, dtype=np.float64),
+                    k=np.asarray(k, dtype=np.int64),
+                    lnlike=np.asarray(lnlike, dtype=np.float64),
+                )
+            os.replace(partial, final)
+        except BaseException:
+            partial.unlink(missing_ok=True)
+            raise
+
+    @classmethod
+    def read(cls, directory: str | Path) -> dict[str, NDArray[Any]]:
+        """Return :meth:`load` of an archive another process may be writing.
+
+        Each turn's file appears whole (``append`` writes it under a temporary
+        name and renames it), so a reader never sees a partial turn. Unlike
+        the constructor, this accepts a directory that holds turns.
+        """
+        archive = cls.__new__(cls)
+        archive.directory = Path(directory)
+        return archive.load()
 
     def files(self) -> list[Path]:
         """Return the per-turn files in turn order."""

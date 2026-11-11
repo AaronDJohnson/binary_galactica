@@ -75,6 +75,7 @@ def run(
     seed: int,
     outdir: Path,
     path: Path = sangria.DEFAULT_PATH,
+    workers: int = 1,
 ) -> dict:
     """Run one mode and return its report."""
     n, dt = sangria.grid(path)
@@ -101,6 +102,7 @@ def run(
         outdir=outdir / mode,
         config=config,
         reference_covariance=cov,
+        workers=workers,
     )
     segs = block.table.segments
     if segs[0].bin_lo < lo or segs[-1].bin_hi > hi:
@@ -109,13 +111,15 @@ def run(
             f"the running-median range {lo}..{hi}"
         )
     inner = runs.inner_segments(block, core)
-    _, seconds = runs.run_block(block, data, cov, turns, seed)
+    with block:
+        _, seconds = runs.run_block(block, data, cov, turns, seed)
     dropped_snr = {d["name"]: d["snr"] for d in block.dropped}
     npz_names = set(npz_rows["Name"])
     floor, need = (7.0, 0.9) if mode == "fixed" else (10.0, 0.8)
     report = {
         "noise_reference": NOISE_REFERENCE,
         "mode": mode,
+        "workers": workers,
         "band": band,
         "core": core,
         "span": SPAN,
@@ -175,10 +179,16 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=767)
     parser.add_argument("--outdir", type=Path, default=None)
+    parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
     outdir = args.outdir or Path(tempfile.mkdtemp(prefix="segment767-"))
     report = run(
-        args.mode, turns=args.turns, steps=args.steps, seed=args.seed, outdir=outdir
+        args.mode,
+        turns=args.turns,
+        steps=args.steps,
+        seed=args.seed,
+        outdir=outdir,
+        workers=args.workers,
     )
     out = runs.PERFORMANCE / "segments-767.json"
     merged = json.loads(out.read_text()) if out.exists() else {}

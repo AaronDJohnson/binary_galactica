@@ -12,7 +12,10 @@ from binary_galactica.segments import (
     build_segment_table,
     doppler_bins,
     padding_bins,
+    render_sources,
+    same_parity_disjoint,
 )
+from binary_galactica.segments.table import _cluster_conflict, _Tiling
 
 from .support import native_source
 
@@ -22,6 +25,14 @@ N_FREQ = 3_153_601
 
 def _sources(qs, lnA=-50.0, fdot_T2=0.0):
     return np.array([native_source(q, lnA=lnA, fdot_T2=fdot_T2) for q in qs])
+
+
+def _check_parity(table):
+    """Same-parity segments: windows disjoint, no owned template reaching across."""
+    segs = table.segments
+    for a, b in zip(segs[:-2], segs[2:], strict=True):
+        assert a.hi + max(a.pad, a.bw // 2 + 1) <= b.lo - b.pad
+        assert a.hi + a.pad <= b.lo - max(b.pad, b.bw // 2 + 1)
 
 
 def _check_rules(table):
@@ -35,6 +46,7 @@ def _check_rules(table):
         assert seg.bw & (seg.bw - 1) == 0 and seg.bw <= seg.n_bins
     for a, b in zip(segs[:-2], segs[2:], strict=True):
         assert a.bin_hi <= b.bin_lo
+    _check_parity(table)
 
 
 def test_doppler_and_padding_rule():
@@ -237,6 +249,7 @@ def _check_cluster_rules(table, q):
     assert owned == inside  # every in-band source exactly once
     for seg in segs:
         assert all(seg.lo <= q[i] < seg.hi for i in seg.owned)
+    _check_parity(table)
 
 
 def test_skip_gaps_without_wide_gaps_matches_the_default():
@@ -445,3 +458,81 @@ def test_segment_owns_scalars_and_arrays():
         True,
         False,
     ]
+
+
+def _crowded():
+    """80 sources 15 bins apart: their 256-bin templates outreach 64-bin pads."""
+    return _sources(120_000.37 + 15.0 * np.arange(80))
+
+
+def test_owned_templates_never_reach_a_same_parity_window():
+    # The pads-only rule left this set in 8 segments, with every same-parity
+    # pair within reach of a template; the reach term merges them to 4.
+    table = build_segment_table(_crowded(), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    _check_rules(table)
+    assert [(s.lo, s.hi, s.pad, s.bw, len(s.owned)) for s in table.segments] == [
+        (120_000, 120_293, 64, 256, 20),
+        (120_293, 120_593, 64, 256, 20),
+        (120_593, 120_893, 65, 256, 20),
+        (120_893, 121_186, 65, 256, 20),
+    ]
+    assert all(s.bw // 2 + 1 > s.pad for s in table.segments)
+
+
+def test_rendered_edge_sources_stay_out_of_same_parity_windows():
+    table = build_segment_table(_crowded(), T=T, n_freq=N_FREQ, config=UCBBlockConfig())
+    segs = table.segments
+    for s, seg in enumerate(segs):
+        for q in (float(seg.lo), seg.lo + 1e-6, seg.hi - 1e-6):
+            part = render_sources(
+                _sources([q]), T=T, t0=0.0, BW=seg.bw, n_channels=2, n_freq=N_FREQ
+            )
+            assert part.values.shape[1] == seg.bw
+            for j in (s - 2, s + 2):
+                if 0 <= j < len(segs):
+                    other = segs[j]
+                    assert part.bin_hi <= other.bin_lo or part.bin_lo >= other.bin_hi
+
+
+def _hand_table(middle_width):
+    segs = (
+        Segment(index=0, lo=1000, hi=1100, pad=10, bw=64, k_max=10, owned=()),
+        Segment(
+            index=1, lo=1100, hi=1100 + middle_width, pad=10, bw=64, k_max=10, owned=()
+        ),
+        Segment(
+            index=2,
+            lo=1100 + middle_width,
+            hi=1300,
+            pad=10,
+            bw=64,
+            k_max=10,
+            owned=(),
+        ),
+    )
+    return SegmentTable(T=T, n_freq=N_FREQ, segments=segs)
+
+
+def test_same_parity_disjoint_rejects_a_reaching_template():
+    # need = max(max(10, 64//2 + 1) + 10, 10 + max(10, 33)) = 43
+    same_parity_disjoint(_hand_table(43))
+    with pytest.raises(
+        ValueError,
+        match="segments 0 and 2 share a parity but are 30 bins apart; "
+        "their windows and templates need 43",
+    ):
+        same_parity_disjoint(_hand_table(30))
+
+
+def test_clusters_merge_when_a_template_reaches_across_the_gap():
+    # The windows are disjoint (1140 + 10 <= 1160 - 10), but segment 0's
+    # 256-bin templates reach 129 bins past 1100, into segment 2's window.
+    a = _Tiling(edges=[1000, 1100, 1140], owned=[(), ()], pads=[10, 10], bws=[256, 64])
+    b = _Tiling(edges=[1160, 1300], owned=[()], pads=[10], bws=[64])
+    assert _cluster_conflict([a, b]) == (0, 1)
+    narrow = _Tiling(
+        edges=[1000, 1100, 1140], owned=[(), ()], pads=[10, 10], bws=[64, 64]
+    )
+    assert _cluster_conflict([narrow, b]) is None
+    touching = _Tiling(edges=[1150, 1300], owned=[()], pads=[10], bws=[64])
+    assert _cluster_conflict([narrow, touching]) == (0, 1)

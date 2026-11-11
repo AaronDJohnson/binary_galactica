@@ -10,6 +10,13 @@ from __future__ import annotations
 from .block import CHANNEL_SETS, UCBBlock
 from .catalogue import CATALOGUE_FIELDS, ldc_to_native, native_to_ldc
 from .config import BACKENDS, UCBBlockConfig
+from .executor import (
+    AdvanceResult,
+    ProcessExecutor,
+    RunnerSpec,
+    SerialExecutor,
+    assign_shards,
+)
 from .fisher import FisherBank, fisher_decomposition, floor_eigenvalues
 from .likelihood import SegmentLikelihood, quantize_bins
 from .moves import FisherMove, FmShiftMove, PriorRedrawMove, PsiPhiMove, SlotMove
@@ -22,9 +29,11 @@ from .table import (
     build_segment_table,
     doppler_bins,
     padding_bins,
+    same_parity_disjoint,
 )
 
 __all__ = [
+    "AdvanceResult",
     "BACKENDS",
     "CATALOGUE_FIELDS",
     "CHANNEL_SETS",
@@ -35,15 +44,19 @@ __all__ = [
     "FisherMove",
     "FmShiftMove",
     "PriorRedrawMove",
+    "ProcessExecutor",
     "PsiPhiMove",
+    "RunnerSpec",
     "Segment",
     "SegmentLikelihood",
     "SegmentPrior",
     "SegmentRunner",
     "SegmentTable",
+    "SerialExecutor",
     "SlotMove",
     "UCBBlock",
     "UCBBlockConfig",
+    "assign_shards",
     "build_segment_table",
     "doppler_bins",
     "fisher_decomposition",
@@ -54,4 +67,5 @@ __all__ = [
     "padding_bins",
     "quantize_bins",
     "render_sources",
+    "same_parity_disjoint",
 ]

@@ -96,7 +96,7 @@ def _nearest_catalogue(path, T, q, start):
 
 
 def compare_segment(
-    seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path
+    seg_index, det, spectra, data, *, T, turns, steps, seed, outdir, path, workers=1
 ):
     """Run the block on one GLASS segment's band and compare every detection."""
     rows_g = det[det["segment"] == seg_index]
@@ -117,6 +117,7 @@ def compare_segment(
         outdir=outdir / f"glass_{seg_index}",
         config=config,
         reference_covariance=cov,
+        workers=workers,
     )
     segs = block.table.segments
     if segs[0].bin_lo < a or segs[-1].bin_hi > b:
@@ -126,7 +127,8 @@ def compare_segment(
         )
     runs.inner_segments(block, core)
     t_start = time.time()
-    _, seconds = runs.run_block(block, data, cov, turns, seed)
+    with block:
+        _, seconds = runs.run_block(block, data, cov, turns, seed)
     minutes = (time.time() - t_start) / 60.0
     chains = {s.index: block.cold_chain(s.index) for s in segs}
     owners = block.table.owners(q)
@@ -185,6 +187,7 @@ def compare_segment(
         "edge_segments": [segs[0].index, segs[-1].index],
         "n_start": len(start),
         "n_dropped": len(block.dropped),
+        "workers": workers,
         "seconds_per_turn": seconds,
         "minutes": minutes,
         "detections": out,
@@ -198,6 +201,7 @@ def main() -> None:
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=5)
     parser.add_argument("--path", type=Path, default=sangria.DEFAULT_PATH)
+    parser.add_argument("--workers", type=int, default=1)
     args = parser.parse_args()
     n, dt = sangria.grid(args.path)
     T = n * dt
@@ -217,6 +221,7 @@ def main() -> None:
             seed=args.seed + s,
             outdir=outdir,
             path=args.path,
+            workers=args.workers,
         )
         for s in chosen
     ]
