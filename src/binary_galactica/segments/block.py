@@ -1,11 +1,12 @@
 """Every segment of the band in one enchilada block; one Gibbs turn per call.
 
 One :meth:`UCBBlock.sample` call:
-1. checks that the residual and covariance are frequency-domain and on the
-   construction grid (channels, length, sample rate and start time), and that
-   the ledger's turn matches the block's;
-2. takes the A and E coefficient variances ``C = (T/2) S`` from the
-   covariance;
+1. checks that the residual is frequency-domain and on the construction grid
+   (channels, length, sample rate and start time), that the covariance is an
+   enchilada ``Covariance`` with the data's channels, and that the ledger's
+   turn matches the block's;
+2. takes the A and E coefficient variances ``C = (T/2) S`` from
+   ``covariance.pair``;
 3. sweeps even segments, then odd. Each segment's sampler sees the conditional
    residual minus the other segments' current owned sources, on its padded
    window. Every job of a parity is built from the model as it stood when the
@@ -71,12 +72,12 @@ class UCBBlock:
     config
         :class:`UCBBlockConfig`; the default holds the spec's settings.
     reference_covariance
-        Frequency ``DataCovariance`` defining the SNR cut for the run; start
-        sources below the cut are dropped at construction. It is required by
-        :meth:`initial_block_state`, so that the published turn-0 template
-        never includes a source the block then drops. ``None`` defers the cut
-        to the first turn's covariance, for callers that seed the ledger
-        another way.
+        enchilada ``Covariance`` on the data's frequency grid defining the SNR
+        cut for the run; start sources below the cut are dropped at
+        construction. It is required by :meth:`initial_block_state`, so that
+        the published turn-0 template never includes a source the block then
+        drops. ``None`` defers the cut to the first turn's covariance, for
+        callers that seed the ledger another way.
     name
         Registration name.
     workers
@@ -214,26 +215,34 @@ class UCBBlock:
             )
 
     def _diagonals(self, cov: Any) -> NDArray[np.float64]:
-        """Return ``(2, n_freq)`` A/E coefficient variances; inactive bins are inf."""
-        if getattr(cov, "data_domain", None) != "frequency" or not hasattr(
-            cov, "covariance_matrix"
-        ):
+        """Return ``(2, n_freq)`` A/E coefficient variances from a ``Covariance``.
+
+        Only ``channel_names``, ``pair`` and an optional ``form`` are read, so
+        any enchilada ``Covariance`` from 0.3.0 on works. Variances are checked
+        inside the table's span only; the segment windows never read DC.
+        """
+        if cov is None or not callable(getattr(cov, "pair", None)):
             raise TypeError(
-                "noise_covariance must be a frequency-domain DataCovariance"
+                "covariance must be an enchilada Covariance (0.3.0 or later); "
+                "register the block with data_domain='frequency' and give the "
+                "Wheel an initial_covariance"
             )
+        if getattr(cov, "form", "diagonal") != "diagonal":
+            raise ValueError("the UCB block needs a diagonal-form Covariance")
         if tuple(cov.channel_names) != self.channels:
             raise ValueError("covariance channels differ from the data channels")
-        m = np.asarray(cov.covariance_matrix)
-        n = len(self.channels)
-        if m.shape != (self.n_freq, n, n):
-            raise ValueError(f"covariance must have shape {(self.n_freq, n, n)}")
-        c = np.stack([m[:, 0, 0].real, m[:, 1, 1].real]).astype(np.float64)
-        mask = getattr(cov, "active_mask", None)
-        if mask is not None:
-            c[:, ~np.asarray(mask, dtype=bool)] = np.inf
+        diag = [np.asarray(cov.pair(ch, ch)) for ch in ("A", "E")]
+        if any(d.shape != (self.n_freq,) for d in diag):
+            raise ValueError(f"covariance arrays must have shape {(self.n_freq,)}")
+        c = np.stack([d.real for d in diag]).astype(np.float64)
         lo, hi = self.table.segments[0].bin_lo, self.table.segments[-1].bin_hi
-        scale = np.sqrt(np.abs(c[0, lo:hi] * c[1, lo:hi]))
-        if np.any(np.abs(m[lo:hi, 0, 1]) > 1e-12 * scale):
+        band = c[:, lo:hi]
+        if not np.all(np.isfinite(band) & (band > 0)):
+            raise ValueError(
+                "covariance variances must be finite and positive in the block's band"
+            )
+        cross = np.asarray(cov.pair("A", "E"))[lo:hi]
+        if np.any(np.abs(cross) > 1e-12 * np.sqrt(band[0] * band[1])):
             raise ValueError("the UCB block needs uncorrelated A and E noise")
         return c
 
@@ -413,7 +422,7 @@ class UCBBlock:
     def sample(
         self,
         conditional_residual: Any,
-        noise_covariance: Any,
+        covariance: Any,
         current_block_state: Any,
         *,
         rng: np.random.Generator,
@@ -449,7 +458,7 @@ class UCBBlock:
             )
         data = conditional_residual
         self._check_data(data)
-        c = self._diagonals(noise_covariance)
+        c = self._diagonals(covariance)
         r = np.stack(
             [
                 np.asarray(data.channel_data[ch], dtype=np.complex128)

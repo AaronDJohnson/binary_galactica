@@ -1,14 +1,15 @@
 r"""Masked ``K``-slot Gaussian likelihood of one segment.
 
 With residual ``r``, per-slot templates ``h_i`` and coefficient variance
-``C = (T/2) S`` (enchilada's ``DataCovariance`` convention) on the segment's
-padded bins, the log likelihood is
+``C = (T/2) S`` (enchilada's ``Covariance.from_psd`` convention) on the
+segment's padded bins, the log likelihood is
 
 .. math::
     \ln L = -\sum_{A,E}\sum_{\rm bins} |r - \textstyle\sum_{i<k} h_i|^2 / C,
 
-which is ``-0.5 * DataCovariance.quadratic_form`` without the constant
-log-determinant. It is ``-inf`` if any active source has
+which is ``-0.5`` times the Gaussian quadratic form
+``2 sum |r - sum h|^2 / C`` over the stacked real Fourier coordinates, without
+the constant log-determinant. It is ``-inf`` if any active source has
 ``SNR^2 = 2 sum |h_i|^2 / C_ref < snr_min^2``. Here ``C_ref`` is a reference
 covariance fixed for the run, so the truncated target is the same in every
 Gibbs turn.
