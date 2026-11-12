@@ -1,0 +1,22 @@
+{
+  "planPath": "docs/superpowers/plans/2026-11-12-enchilada-covariance-port.md",
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Task 1: The block reads enchilada's Covariance",
+      "status": "pending",
+      "description": "**Goal:** `UCBBlock.sample` takes `covariance=`, and `_diagonals` reads A/E variances through `covariance.pair`. The fake covariance and the rejection tests use the new shape.\n\n**Files:**\n- Modify: `src/binary_galactica/segments/block.py`:\n  - module docstring, lines 3-8;\n  - `reference_covariance` docstring, around line 74;\n  - `_diagonals`, around lines 216-237;\n  - `sample`, around lines 413-452.\n- Modify: `src/binary_galactica/segments/likelihood.py` (module docstring, lines 1-16).\n- Test: `tests/segments/test_block.py`:\n  - `_Data.block_state`, around line 32;\n  - `_cov`, around lines 48-61;\n  - the domain test, around line 182;\n  - `test_rejects_bad_covariances`, around lines 188-200.\n\n**Acceptance Criteria:**\n- [ ] `UCBBlock.sample`'s second parameter is named `covariance`.\n- [ ] `_diagonals` raises:\n  - `TypeError` naming \"enchilada Covariance\" and \"initial_covariance\", for `None` or an object without `pair`;\n  - `ValueError` for full form, wrong channels, wrong shape, a non-finite or non-positive variance inside the table span, and correlated A\u2013E.\n- [ ] A non-finite variance outside the table span (e.g. at DC) is accepted.\n- [ ] `python -m pytest tests/segments/test_block.py -q -m \"not slow\"` passes.\n\n**Verify:** `python -m pytest tests/segments/test_block.py -q -m \"not slow\"` \u2192 all passed, 0 failed\n\n```json:metadata\n{\"files\": [\"src/binary_galactica/segments/block.py\", \"src/binary_galactica/segments/likelihood.py\", \"tests/segments/test_block.py\"], \"verifyCommand\": \"python -m pytest tests/segments/test_block.py -q -m \\\"not slow\\\"\"}\n```",
+      "blockedBy": []
+    },
+    {
+      "id": "2",
+      "subject": "Task 2: Move the enchilada-backed tests and the tools to Covariance",
+      "status": "pending",
+      "description": "**Goal:** Port the real-enchilada tests, `tools/segments/runs.py` and the README to `Covariance`, so the full suite passes with no deselects.\n\n**Files:**\n- Modify: `tests/segments/test_block.py` (`_Noise`, around line 94; `_check_block_run`, around lines 458-510).\n- Modify: `tests/segments/test_likelihood.py` (`test_matches_enchilada_quadratic_form`, around lines 257-278).\n- Modify: `tools/segments/runs.py` (`covariance`, around lines 216-245).\n- Modify: `README.md` (around lines 531-532).\n\n**Acceptance Criteria:**\n- [ ] `test_check_block` and `test_check_block_three_segments` pass against enchilada `main`.\n- [ ] `test_matches_enchilada_covariance_convention` replaces `test_matches_enchilada_quadratic_form` and passes.\n- [ ] `runs.covariance` returns an `enchilada.Covariance` with its signature unchanged.\n- [ ] The full suite passes with no deselects. ruff is clean. mypy stays at 40 errors in 4 files.\n- [ ] `grep -rn \"DataCovariance\\|initial_noise_covariance\\|quadratic_form(\" src tests tools README.md` prints nothing.\n\n**Verify:** `python -m pytest -q` \u2192 `516 passed`, nothing deselected\n\n```json:metadata\n{\"files\": [\"tests/segments/test_block.py\", \"tests/segments/test_likelihood.py\", \"tools/segments/runs.py\", \"README.md\"], \"verifyCommand\": \"python -m pytest -q\"}\n```",
+      "blockedBy": [
+        "1"
+      ]
+    }
+  ],
+  "lastUpdated": "2026-11-12T18:46:27.232481+00:00"
+}
