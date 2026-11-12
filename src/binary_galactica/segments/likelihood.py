@@ -1,14 +1,15 @@
 r"""Masked ``K``-slot Gaussian likelihood of one segment.
 
 With residual ``r``, per-slot templates ``h_i`` and coefficient variance
-``C = (T/2) S`` (enchilada's ``DataCovariance`` convention) on the segment's
-padded bins, the log likelihood is
+``C = (T/2) S`` (enchilada's ``Covariance.from_psd`` convention) on the
+segment's padded bins, the log likelihood is
 
 .. math::
     \ln L = -\sum_{A,E}\sum_{\rm bins} |r - \textstyle\sum_{i<k} h_i|^2 / C,
 
-which is ``-0.5 * DataCovariance.quadratic_form`` without the constant
-log-determinant. It is ``-inf`` if any active source has
+which is ``-0.5`` times the Gaussian quadratic form
+``2 sum |r - sum h|^2 / C`` over the stacked real Fourier coordinates, without
+the constant log-determinant. It is ``-inf`` if any active source has
 ``SNR^2 = 2 sum |h_i|^2 / C_ref < snr_min^2``. Here ``C_ref`` is a reference
 covariance fixed for the run, so the truncated target is the same in every
 Gibbs turn.
@@ -425,9 +426,9 @@ class SegmentLikelihood:
     def set_data(self, residual: ArrayLike, c: ArrayLike) -> None:
         """Set this turn's ``(2, n_bins)`` A/E residual and coefficient variance.
 
-        A bin with ``c == 0`` or ``c == +inf`` is excluded (zero weight), as
-        enchilada stores its excluded DC bin with zero covariance. NaN or
-        negative ``c`` raises ``ValueError``.
+        A bin with ``c == 0`` or ``c == +inf`` gets zero weight; the UCB block
+        rejects such values inside its band, so this applies only to direct
+        callers. NaN or negative ``c`` raises ``ValueError``.
         """
         r = np.asarray(residual, dtype=np.complex128)
         if r.shape != (2, self.n_bins) or not np.all(np.isfinite(r)):

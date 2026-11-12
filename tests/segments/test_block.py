@@ -29,7 +29,7 @@ QS = (2940.3, 2952.3, 2964.3)
 
 
 class _Data(SimpleNamespace):
-    def block_state(self, template=None, *, covariance_matrix=None, parameters=None):
+    def block_state(self, template=None, *, covariance=None, parameters=None):
         return SimpleNamespace(template=template, parameters=parameters)
 
 
@@ -45,19 +45,26 @@ def _grid(channels=CHANNELS, domain="frequency", data=None, t0=0.0):
     )
 
 
+class _Cov(SimpleNamespace):
+    """Minimal stand-in for a diagonal enchilada ``Covariance``."""
+
+    def pair(self, first, second):
+        if (first, second) in self.pairs:
+            out = self.pairs[(first, second)].view()
+        else:
+            out = np.zeros_like(self.pairs[(first, first)])
+        out.flags.writeable = False
+        return out
+
+
 def _cov(channels=CHANNELS):
     f = np.arange(N_FREQ) / T_SHORT
     f[0] = f[1]
-    m = np.zeros((N_FREQ, len(channels), len(channels)))
-    for i in range(len(channels)):
-        m[:, i, i] = 0.5 * T_SHORT * ae_noise(f)
-    mask = np.ones(N_FREQ, dtype=bool)
-    mask[0] = False
-    return SimpleNamespace(
-        data_domain="frequency",
-        covariance_matrix=m,
+    variance = 0.5 * T_SHORT * ae_noise(f)
+    return _Cov(
         channel_names=channels,
-        active_mask=mask,
+        form="diagonal",
+        pairs={(ch, ch): variance.copy() for ch in channels},
     )
 
 
@@ -92,8 +99,10 @@ def _render(sources, seg, n_channels=3):
 
 
 class _Noise:
+    """A/E PSD floored at the first nonzero bin, since ``from_psd`` evaluates DC."""
+
     def psd(self, f):
-        return ae_noise(f)
+        return ae_noise(np.maximum(f, 1.0 / T_SHORT))
 
 
 class _InjectedFailureError(Exception):
@@ -179,8 +188,10 @@ def test_rejects_unsupported_inputs(tmp_path, fake_runner):
     rng = np.random.default_rng(0)
     with pytest.raises(ValueError, match="frequency"):
         block.sample(_grid(domain="time"), _cov(), None, rng=rng)
-    with pytest.raises(TypeError, match="DataCovariance"):
-        block.sample(_grid(), SimpleNamespace(data_domain="time"), None, rng=rng)
+    with pytest.raises(TypeError, match="enchilada Covariance"):
+        block.sample(_grid(), SimpleNamespace(), None, rng=rng)
+    with pytest.raises(TypeError, match="initial_covariance"):
+        block.sample(_grid(), None, None, rng=rng)
     with pytest.raises(ValueError, match="start time"):
         block.sample(_grid(t0=100.0), _cov(), None, rng=rng)
 
@@ -191,12 +202,33 @@ def test_rejects_bad_covariances(tmp_path, fake_runner):
     )
     rng = np.random.default_rng(0)
     correlated = _cov()
-    m = correlated.covariance_matrix
-    m[:, 0, 1] = m[:, 1, 0] = 0.1 * np.sqrt(m[:, 0, 0] * m[:, 1, 1])
+    a, e = correlated.pairs[("A", "A")], correlated.pairs[("E", "E")]
+    correlated.pairs[("A", "E")] = 0.1 * np.sqrt(a * e)
     with pytest.raises(ValueError, match="uncorrelated"):
         block.sample(_grid(), correlated, None, rng=rng)
     with pytest.raises(ValueError, match="covariance channels"):
         block.sample(_grid(), _cov(("A", "E", "X")), None, rng=rng)
+    full = _cov()
+    full.form = "full"
+    with pytest.raises(ValueError, match="diagonal"):
+        block.sample(_grid(), full, None, rng=rng)
+    short = _cov()
+    short.pairs[("A", "A")] = short.pairs[("A", "A")][:-1]
+    with pytest.raises(ValueError, match="shape"):
+        block.sample(_grid(), short, None, rng=rng)
+    lo = block.table.segments[0].bin_lo
+    zero = _cov()
+    zero.pairs[("E", "E")][lo] = 0.0
+    with pytest.raises(ValueError, match="finite and positive"):
+        block.sample(_grid(), zero, None, rng=rng)
+    nan = _cov()
+    nan.pairs[("A", "A")][lo + 1] = np.nan
+    with pytest.raises(ValueError, match="finite and positive"):
+        block.sample(_grid(), nan, None, rng=rng)
+    # DC lies outside every segment window, so a bad value there is never read.
+    outside = _cov()
+    outside.pairs[("A", "A")][0] = np.inf
+    assert np.isinf(block._diagonals(outside)[0, 0])
 
 
 def test_render_rejects_t_without_sangria():
@@ -472,7 +504,7 @@ def _check_block_run(tmp_path, rows, config):
     grid = enchilada.L1Data(
         {ch: np.zeros(N_FREQ, dtype=complex) for ch in CHANNELS}, **kwargs
     )
-    cov = enchilada.DataCovariance.from_psd(grid, _Noise())
+    cov = enchilada.Covariance.from_psd(grid, _Noise())
     block = UCBBlock(
         grid=grid,
         start_sources=rows,
@@ -483,8 +515,8 @@ def _check_block_run(tmp_path, rows, config):
     signal = block.initial_block_state(grid).template
     rng = np.random.default_rng(3)
     data = {}
-    for i, ch in enumerate(CHANNELS):
-        var = cov.covariance_matrix[:, i, i].real
+    for ch in CHANNELS:
+        var = cov.pair(ch, ch).real
         noise = np.sqrt(var / 2) * (
             rng.standard_normal(N_FREQ) + 1j * rng.standard_normal(N_FREQ)
         )
@@ -497,7 +529,7 @@ def _check_block_run(tmp_path, rows, config):
         observed,
         num_cycles=2,
         initial_block_state=block.initial_block_state(observed),
-        initial_noise_covariance=cov,
+        initial_covariance=cov,
     )
     assert block.turn == 2
     for seg in block.table.segments:
