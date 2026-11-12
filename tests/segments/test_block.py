@@ -99,8 +99,10 @@ def _render(sources, seg, n_channels=3):
 
 
 class _Noise:
+    """A/E PSD floored at the first nonzero bin, since ``from_psd`` evaluates DC."""
+
     def psd(self, f):
-        return ae_noise(f)
+        return ae_noise(np.maximum(f, 1.0 / T_SHORT))
 
 
 class _InjectedFailureError(Exception):
@@ -502,7 +504,7 @@ def _check_block_run(tmp_path, rows, config):
     grid = enchilada.L1Data(
         {ch: np.zeros(N_FREQ, dtype=complex) for ch in CHANNELS}, **kwargs
     )
-    cov = enchilada.DataCovariance.from_psd(grid, _Noise())
+    cov = enchilada.Covariance.from_psd(grid, _Noise())
     block = UCBBlock(
         grid=grid,
         start_sources=rows,
@@ -513,8 +515,8 @@ def _check_block_run(tmp_path, rows, config):
     signal = block.initial_block_state(grid).template
     rng = np.random.default_rng(3)
     data = {}
-    for i, ch in enumerate(CHANNELS):
-        var = cov.covariance_matrix[:, i, i].real
+    for ch in CHANNELS:
+        var = cov.pair(ch, ch).real
         noise = np.sqrt(var / 2) * (
             rng.standard_normal(N_FREQ) + 1j * rng.standard_normal(N_FREQ)
         )
@@ -527,7 +529,7 @@ def _check_block_run(tmp_path, rows, config):
         observed,
         num_cycles=2,
         initial_block_state=block.initial_block_state(observed),
-        initial_noise_covariance=cov,
+        initial_covariance=cov,
     )
     assert block.turn == 2
     for seg in block.table.segments:

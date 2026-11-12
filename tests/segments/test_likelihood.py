@@ -254,28 +254,39 @@ def test_construction_and_call_validation():
             lik(rows[:1], np.array([k]))
 
 
-def test_matches_enchilada_quadratic_form():
+def test_matches_enchilada_covariance_convention():
+    """The log likelihood is -0.5 times the quadratic form 2 sum |x|^2 / C.
+
+    ``C`` is read through enchilada's ``Covariance.pair``, and enchilada's own
+    ``noise_psd`` confirms ``C = (T/2) S`` on the band.
+    """
     enchilada = pytest.importorskip("enchilada")
     lik, r, c = _lik()
     h = _independent(SOURCES[0]) + _independent(SOURCES[1])
-    cov = np.ones((N_FREQ, 2, 2)) * np.eye(2)
-    cov[BIN_LO : BIN_LO + N_BINS, 0, 0] = c[0]
-    cov[BIN_LO : BIN_LO + N_BINS, 1, 1] = c[1]
-    mask = np.zeros(N_FREQ, dtype=bool)
-    mask[BIN_LO : BIN_LO + N_BINS] = True
-    dc = enchilada.DataCovariance(
-        cov,
-        channel_names=("A", "E"),
+    band = slice(BIN_LO, BIN_LO + N_BINS)
+    variances = {}
+    for i, ch in enumerate("AE"):
+        full = np.ones(N_FREQ)
+        full[band] = c[i]
+        variances[ch] = full
+    data = enchilada.L1Data(
+        {ch: np.zeros(N_FREQ, dtype=complex) for ch in "AE"},
         sample_rate_hz=1 / DT,
+        tdi_generation="1.5",
+        physical_observable="fractional_frequency",
+        channel_names=("A", "E"),
         num_time_samples=N_TIME,
         data_domain="frequency",
-        active_mask=mask,
     )
-    full = {ch: np.zeros(N_FREQ, dtype=complex) for ch in "AE"}
+    cov = enchilada.Covariance.like(data, variances)
+    T = N_TIME * DT
+    expected = 0.0
     for i, ch in enumerate("AE"):
-        full[ch][BIN_LO : BIN_LO + N_BINS] = r[i] - h[i]
+        C = cov.pair(ch, ch)[band]
+        np.testing.assert_allclose(cov.noise_psd(ch, data)[band], 2 * C / T, rtol=1e-12)
+        expected += -0.5 * np.sum(2 * np.abs(r[i] - h[i]) ** 2 / C)
     got = lik(_row(SOURCES)[None], np.array([2]))[0]
-    assert got == pytest.approx(-0.5 * dc.quadratic_form(full), rel=1e-10)
+    assert got == pytest.approx(expected, rel=1e-10)
 
 
 def _sources(rng, n):

@@ -214,12 +214,14 @@ def instrument_variance(f, T: float):
 
 
 def covariance(data, variances: dict, lo: int, hi: int):
-    """Return a diagonal DataCovariance.
+    """Return a diagonal enchilada ``Covariance`` on ``data``'s frequency grid.
 
     It uses ``variances`` on ``[lo, hi)`` and the instrument-only
-    :func:`instrument_variance` elsewhere; DC is inactive. Callers must pass ``lo`` and
-    ``hi`` covering the block's whole padded band (``segments[0].bin_lo`` to
-    ``segments[-1].bin_hi``), or the block sees instrument-only noise there.
+    :func:`instrument_variance` elsewhere. DC takes bin 1's instrument variance,
+    because ``Covariance`` needs a positive variance at every bin; the segment
+    windows never include DC. Callers must pass ``lo`` and ``hi`` covering the
+    block's whole padded band (``segments[0].bin_lo`` to ``segments[-1].bin_hi``),
+    or the block sees instrument-only noise there.
     """
     import enchilada
 
@@ -228,21 +230,12 @@ def covariance(data, variances: dict, lo: int, hi: int):
     f = np.arange(n_freq) / T
     f[0] = f[1]
     base = instrument_variance(f, T)
-    m = np.zeros((n_freq, len(data.channel_names), len(data.channel_names)))
-    for i, ch in enumerate(data.channel_names):
+    arrays = {}
+    for ch in data.channel_names:
         diag = base.copy()
         diag[lo:hi] = variances[ch]
-        m[:, i, i] = diag
-    mask = np.ones(n_freq, dtype=bool)
-    mask[0] = False
-    return enchilada.DataCovariance(
-        m,
-        channel_names=data.channel_names,
-        sample_rate_hz=data.fs,
-        num_time_samples=data.N,
-        data_domain="frequency",
-        active_mask=mask,
-    )
+        arrays[ch] = diag
+    return enchilada.Covariance.like(data, arrays)
 
 
 def run_block(block, data, cov, turns: int, seed: int):

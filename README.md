@@ -529,7 +529,8 @@ wheel.add(
 
 Each `sample()` call is one Gibbs turn:
 1. The block reads the A and E coefficient variances `C = (T/2) S` from the
-   frequency `DataCovariance`. S is the one-sided PSD in the data's units. For
+   enchilada `Covariance` (0.3.0 or later) through `covariance.pair`. S is the
+   one-sided PSD in the data's units. For
    Sangria fractional-frequency `dt * rfft` data this is GLASS's phase-format
    `ae_noise` times `4 (f/f*)^2`; `tools/segments/runs.py: instrument_variance`
    has it.
