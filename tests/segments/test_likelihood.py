@@ -254,21 +254,31 @@ def test_construction_and_call_validation():
             lik(rows[:1], np.array([k]))
 
 
-def test_matches_enchilada_covariance_convention():
-    """The log likelihood is -0.5 times the quadratic form 2 sum |x|^2 / C.
+class _FlooredNoise:
+    """The fixture's A/E PSD, floored at bin 1 so ``from_psd`` can evaluate DC."""
 
-    ``C`` is read through enchilada's ``Covariance.pair``, and enchilada's own
-    ``noise_psd`` confirms ``C = (T/2) S`` on the band.
+    def psd(self, f):
+        return ae_noise(np.maximum(f, 1.0 / T_SHORT))
+
+
+# enchilada's pending covariance-simplification spec brings back
+# ``quadratic_form``; a direct oracle can be restored when it lands.
+def test_likelihood_normalization_matches_enchilada_and_parseval():
+    """Two independent checks on the likelihood's normalization.
+
+    (a) enchilada's ``Covariance.from_psd`` stores ``(Tobs/2) S`` per bin; it must
+    equal the fixture's ``c``, which pins the block's ``C = (T/2) S`` convention.
+    (b) Parseval pins the factor 2 without the explicit sum: with
+    ``w = (r - h) / sqrt(C)`` on interior bins and ``y = irfft(w)``,
+    ``sum_t y^2 = (2/N) sum |w|^2``, so ``-0.5 N sum y^2 = -sum |r - h|^2 / C``.
     """
     enchilada = pytest.importorskip("enchilada")
     lik, r, c = _lik()
     h = _independent(SOURCES[0]) + _independent(SOURCES[1])
     band = slice(BIN_LO, BIN_LO + N_BINS)
-    variances = {}
-    for i, ch in enumerate("AE"):
-        full = np.ones(N_FREQ)
-        full[band] = c[i]
-        variances[ch] = full
+    assert BIN_LO >= 1
+    assert BIN_LO + N_BINS <= N_FREQ - 1
+
     data = enchilada.L1Data(
         {ch: np.zeros(N_FREQ, dtype=complex) for ch in "AE"},
         sample_rate_hz=1 / DT,
@@ -278,13 +288,16 @@ def test_matches_enchilada_covariance_convention():
         num_time_samples=N_TIME,
         data_domain="frequency",
     )
-    cov = enchilada.Covariance.like(data, variances)
-    T = N_TIME * DT
-    expected = 0.0
+    cov = enchilada.Covariance.from_psd(data, _FlooredNoise())
     for i, ch in enumerate("AE"):
-        C = cov.pair(ch, ch)[band]
-        np.testing.assert_allclose(cov.noise_psd(ch, data)[band], 2 * C / T, rtol=1e-12)
-        expected += -0.5 * np.sum(2 * np.abs(r[i] - h[i]) ** 2 / C)
+        np.testing.assert_allclose(cov.pair(ch, ch)[band], c[i], rtol=1e-12)
+
+    expected = 0.0
+    for i in range(2):
+        w = np.zeros(N_FREQ, dtype=complex)
+        w[band] = (r[i] - h[i]) / np.sqrt(c[i])
+        y = np.fft.irfft(w, n=N_TIME)
+        expected += -0.5 * N_TIME * np.sum(y**2)
     got = lik(_row(SOURCES)[None], np.array([2]))[0]
     assert got == pytest.approx(expected, rel=1e-10)
 

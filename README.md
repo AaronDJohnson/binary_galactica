@@ -527,13 +527,16 @@ wheel.add(
 )
 ```
 
+With enchilada 0.3.0 the Wheel's observations must already be frequency-domain
+(`data.to_frequency()`) with a frequency `Covariance` (`Covariance.from_psd` or
+`Covariance.like`); the Wheel does not translate a covariance between domains.
+
 Each `sample()` call is one Gibbs turn:
 1. The block reads the A and E coefficient variances `C = (T/2) S` from the
    enchilada `Covariance` (0.3.0 or later) through `covariance.pair`. S is the
-   one-sided PSD in the data's units. For
-   Sangria fractional-frequency `dt * rfft` data this is GLASS's phase-format
-   `ae_noise` times `4 (f/f*)^2`; `tools/segments/runs.py: instrument_variance`
-   has it.
+   one-sided PSD in the data's units. For Sangria fractional-frequency
+   `dt * rfft` data this is GLASS's phase-format `ae_noise` times
+   `4 (f/f*)^2`; `tools/segments/runs.py: instrument_variance` has it.
 2. It sweeps even segments, then odd. Each segment sees the conditional
    residual minus the other segments' owned sources, on its padded window.
 3. It publishes the owned sources over their full band in every data channel

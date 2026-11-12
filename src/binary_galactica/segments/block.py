@@ -106,7 +106,10 @@ class UCBBlock:
     Rejected inputs (a wrong domain, grid or covariance, or a ledger turn out
     of step) raise before anything changes and leave the block usable.
 
-    Register with ``Wheel.add(..., data_domain="frequency")``.
+    Register with ``Wheel.add(..., data_domain="frequency")``. With enchilada
+    0.3.0 the Wheel's observations must already be frequency-domain
+    (``data.to_frequency()``) with a frequency ``Covariance``; the Wheel does not
+    translate a covariance between domains.
 
     """
 
