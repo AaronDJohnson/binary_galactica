@@ -50,8 +50,11 @@ class _Cov(SimpleNamespace):
 
     def pair(self, first, second):
         if (first, second) in self.pairs:
-            return self.pairs[(first, second)]
-        return np.zeros_like(self.pairs[(first, first)])
+            out = self.pairs[(first, second)].view()
+        else:
+            out = np.zeros_like(self.pairs[(first, first)])
+        out.flags.writeable = False
+        return out
 
 
 def _cov(channels=CHANNELS):
@@ -184,7 +187,7 @@ def test_rejects_unsupported_inputs(tmp_path, fake_runner):
     with pytest.raises(ValueError, match="frequency"):
         block.sample(_grid(domain="time"), _cov(), None, rng=rng)
     with pytest.raises(TypeError, match="enchilada Covariance"):
-        block.sample(_grid(), SimpleNamespace(data_domain="time"), None, rng=rng)
+        block.sample(_grid(), SimpleNamespace(), None, rng=rng)
     with pytest.raises(TypeError, match="initial_covariance"):
         block.sample(_grid(), None, None, rng=rng)
     with pytest.raises(ValueError, match="start time"):
@@ -216,6 +219,10 @@ def test_rejects_bad_covariances(tmp_path, fake_runner):
     zero.pairs[("E", "E")][lo] = 0.0
     with pytest.raises(ValueError, match="finite and positive"):
         block.sample(_grid(), zero, None, rng=rng)
+    nan = _cov()
+    nan.pairs[("A", "A")][lo + 1] = np.nan
+    with pytest.raises(ValueError, match="finite and positive"):
+        block.sample(_grid(), nan, None, rng=rng)
     # DC lies outside every segment window, so a bad value there is never read.
     outside = _cov()
     outside.pairs[("A", "A")][0] = np.inf

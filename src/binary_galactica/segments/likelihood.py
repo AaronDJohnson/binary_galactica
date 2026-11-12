@@ -426,9 +426,9 @@ class SegmentLikelihood:
     def set_data(self, residual: ArrayLike, c: ArrayLike) -> None:
         """Set this turn's ``(2, n_bins)`` A/E residual and coefficient variance.
 
-        A bin with ``c == 0`` or ``c == +inf`` is excluded (zero weight), as
-        enchilada stores its excluded DC bin with zero covariance. NaN or
-        negative ``c`` raises ``ValueError``.
+        A bin with ``c == 0`` or ``c == +inf`` gets zero weight; the UCB block
+        rejects such values inside its band, so this applies only to direct
+        callers. NaN or negative ``c`` raises ``ValueError``.
         """
         r = np.asarray(residual, dtype=np.complex128)
         if r.shape != (2, self.n_bins) or not np.all(np.isfinite(r)):

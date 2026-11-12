@@ -223,17 +223,24 @@ class UCBBlock:
         """
         if cov is None or not callable(getattr(cov, "pair", None)):
             raise TypeError(
-                "covariance must be an enchilada Covariance (0.3.0 or later); "
-                "register the block with data_domain='frequency' and give the "
-                "Wheel an initial_covariance"
+                "covariance must be an enchilada Covariance (0.3.0 or later) with "
+                "pair() on the block's frequency grid, got "
+                f"{type(cov).__name__}; register the block with "
+                "data_domain='frequency' and give the Wheel an initial_covariance"
             )
         if getattr(cov, "form", "diagonal") != "diagonal":
             raise ValueError("the UCB block needs a diagonal-form Covariance")
         if tuple(cov.channel_names) != self.channels:
             raise ValueError("covariance channels differ from the data channels")
         diag = [np.asarray(cov.pair(ch, ch)) for ch in ("A", "E")]
-        if any(d.shape != (self.n_freq,) for d in diag):
-            raise ValueError(f"covariance arrays must have shape {(self.n_freq,)}")
+        for d in diag:
+            if d.shape != (self.n_freq,):
+                raise ValueError(
+                    f"covariance pair arrays have shape {d.shape}; the block needs "
+                    f"({self.n_freq},), one variance per rfft bin of the "
+                    "construction grid (a diagonal Covariance on frequency-domain "
+                    "data)"
+                )
         c = np.stack([d.real for d in diag]).astype(np.float64)
         lo, hi = self.table.segments[0].bin_lo, self.table.segments[-1].bin_hi
         band = c[:, lo:hi]
